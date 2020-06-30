@@ -10,7 +10,7 @@ find_package(NGSolve CONFIG REQUIRED
 
 
 add_ngsolve_python_module(tents
-	symbolicDG.cpp	
+	symbolicDG.cpp
 )
 
 # check if CMAKE_INSTALL_PREFIX is set by user, if not install in NGSolve python dir

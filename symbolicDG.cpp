@@ -27,19 +27,19 @@ void ApplyDGOperator (FESpace & fes,
   static Timer tfac_apply("ApplyDGOpFAC - apply");
   static Timer tfac_applyt("ApplyDGOpFAC - applytran");
   static Timer tfac_getfe("ApplyDGOpFAC - getFE");
-  
+
   RegionTimer reg(t);
-    
+
   auto ma = fes.GetMeshAccess();
 
   Array<ProxyFunction*> trial_proxies, numflux_trial_proxies;
-  
+
   flux.TraverseTree
     ( [&] (CoefficientFunction & nodecf)
       {
 	// cout << "node-type = " << typeid(nodecf).name() << endl;
         auto proxy = dynamic_cast<ProxyFunction*> (&nodecf);
-        if (proxy) 
+        if (proxy)
           {
             if (!proxy->IsTestFunction())
               if (!trial_proxies.Contains(proxy))
@@ -52,38 +52,37 @@ void ApplyDGOperator (FESpace & fes,
       {
         // cout << "node-type = " << typeid(nodecf).name() << endl;
         auto proxy = dynamic_cast<ProxyFunction*> (&nodecf);
-        if (proxy) 
+        if (proxy)
           {
             if (!proxy->IsTestFunction())
               if (!numflux_trial_proxies.Contains(proxy))
                 numflux_trial_proxies.Append (proxy);
           }
       });
-  
-  // cout << "trial_proxies: " << trial_proxies << endl;
-  // cout << "numflux_trial_proxies: " << numflux_trial_proxies << endl;
-  
-  if (flux.Dimensions().Size() != 2)
-    throw Exception ("flux should be a matrix");
-  
+
   int num_equ = flux.Dimensions()[0];
   int dim_space = ma->GetDimension();
+
+  // cout << "trial_proxies: " << trial_proxies << endl;
+  // cout << "numflux_trial_proxies: " << numflux_trial_proxies << endl;
+  // cout << "num_equ = " << num_equ << ", dim_space = " << dim_space << endl;
+  // cout << "flux.Dimensions = " << flux.Dimensions() << endl;
+
+  if (flux.Dimensions().Size() != 2)
+    throw Exception ("flux should be a matrix");
   if (flux.Dimensions()[1] != dim_space)
     throw Exception ("what are you doing ???");
   if (fes.GetDimension() != num_equ)
     throw Exception ("space dimensions and flux rows don't match");
 
-  // cout << "num_equ = " << num_equ << ", dim_space = " << dim_space << endl;
-  // cout << "flux.Dimension = " << flux.Dimension() << endl;
-  // cout << "flux.Dimensions = " << flux.Dimensions() << endl;
-
   shared_ptr<DifferentialOperator> gradient = fes.GetFluxEvaluator(VOL);
-  shared_ptr<DifferentialOperator> evaluator = fes.GetEvaluator(VOL); // needed for trace
+  // needed for trace
+  shared_ptr<DifferentialOperator> evaluator = fes.GetEvaluator(VOL);
 
   y = 0.0;
 
   tvol.Start();
-    
+
   IterateElements    // element applications in parallel
     (fes, VOL, lh,
      [&] (FESpace::Element el, LocalHeap & lh)
@@ -95,7 +94,7 @@ void ApplyDGOperator (FESpace & fes,
        FlatVector<> ely(dnums.Size()*fes.GetDimension(), lh);
 
        x.GetIndirect (dnums, elx);
-       
+
        SIMD_IntegrationRule ir(fel.ElementType(), 2*fel.Order());
        const ElementTransformation & trafo = el.GetTrafo();
        auto & mir = trafo(ir, lh);
@@ -108,39 +107,39 @@ void ApplyDGOperator (FESpace & fes,
 
        Vec<2> dummy_gradphi(1,0);
        ud.gradphi.AssignMemory (2, &dummy_gradphi(0));
-       
+
        for (ProxyFunction * proxy : trial_proxies)
          ud.AssignMemory (proxy, ir.GetNIP(), proxy->Dimension(), lh);
        for (ProxyFunction * proxy : trial_proxies)
-         proxy->Evaluator()->Apply(fel, mir, elx, ud.GetAMemory(proxy)); 
-          
+         proxy->Evaluator()->Apply(fel, mir, elx, ud.GetAMemory(proxy));
+
        ely = 0;
 
        FlatMatrix<SIMD<double>> flux_pnt_values(flux.Dimension(), ir.Size(), lh);
        flux.Evaluate (mir, flux_pnt_values);
-       
+
        for (size_t i = 0; i < flux_pnt_values.Height(); i++)
          {
            auto row = flux_pnt_values.Row(i);
            for (size_t j = 0; j < row.Size(); j++)
              row(j) *= mir[j].GetWeight();
          }
-       
+
        gradient->AddTrans(fel, mir, flux_pnt_values, ely);
-       y.AddIndirect (dnums, ely);       
+       y.AddIndirect (dnums, ely);
      });
 
   tvol.Stop();
 
   tfac.Start();
-  
+
   for (auto colfacets : fes.FacetColoring())
     ParallelForRange
       (colfacets.Size(), [&] (IntRange r)
        {
          LocalHeap slh = lh.Split();
          LocalHeap & lh = slh;
-         Array<int> elnums(2, lh), elnums_per(2, lh), // fnumsm(6, lh), 
+         Array<int> elnums(2, lh), elnums_per(2, lh), // fnumsm(6, lh),
 	   fnumsp(6, lh), vnumsm(8, lh), vnumsp(8, lh);
 
          for (size_t i : r)
@@ -150,13 +149,13 @@ void ApplyDGOperator (FESpace & fes,
              int facet = colfacets[i];
              ma->GetFacetElements (facet, elnums);
              if (elnums.Size() == 0) continue; // coarse facets
-             
+
              int elm = elnums[0];
 	     // ma->GetElFacets (elm,fnumsm);
 	     auto fnumsm = ma->GetElFacets(elm);
 
              int facnrm = fnumsm.Pos(facet);
-                                 
+
              ElementId eim(VOL, elm);
 
              if (elnums.Size() < 2)
@@ -166,7 +165,7 @@ void ApplyDGOperator (FESpace & fes,
                    ma->GetFacetSurfaceElements (facet, elnums);
                    int sel = elnums[0];
                    ElementId sei(BND, sel);
-                                     
+
                    const FiniteElement & fel = fespace->GetFE (ei1, lh);
                    Array<int> dnums(fel.GetNDof(), lh);
                    ma->GetElVertices (el1, vnums1);
@@ -174,24 +173,26 @@ void ApplyDGOperator (FESpace & fes,
 
                    ElementTransformation & eltrans = ma->GetTrafo (ei1, lh);
                    ElementTransformation & seltrans = ma->GetTrafo (sei, lh);
-                                     
+
                    fespace->GetDofNrs (ei1, dnums);
 
                    for (int j = 0; j < NumIntegrators(); j++)
                    {
                    const BilinearFormIntegrator & bfi = *parts[j];
 
-                   if (!bfi.BoundaryForm()) continue;  
+                   if (!bfi.BoundaryForm()) continue;
                    if (!bfi.SkeletonForm()) continue;
                    if (bfi.GetDGFormulation().element_boundary) continue;
                    if (!bfi.DefinedOn (seltrans.GetElementIndex())) continue;
-                                         
-                   FlatVector<SCAL> elx(dnums.Size()*this->fespace->GetDimension(), lh),
-                   ely(dnums.Size()*this->fespace->GetDimension(), lh);
+
+                   FlatVector<SCAL>
+                     elx(dnums.Size()*this->fespace->GetDimension(), lh),
+                     ely(dnums.Size()*this->fespace->GetDimension(), lh);
                    x.GetIndirect(dnums, elx);
 
-                   dynamic_cast<const FacetBilinearFormIntegrator&>(bfi).  
-                   ApplyFacetMatrix (fel,facnr1,eltrans,vnums1, seltrans, vnums2, elx, ely, lh);
+                   dynamic_cast<const FacetBilinearFormIntegrator&>(bfi).
+                   ApplyFacetMatrix (fel,facnr1,eltrans,vnums1, seltrans,
+                                     vnums2, elx, ely, lh);
                    y.AddIndirect(dnums, ely);
                    } //end for (numintegrators)
 
@@ -199,66 +200,67 @@ void ApplyDGOperator (FESpace & fes,
                  */
                  continue;
                } // end if boundary facet
- 
+
 
              int elp = elnums[1];
              ElementId eip(VOL, elp);
-             
+
              auto fnumsp = ma->GetElFacets(elp);
              int facnrp = fnumsp.Pos(facet);
-             
+
              ElementTransformation & trafom = ma->GetTrafo (eim, lh);
              ElementTransformation & trafop = ma->GetTrafo (eip, lh);
-	     
+
 	     size_t tid= TaskManager::GetThreadId();
-	     auto nr = trace->StartTask(tid, tfac_getfe, PajeTrace::Task::ID_TIMER);
-	       
+	     auto nr = trace->StartTask(tid, tfac_getfe,
+                                        PajeTrace::Task::ID_TIMER);
+
 
              const FiniteElement & felm = fes.GetFE (eim, lh);
              const FiniteElement & felp = fes.GetFE (eip, lh);
 
 	     trace->StopTask(tid, nr);
-	     
+
              Array<int> dnumsm(felm.GetNDof(), lh);
              Array<int> dnumsp(felp.GetNDof(), lh);
              fes.GetDofNrs (eim, dnumsm);
              fes.GetDofNrs (eip, dnumsp);
-             
+
              auto vnumsm = ma->GetElVertices (elm);
              auto vnumsp = ma->GetElVertices (elp);
-             
+
              FlatVector<>
                elxm(dnumsm.Size()*num_equ, lh),
                elym(dnumsm.Size()*num_equ, lh),
                elxp(dnumsp.Size()*num_equ, lh),
                elyp(dnumsp.Size()*num_equ, lh);
-             
+
              x.GetIndirect(dnumsm, elxm);
              x.GetIndirect(dnumsp, elxp);
-             
-             
+
+
              elym = 0.0;
              elyp = 0.0;
-            
+
              int maxorder = max2 (felm.Order(), felp.Order());
-            
+
              auto eltypem = trafom.GetElementType();
              auto eltypep = trafop.GetElementType();
              auto etfacet = ElementTopology::GetFacetType (eltypem, facnrm);
-            
-             Facet2ElementTrafo transformm(eltypem, vnumsm); 
-             Facet2ElementTrafo transformp(eltypep, vnumsp); 
-            
+
+             Facet2ElementTrafo transformm(eltypem, vnumsm);
+             Facet2ElementTrafo transformp(eltypep, vnumsp);
+
              SIMD_IntegrationRule ir_facet(etfacet, 2*maxorder);
-            
+
              auto & ir_volm = transformm(facnrm, ir_facet, lh);
              auto & mirm = trafom(ir_volm, lh);
-            
+
              auto & ir_volp = transformp(facnrp, ir_facet, lh);
              auto & mirp = trafop(ir_volp, lh);
-            
+
              mirm.ComputeNormalsAndMeasure(eltypem, facnrm);
-            
+
              // evaluate proxy-values
              ProxyUserData ud(numflux_trial_proxies.Size(), lh);
              const_cast<ElementTransformation&>(trafom).userdata = &ud;
@@ -270,29 +272,32 @@ void ApplyDGOperator (FESpace & fes,
 
 
 	     nr = trace->StartTask(tid, tfac_apply, PajeTrace::Task::ID_TIMER);
-	       
+
              for (ProxyFunction * proxy : numflux_trial_proxies)
                {
                  if (proxy->IsOther())
-                   proxy->Evaluator()->Apply(felp, mirp, elxp, ud.GetAMemory(proxy)); 
+                   proxy->Evaluator()->Apply(felp, mirp, elxp,
+                                             ud.GetAMemory(proxy));
                  else
-                   proxy->Evaluator()->Apply(felm, mirm, elxm, ud.GetAMemory(proxy)); 
+                   proxy->Evaluator()->Apply(felm, mirm, elxm,
+                                             ud.GetAMemory(proxy));
                }
 	     trace->StopTask(tid, nr);
-		     
-             FlatMatrix<SIMD<double>> flux_pnt_values(num_equ, ir_facet.GetNIP(), lh);        
+
+             FlatMatrix<SIMD<double>> flux_pnt_values(num_equ, ir_facet.GetNIP(),
+                                                      lh);
              numflux.Evaluate (mirm, flux_pnt_values);
-	     
-             for (int i = 0; i < flux_pnt_values.Height(); i++)
+
+             for (unsigned long i = 0; i < flux_pnt_values.Height(); i++)
                {
                  auto row = flux_pnt_values.Row(i);
-                 for (int j = 0; j < row.Size(); j++)
+                 for (size_t j = 0; j < row.Size(); j++)
                    row(j) *= mirm[j].GetWeight();
                }
 
 	     nr = trace->StartTask(tid, tfac_applyt, PajeTrace::Task::ID_TIMER);
 
-	     evaluator->AddTrans(felm, mirm, flux_pnt_values, elym);	   
+	     evaluator->AddTrans(felm, mirm, flux_pnt_values, elym);
              evaluator->AddTrans(felp, mirp, flux_pnt_values, elyp);
 
 	     trace->StopTask(tid, nr);
@@ -312,13 +317,13 @@ class GradPhiCoefficientFunction : public CoefficientFunction
 {
 public:
   GradPhiCoefficientFunction (int _dim) : CoefficientFunction(_dim,false) { ; }
-  
 
-  virtual double Evaluate (const BaseMappedIntegrationPoint & ip) const 
+
+  virtual double Evaluate (const BaseMappedIntegrationPoint & ip) const
   {
     throw Exception ("evaluate does nothing useful, needed since pure virtual");
   }
-  
+
   virtual void Evaluate (const SIMD_BaseMappedIntegrationRule & ir,
 			 BareSliceMatrix<SIMD<double>> values) const
   {
@@ -345,19 +350,22 @@ void ExportSymbolicDG ( py::module & m )
 
 	  static Timer tcoef("ApplyDGPywrap");
 	  RegionTimer reg(tcoef);
-	  
-          py::object u = py::cast (fes).attr("TrialFunction")(); 
+
+          py::object u = py::cast (fes).attr("TrialFunction")();
           py::object flux_u = Flux( u );
           // cout << "flux_u = " << flux_u << endl;
           py::object numflux_u = NumFlux( u, u.attr("Other")() );
           // cout << "numflux_u = " << numflux_u << endl;
-          
-          shared_ptr<CoefficientFunction> cpp_flux_u = py::extract<shared_ptr<CoefficientFunction>> (flux_u)();
-          shared_ptr<CoefficientFunction> cpp_numflux_u = py::extract<shared_ptr<CoefficientFunction>> (numflux_u)();
+
+          shared_ptr<CoefficientFunction> cpp_flux_u =
+            py::extract<shared_ptr<CoefficientFunction>> (flux_u)();
+
+          shared_ptr<CoefficientFunction> cpp_numflux_u =
+            py::extract<shared_ptr<CoefficientFunction>> (numflux_u)();
 
 	  cpp_numflux_u = Compile(cpp_numflux_u);
 	  cpp_flux_u = Compile(cpp_flux_u);
-	    
+
           bool done = false;
           while (!done)
             {
@@ -367,7 +375,7 @@ void ExportSymbolicDG ( py::module & m )
                                    *x, *y);
                   done = true;
                 }
-              catch (LocalHeapOverflow e)       
+              catch (LocalHeapOverflow &e)
                 {
                   cout << "caught heap exception" << endl;
                   lh.CleanUp();
@@ -377,7 +385,7 @@ void ExportSymbolicDG ( py::module & m )
                 }
             }
         });
-  
+
   m.def("GetTentGradPhi", [] (int dim) -> shared_ptr<CoefficientFunction>
         {
           return make_shared<GradPhiCoefficientFunction>(dim);
@@ -389,6 +397,6 @@ void ExportSymbolicDG ( py::module & m )
 PYBIND11_MODULE(tents, m) {
 
   ExportSymbolicDG(m);
-  
+
 }
 
