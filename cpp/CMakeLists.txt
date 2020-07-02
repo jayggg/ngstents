@@ -10,6 +10,8 @@ find_package(NGSolve CONFIG REQUIRED
 
 
 add_ngsolve_python_module(tents
+	python_tents.cpp
+	tents.cpp
 	symbolicDG.cpp
 )
 

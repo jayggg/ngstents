@@ -1,4 +1,6 @@
 #include "tents.hpp"
+#include <python_ngstd.hpp>
+
 
 //////////////// For handling periodicity //////////////////////////////////
 
@@ -191,7 +193,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
       tent->level = vertices_level[vi]; // 0;
       tau[vi] = tent->ttop;
 
-      // update level of neighbor vertices (handles periodic case as well)
+      // update level of neighbor vertices
       for (int nb : v2v[vi])
 	{
           nb = vmap[nb]; // only update master if periodic
@@ -255,7 +257,29 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
       tents.Append (tent);
     }
 
-  // build dependency graph used by RunParallelDependency
+  // set lists of internal facets of each element of each tent
+  ParallelFor
+    (Range(tents),
+     [&] (int i) 
+     {
+       Array<int> dnums;
+       Tent & tent = *tents[i];
+       
+       TableCreator<int> elfnums_creator(tent.els.Size());
+       
+       for ( ; !elfnums_creator.Done(); elfnums_creator++)  {
+	 for(int j : Range(tent.els)) {
+	   
+	   auto fnums = ma->GetElFacets (tent.els[j]);
+	   for(int fnum : fnums)
+	     if (tent.internal_facets.Pos(fnum) != -1)
+	       elfnums_creator.Add(j,fnum);
+	 }
+       }
+       tent.elfnums = elfnums_creator.MoveTable();
+     });
+
+  // build dependency graph (used by RunParallelDependency)
   TableCreator<int> create_dag(tents.Size());
   for ( ; !create_dag.Done(); create_dag++)
     {
@@ -264,6 +288,24 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
 	  create_dag.Add(i, d);
     }
   tent_dependency = create_dag.MoveTable();
+
+  // set advancing front data members
+  SetFrontData();
+
+}
+
+
+template <int DIM> void
+TentPitchedSlab<DIM>::SetFrontData() {
+
+
+  // The plan is to set these here:
+  
+  // gradphi_bot, gradphi_top;
+  // Array<Vector<double>> delta; // phi_top - phi_bot
+  // Array<Vector<>> graddelta;
+  // Table<Matrix<>> gradphi_facet_bot, gradphi_facet_top;
+  // Table<Vector<double>> delta_facet;
 
 }
 
@@ -371,3 +413,26 @@ ostream & operator<< (ostream & ost, const Tent & tent)
 template class TentPitchedSlab<1>;
 template class TentPitchedSlab<2>;
 template class TentPitchedSlab<3>;
+
+
+
+///////////// For python export ////////////////////////////////////////////
+
+void ExportTents(py::module & m) {
+
+  py::class_<TentPitchedSlab<2>, shared_ptr<TentPitchedSlab<2>>>
+    (m, "TPS2", "Tent pitched slab in 2 space + 1 time dimensions")
+    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, int heapsize)
+		  {
+		    auto tlh = LocalHeap(heapsize, "Tents heap");
+		    auto tps = TentPitchedSlab<2>(ma);
+		    tps.PitchTents(dt, c, tlh);
+		    return tps;
+		  }), 
+      py::arg("mesh"), py::arg("dt"), py::arg("c"),
+      py::arg("heapsize") = 1000000
+      )
+
+    .def("GetNTents",&TentPitchedSlab<2>::GetNTents);
+    
+}

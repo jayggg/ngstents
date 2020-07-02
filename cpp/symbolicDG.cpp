@@ -394,9 +394,4 @@ void ExportSymbolicDG ( py::module & m )
 
 
 
-PYBIND11_MODULE(tents, m) {
-
-  ExportSymbolicDG(m);
-
-}
 

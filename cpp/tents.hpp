@@ -114,23 +114,26 @@ public:
 template <int DIM>
 class TentPitchedSlab {
 
-public:
-
   Array<Tent*> tents;         // tents between two time slices
   double dt;                  // time step between two time slices
   Table<int> tent_dependency; // DAG of tent dependencies
   shared_ptr<MeshAccess> ma;  // access to base spatial mesh   
 
+  void SetFrontData();
+  
+public:
+  
   TentPitchedSlab(shared_ptr<MeshAccess> ama) : ma(ama) { ; };
 
   // Construct tentpitched mesh of slab and tent dependencies
   void PitchTents(double dt, double cmax, LocalHeap & lh);
   void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax, LocalHeap & lh);
 
-  // Draw pitched tents 
+  // Get
+  int GetNTents() { return tents.Size(); }
+  
+  // Drawing 
   void DrawPitchedTents(int level=1) ; 
-
-  // Draw pitched tents into a VTK output file  
   void DrawPitchedTentsVTK(string vtkfilename);
 
 };
