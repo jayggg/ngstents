@@ -15,7 +15,7 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////
 
-// Class with tent geometry information:
+// Class to describe one spacetime tent in a mesh of tents
 
 class Tent {
 
@@ -30,18 +30,17 @@ public:
   Table<int> elfnums;         /* elfnums[k] lists all internal facets of
 				 the k-th element of tent */
 
-  // tent top and bottom are graphs of p.w.linear phi_top, phi_bot
-  Array<Matrix<>> gradphi_bot, gradphi_top;
-  Array<Vector<double>> delta; // phi_top - phi_bot
-  Array<Vector<>> graddelta;
-  Table<Matrix<>> gradphi_facet_bot, gradphi_facet_top;
-  Table<Vector<double>> delta_facet;
+  // Tent top and bottom are graphs of phi_top, phi_bot, which are
+  // p.w.linear functions on non-curved elements (with p.w.constant gradients).
+  Array<Vector<>> gradphi_bot; // gradphi_bot[l], gradphi_top[l] = 
+  Array<Vector<>> gradphi_top; /* gradients of phi_bot/top at some point in the  
+				  l-th simplex of the tent */
 
   // access to global periodicity identifications
   static Array<int> vmap;      // vertex map for periodic spaces
   
   // access to the finite element & dofs
-  class TentDataFE * tempdata = nullptr;
+  class TentDataFE * fedata = nullptr;
 
   // other global details from a mesh of tents
   int level;                   // parallel layer number
@@ -61,7 +60,7 @@ ostream & operator<< (ostream & ost, const Tent & tent);
 class TentDataFE
 {
 public:
-  // ELEMENT DATA
+
   // finite elements for all elements in the tent
   Array<FiniteElement*> fei;
   // integration rules for all elements in the tent
@@ -72,14 +71,12 @@ public:
   Array<ElementTransformation*> trafoi;
   // mesh size for each element
   Array<double> mesh_size;
-  // gradient of the old advancing front in the IP's
+  // gradients of tent bottom at integration points (in possibly curved elements)
   Array<FlatMatrix<SIMD<double>>> agradphi_bot;
-  // gradient of the new advancing front in the IP's
+  // gradient of (tent top) the new advancing front in the IP's
   Array<FlatMatrix<SIMD<double>>> agradphi_top;
   // height of the tent in the IP's
   Array<FlatVector<SIMD<double>>> adelta;
-
-  // FACET DATA
   // local numbers of the neighbors
   Array<INT<2,size_t>> felpos;
   // facet integration rules for all facets in the tent
@@ -99,13 +96,11 @@ public:
   // height of the tent in the IP's
   Array<FlatVector<SIMD<double>>> adelta_facet;
 
-  // first constructor just initializes arrays
-  TentDataFE (int n, LocalHeap & lh)
+  TentDataFE(int n, LocalHeap & lh)
     : fei(n, lh), iri(n, lh), miri(n, lh), trafoi(n, lh) { ; }
 
-  // second constructor performs all initialization
-  TentDataFE (const Tent & tent, const FESpace & fes,
-                const MeshAccess & ma, LocalHeap & lh);
+  TentDataFE(const Tent & tent, const FESpace & fes,
+	     const MeshAccess & ma, LocalHeap & lh);
 };
 
 
@@ -118,19 +113,22 @@ class TentPitchedSlab {
   double dt;                  // time step between two time slices
   Table<int> tent_dependency; // DAG of tent dependencies
   shared_ptr<MeshAccess> ma;  // access to base spatial mesh   
-
-  void SetFrontData();
+  LocalHeap lh; 
   
 public:
   
-  TentPitchedSlab(shared_ptr<MeshAccess> ama) : ma(ama) { ; };
+  // Constructor and initializers
+  TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
+    ma(ama), lh(heapsize, "Tents heap") { ; };
+  void PitchTents(double dt, double cmax);
+  void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax);
 
-  // Construct tentpitched mesh of slab and tent dependencies
-  void PitchTents(double dt, double cmax, LocalHeap & lh);
-  void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax, LocalHeap & lh);
-
-  // Get
+  // Get object features
   int GetNTents() { return tents.Size(); }
+  int GetSlabHeight() { return dt; } 
+
+  // Return  max(|| gradphi_top||, ||gradphi_bot||)
+  double MaxSlope();
   
   // Drawing 
   void DrawPitchedTents(int level=1) ; 
