@@ -669,8 +669,13 @@ void ExportTents(py::module & m) {
   py::class_<Tent, shared_ptr<Tent>>(m, "Tent", "Tent structure")
     .def_readonly("vertex", &Tent::vertex)
     .def_readonly("ttop", &Tent::ttop)
-    .def_readonly("tbot", &Tent::tbot);
+    .def_readonly("tbot", &Tent::tbot)
+    .def_readonly("nbv", &Tent::nbv)
+    .def_readonly("nbtime", &Tent::nbtime)
+    .def_readonly("els", &Tent::els)
+    .def_readonly("internal_facets", &Tent::internal_facets);
     
+  
   py::class_<TentPitchedSlab<2>, shared_ptr<TentPitchedSlab<2>>>
     (m, "TentPitchedSlab2", "Tent pitched slab in 2 space + 1 time dimensions")
     .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, int heapsize)
@@ -685,5 +690,7 @@ void ExportTents(py::module & m) {
 
     .def("GetNTents", &TentPitchedSlab<2>::GetNTents)
     .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)    
-    .def("MaxSlope", &TentPitchedSlab<2>::MaxSlope);
+    .def("MaxSlope", &TentPitchedSlab<2>::MaxSlope)
+    .def("GetTent", &TentPitchedSlab<2>::GetTent);
+
 }

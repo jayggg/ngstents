@@ -126,7 +126,8 @@ public:
   // Get object features
   int GetNTents() { return tents.Size(); }
   int GetSlabHeight() { return dt; } 
-
+  const Tent & GetTent(int i) { return *tents[i];}
+  
   // Return  max(|| gradphi_top||, ||gradphi_bot||)
   double MaxSlope();
   
