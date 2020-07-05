@@ -666,8 +666,13 @@ template class TentPitchedSlab<3>;
 
 void ExportTents(py::module & m) {
 
+  py::class_<Tent, shared_ptr<Tent>>(m, "Tent", "Tent structure")
+    .def_readonly("vertex", &Tent::vertex)
+    .def_readonly("ttop", &Tent::ttop)
+    .def_readonly("tbot", &Tent::tbot);
+    
   py::class_<TentPitchedSlab<2>, shared_ptr<TentPitchedSlab<2>>>
-    (m, "TPS2", "Tent pitched slab in 2 space + 1 time dimensions")
+    (m, "TentPitchedSlab2", "Tent pitched slab in 2 space + 1 time dimensions")
     .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, int heapsize)
 		  {
 		    auto tps = TentPitchedSlab<2>(ma, heapsize);
