@@ -13,6 +13,8 @@ add_ngsolve_python_module(tents
 	python_tents.cpp
 	tents.cpp
 	symbolicDG.cpp
+	export_conslaw.cpp
+	burgers.cpp
 )
 
 # check if CMAKE_INSTALL_PREFIX is set by user, if not install in NGSolve python dir
