@@ -32,7 +32,8 @@ template <int DIM> void
 TentPitchedSlab <DIM>::PitchTents(double dt,
 				  shared_ptr<CoefficientFunction> wavespeed)
 {
-
+  this->dt = dt; // set it so that GetSlabHeight can return it
+  
   // maps regular vertices to themselves, periodic slave vertices to masters
   auto & vmap = Tent::vmap;
   vmap.SetSize(ma->GetNV());
@@ -361,21 +362,20 @@ double TentPitchedSlab <DIM>::MaxSlope() {
 
 ///////////////////// Output routines //////////////////////////////////////
 
-void VTKOutputTents(shared_ptr<MeshAccess> maptr, Array<Tent*> & tents,
-                    string filename)
+template <int DIM> void
+TentPitchedSlab <DIM>::DrawPitchedTentsVTK(string filename)
 {
-  const MeshAccess & ma = *maptr;
   ofstream out(filename+".vtk");
   Array<Vec<3>> points;
   Array<INT<4>> cells;
   Array<int> level, tentnr;
   int ptcnt = 0;
 
-  for(int i : Range(tents))
+  for(int i : Range(GetNTents()))
     {
       int firstpt = ptcnt;
-      Tent & tent = *tents[i];
-      Vec<2> pxy = ma.GetPoint<2> (tent.vertex);
+      const Tent & tent = GetTent(i);
+      Vec<2> pxy = ma->GetPoint<2> (tent.vertex);
       points.Append (Vec<3> (pxy(0), pxy(1), tent.tbot));
       points.Append (Vec<3> (pxy(0), pxy(1), tent.ttop));
       INT<4> tet(ptcnt,ptcnt+1,0,0);
@@ -383,12 +383,12 @@ void VTKOutputTents(shared_ptr<MeshAccess> maptr, Array<Tent*> & tents,
 
       for (int elnr : tent.els)
 	{
-	  Ngs_Element el = ma.GetElement(ElementId(VOL,elnr));
+	  Ngs_Element el = ma->GetElement(ElementId(VOL,elnr));
 
 	  for (int v : el.Vertices())
 	    if (v != tent.vertex)
 	      {
-		pxy = ma.GetPoint<2> (v);
+		pxy = ma->GetPoint<2> (v);
 		points.Append (Vec<3> (pxy(0), pxy(1),
                                tent.nbtime[tent.nbv.Pos(v)]));
 	      }
@@ -442,6 +442,42 @@ void VTKOutputTents(shared_ptr<MeshAccess> maptr, Array<Tent*> & tents,
 }
 
 
+// Used with OpenGL (ngsgui/tents_visualization) and WebGL (webgui).
+template <int DIM> void
+TentPitchedSlab <DIM>::DrawPitchedTentsGL(
+    Array<int> & tentdata, Array<double> & tenttimes, int & nlevels)
+{
+  nlevels = 0;
+  tentdata.SetAllocSize(4*tents.Size());
+  tenttimes.SetAllocSize(4*tents.Size());
+
+  for(int i : Range(GetNTents()))
+    {
+      const Tent & tent = GetTent(i);
+      for(int el : Range(tent.els))
+        {
+          tentdata.Append(i);
+          tentdata.Append(tent.level);
+          tentdata.Append(tent.vertex);
+          tentdata.Append(tent.els[el]);
+          if(tent.level > nlevels)
+            nlevels = tent.level;
+
+          auto verts = ma->GetElVertices(ElementId(VOL,tent.els[el]));
+          for(auto v : verts)
+            {
+              auto pos = tent.nbv.Pos(v);
+              if (pos != tent.nbv.ILLEGAL_POSITION)
+                tenttimes.Append(tent.nbtime[pos]);
+              else
+                tenttimes.Append(tent.tbot);
+            }
+          tenttimes.Append(tent.ttop);
+        }
+    }
+  nlevels+=1;
+}
+
 
 ostream & operator<< (ostream & ost, const Tent & tent) 
 {
@@ -490,6 +526,12 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
   for (int i = 0; i < tent.els.Size(); i++)
     {
       ElementId ei(VOL, tent.els[i]);
+      // ranges and dofs were previously members of tent
+      Array<int> dnums;
+      fes.GetDofNrs (ei, dnums);
+      ranges.Append(IntRange(dnums.Size()) + dofs.Size());
+      dofs += dnums;
+
       fei[i] = &fes.GetFE (ei, lh);
       iri[i] = new (lh) SIMD_IntegrationRule(fei[i]->ElementType(),
 					     2*fei[i]->Order());
@@ -535,6 +577,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
       coef_delta[i] = coef_top[i]-coef_bot[i];
       fe_nodal[i]->Evaluate(*iri[i], coef_delta[i], adelta[i]);
     }
+    nd = dofs.Size();
 
   for (int i = 0; i < tent.internal_facets.Size(); i++)
     {
@@ -691,6 +734,31 @@ void ExportTents(py::module & m) {
     .def("GetNTents", &TentPitchedSlab<2>::GetNTents)
     .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)    
     .def("MaxSlope", &TentPitchedSlab<2>::MaxSlope)
-    .def("GetTent", &TentPitchedSlab<2>::GetTent);
+    .def("GetTent", &TentPitchedSlab<2>::GetTent)
+    .def("DrawPitchedTentsVTK",
+         [](shared_ptr<TentPitchedSlab<2>> self, string vtkfilename)
+         { 
+           self->DrawPitchedTentsVTK(vtkfilename); 
+         }, py::arg("vtkfilename")="output")
+    .def("DrawPitchedTentsGL",
+         [](shared_ptr<TentPitchedSlab<2>> self)
+         {
+           int nlevels;
+           Array<int> tentdata;
+           Array<double> tenttimes;
+           self->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
+           py::list data, times;
+           for(auto i : Range(tentdata))
+             {
+               data.append(tentdata[i]);
+               // note: time values make sense only in 2D case.
+               // They are not used in 3D case, i.e. they are
+               // ignored by tents_visualization (ngsgui) and webgui.
+               times.append(tenttimes[i]);
+             }
+           return py::make_tuple(data,times,self->GetNTents(),nlevels);
+         })
+
+     ; // please leave me on my own line
 
 }

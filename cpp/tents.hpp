@@ -32,13 +32,13 @@ public:
 
   // Tent top and bottom are graphs of phi_top, phi_bot, which are
   // p.w.linear functions on non-curved elements (with p.w.constant gradients).
-  Array<Vector<>> gradphi_bot; // gradphi_bot[l], gradphi_top[l] = 
-  Array<Vector<>> gradphi_top; /* gradients of phi_bot/top at some point in the  
+  Array<Vector<>> gradphi_bot; // gradphi_bot[l], gradphi_top[l] =
+  Array<Vector<>> gradphi_top; /* gradients of phi_bot/top at some point in the
 				  l-th simplex of the tent */
 
   // access to global periodicity identifications
   static Array<int> vmap;      // vertex map for periodic spaces
-  
+
   // access to the finite element & dofs
   class TentDataFE * fedata = nullptr;
 
@@ -48,8 +48,6 @@ public:
 
 };
 
-void VTKOutputTents(shared_ptr<MeshAccess> maptr, Array<Tent*> & tents,
-                    string filename);
 ostream & operator<< (ostream & ost, const Tent & tent);
 
 
@@ -60,6 +58,11 @@ ostream & operator<< (ostream & ost, const Tent & tent);
 class TentDataFE
 {
 public:
+  // moved from Tent
+  int nd;            // total # interior and interface dofs in space
+  Array<int> dofs;   // all interior and interface dof nums, size(dofs)=nd.
+  // ranges[k] IntRange (of dof numbers) of k-th element of local matrix
+  Array<IntRange> ranges;
 
   // finite elements for all elements in the tent
   Array<FiniteElement*> fei;
@@ -111,30 +114,34 @@ class TentPitchedSlab {
 
   Array<Tent*> tents;         // tents between two time slices
   double dt;                  // time step between two time slices
-  Table<int> tent_dependency; // DAG of tent dependencies
-  shared_ptr<MeshAccess> ma;  // access to base spatial mesh   
-  LocalHeap lh; 
-  
+  shared_ptr<MeshAccess> ma;  // access to base spatial mesh
+  LocalHeap lh;
+
 public:
-  
+
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
-    ma(ama), lh(heapsize, "Tents heap") { ; };
+    ma(ama), lh(heapsize, "Tents heap"), dt(0) { ; };
   void PitchTents(double dt, double cmax);
   void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax);
 
   // Get object features
   int GetNTents() { return tents.Size(); }
-  int GetSlabHeight() { return dt; } 
+  double GetSlabHeight() { return dt; }
   const Tent & GetTent(int i) { return *tents[i];}
-  
+
   // Return  max(|| gradphi_top||, ||gradphi_bot||)
   double MaxSlope();
-  
-  // Drawing 
-  void DrawPitchedTents(int level=1) ; 
-  void DrawPitchedTentsVTK(string vtkfilename);
 
+  // Drawing
+  void DrawPitchedTents(int level=1) ;
+  void DrawPitchedTentsVTK(string vtkfilename);
+  void DrawPitchedTentsGL(Array<int> & tentdata,
+                          Array<double> & tenttimes, int & nlevels);
+
+
+  // Propagate methods need to access this somehow
+  Table<int> tent_dependency; // DAG of tent dependencies
 };
 
 
