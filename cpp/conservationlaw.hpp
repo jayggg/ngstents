@@ -42,12 +42,12 @@ public:
   virtual void PitchTents(double adt,
                           shared_ptr<CoefficientFunction> awavespeed) = 0;
 
-  virtual double MaxSlope();
+  virtual double MaxSlope() = 0;
 
-  void DrawPitchedTentsVTK(string vtkfilename);
+  virtual void DrawPitchedTentsVTK(string vtkfilename) = 0;
 
-  void DrawPitchedTentsGL(Array<int> & tentdata,
-                          Array<double> & tenttimes, int & nlevels);
+  virtual void DrawPitchedTentsGL(Array<int> & tentdata,
+                                  Array<double> & tenttimes, int & nlevels) = 0;
 
   virtual void PropagatePicard(int steps, BaseVector & hu,
                                BaseVector & hu0, LocalHeap & lh) = 0;
