@@ -54,13 +54,12 @@ void ExportConsLaw(py::module & m)
            self->uinit = self->u; // set data used for b.c.
          })
     .def("PropagatePicard",
-         [](shared_ptr<CL> self, shared_ptr<BaseVector> vecu,
-            int steps, double time)
+         [](shared_ptr<CL> self, shared_ptr<BaseVector> vecu, int steps)
          {
            if(steps==-1)
              steps = 1;
            self->PropagatePicard(steps,*vecu,self->uinit,*(self->pylh));
-         }, py::arg("vec"),py::arg("steps")=-1, py::arg("time")=0.0)
+         }, py::arg("vec"),py::arg("steps")=-1)
 
     /////////////////// tent pitching functions ////////////////////
 
