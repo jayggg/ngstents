@@ -257,9 +257,9 @@ public:
 
         double measure = (*fedata->miri[loci])[0].GetMeasure()[0];
         fel.GetDiagMassMatrix(diagmass);
-        for (int j = 0; j < diagmass.Size(); j++)
+        for (size_t j = 0; j < diagmass.Size(); j++)
           diagmass(j) = 1.0 / (diagmass(j) * measure);
-        for(int j = 0; j < mat.Height(); j++)
+        for(size_t j = 0; j < mat.Height(); j++)
           mat.Row (j) *= diagmass(j);
       }
   }
