@@ -38,7 +38,7 @@ dt = 0.05
 tend = 3*dt
 t = 0
 cnt = 0
-cl.CreateTents(dt, 16)
+cl.PitchTents(dt, 16)
 print("max slope", cl.MaxSlope())
 if ngs_gui:
     Draw(cl)
