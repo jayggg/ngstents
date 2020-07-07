@@ -40,7 +40,7 @@ public:
   static Array<int> vmap;      // vertex map for periodic spaces
 
   // access to the finite element & dofs
-  class TentDataFE * fedata = nullptr;
+  mutable class TentDataFE * fedata = nullptr;
 
   // other global details from a mesh of tents
   int level;                   // parallel layer number
@@ -121,7 +121,7 @@ public:
 
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
-    ma(ama), lh(heapsize, "Tents heap"), dt(0) { ; };
+    dt(0), ma(ama), lh(heapsize, "Tents heap") { ; };
   void PitchTents(double dt, double cmax);
   void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax);
 
