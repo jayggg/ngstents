@@ -15,6 +15,7 @@ void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
 CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u0,
 	      FlatMatrixFixWidth<COMP> flux, double tstar, LocalHeap & lh)
 {
+  // note: tstar is not used
   const Tent & tent = tps.GetTent(tentnr);
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -84,7 +85,6 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
           fel2.Evaluate(simd_ir_facet_vol2, u.Rows(dn2), u2);
 
           auto & simd_mir1 = *fedata->mfiri1[i];
-          auto & simd_mir2 = *fedata->mfiri2[i];
 
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
           if (XDEP)
@@ -755,13 +755,12 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
        *testout << "tent " << i << endl;
        LocalHeap slh = lh.Split();  // split to threads
        const Tent & tent = tps.GetTent(i);
-       int ndof = tent.fedata->nd;
+       tent.fedata = new (slh) TentDataFE(tent, *fes, *ma, slh);
 
+       int ndof = (tent.fedata)->nd;
        double taustar = 1.0/steps;
 
-       // It's read-only now! is the overhead really so big?
        // tent.fedata = new (slh) TentDataFE(tent, *fes, *ma, slh);
-       // Tent no longer has this method
        // tent->InitTent(gftau);
 
        FlatMatrixFixWidth<COMP> local_u0(ndof,slh);
@@ -811,6 +810,7 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
        // calc |u|_M0 on advancing front
        Cyl2Tent (i, local_Gu0, local_u0, 0, slh);
        ApplyM(i,0,local_u0,local_help,slh);
+
        double norm_bot = InnerProduct(AsFV(local_u0),AsFV(local_help));
 
        for (int j = 0; j < steps; j++)
@@ -872,8 +872,10 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
                  }
 	     }
          }
+
        // calc |u|_M1 norm on advancing front
        Cyl2Tent (i, local_Gu0, local_u0, 1, slh);
+
        ApplyM(i,1,local_u0,local_help,slh);
        double norm_top = InnerProduct(AsFV(local_u0),AsFV(local_help));
        if(norm_bot>0)
@@ -886,9 +888,7 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
          *testout << "bot, top : " << norm_bot << ", " << norm_top << endl;
 
        hu.SetIndirect(tent.fedata->dofs, AsFV(local_Gu0));
-       // can't do this! do we need to tell the tent to release this resource?
-       // Let's see how significant this memory load is...
-       // tent.fedata = nullptr;
+       tent.fedata = nullptr;
        // Tent no longer has this method
        // tps.GetTent(i)->SetFinalTime();
      });
