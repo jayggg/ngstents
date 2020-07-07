@@ -21,8 +21,8 @@ Array<int> Tent::vmap;
 /////////////////// Tent meshing ///////////////////////////////////////////
 
 template <int DIM> void
-TentPitchedSlab<DIM>::PitchTents(double dt, double wavespeed) 
-{				 
+TentPitchedSlab<DIM>::PitchTents(double dt, double wavespeed)
+{
   auto cf = make_shared<ConstantCoefficientFunction>(wavespeed);
   PitchTents(dt, cf);
 }
@@ -33,7 +33,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
 				  shared_ptr<CoefficientFunction> wavespeed)
 {
   this->dt = dt; // set it so that GetSlabHeight can return it
-  
+
   // maps regular vertices to themselves, periodic slave vertices to masters
   auto & vmap = Tent::vmap;
   vmap.SetSize(ma->GetNV());
@@ -107,7 +107,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
   Array<double> ktilde(ma->GetNV());
   ktilde = vertex_refdt;
 
-  // array of vertices ready for pitching a tent 
+  // array of vertices ready for pitching a tent
   Array<int> ready_vertices;
   Array<bool> vertex_ready(ma->GetNV());
   vertex_ready = false;
@@ -176,7 +176,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
       int minlevel = 1000;
       int posmin = 0;
       // Choose tent pole vertex vi and remove it from vertex_ready
-      for(int i = 0; i < ready_vertices.Size(); i++)
+      for(size_t i = 0; i < ready_vertices.Size(); i++)
 	if(vertices_level[ready_vertices[i]] < minlevel)
 	  {
 	    minlevel = vertices_level[ready_vertices[i]];
@@ -261,17 +261,18 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
   // set lists of internal facets of each element of each tent
   ParallelFor
     (Range(tents),
-     [&] (int i) 
+     [&] (int i)
      {
-       Tent & tent = *tents[i];       
+       Tent & tent = *tents[i];
        TableCreator<int> elfnums_creator(tent.els.Size());
-       
+
        for ( ; !elfnums_creator.Done(); elfnums_creator++)  {
 	 for(int j : Range(tent.els)) {
-	   
+
 	   auto fnums = ma->GetElFacets (tent.els[j]);
 	   for(int fnum : fnums)
-	     if (tent.internal_facets.Pos(fnum) != -1)
+	     if (tent.internal_facets.Pos(fnum) !=
+                 tent.internal_facets.ILLEGAL_POSITION)
 	       elfnums_creator.Add(j,fnum);
 	 }
        }
@@ -297,9 +298,9 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
        int nels = tent.els.Size();
        tent.gradphi_bot.SetSize(nels);
        tent.gradphi_top.SetSize(nels);
-	      
+
        for (int j : Range(nels)) { //  loop over elements in a tent
-	 
+
 	 ElementId ej (VOL, tent.els[j]);
 	 ELEMENT_TYPE eltype = ma->GetElType(ej);
 	 BaseScalarFiniteElement *fe;
@@ -310,18 +311,18 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
 	   default: fe = new (lh) ScalarFE<ET_TET,1>();
 	   }
 	 Vector<> shape_nodal(fe->GetNDof());
-	 Matrix<> dshape_nodal(fe->GetNDof(), DIM);		  
+	 Matrix<> dshape_nodal(fe->GetNDof(), DIM);
 	 Vector<> coef_bot, coef_top; // coefficient of tau (top & bot)
 	 coef_bot.SetSize(fe->GetNDof());
 	 coef_top.SetSize(fe->GetNDof());
 	 auto vnums = ma->GetElVertices (ej);
-	 for (int k = 0; k < vnums.Size(); k++) {
-	   if (vnums[k] == tent.vertex)  { // central vertex	     
-	     coef_bot(k) = tent.tbot;  
-	     coef_top(k) = tent.ttop;  
+	 for (size_t k = 0; k < vnums.Size(); k++) {
+	   if (vnums[k] == tent.vertex)  { // central vertex
+	     coef_bot(k) = tent.tbot;
+	     coef_top(k) = tent.ttop;
 	   }
 	   else
-	     for (int l = 0; l < tent.nbv.Size(); l++)
+	     for (size_t l = 0; l < tent.nbv.Size(); l++)
 	       if (tent.nbv[l] == vnums[k])
 		 coef_bot(k) = coef_top(k) = tent.nbtime[l];
 	 }
@@ -333,7 +334,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
 	 tent.gradphi_top[j].SetSize(DIM);
 	 fe->CalcMappedDShape(mip, dshape_nodal);
 	 tent.gradphi_bot[j] = Trans(dshape_nodal) * coef_bot;
-	 tent.gradphi_top[j] = Trans(dshape_nodal) * coef_top;       
+	 tent.gradphi_top[j] = Trans(dshape_nodal) * coef_top;
        }
      });
 }
@@ -343,9 +344,9 @@ template <int DIM>
 double TentPitchedSlab <DIM>::MaxSlope() {
 
   // Return  max(|| gradphi_top||, ||gradphi_bot||)
-  
+
   double maxgrad = 0.0;
-  ParallelFor 
+  ParallelFor
     (Range(tents),
      [&] (int i)
      {
@@ -355,10 +356,10 @@ double TentPitchedSlab <DIM>::MaxSlope() {
 	 AtomicMax(maxgrad, norm);
        }
      });
-  return maxgrad;  
+  return maxgrad;
 }
 
- 
+
 
 ///////////////////// Output routines //////////////////////////////////////
 
@@ -479,12 +480,12 @@ TentPitchedSlab <DIM>::DrawPitchedTentsGL(
 }
 
 
-ostream & operator<< (ostream & ost, const Tent & tent) 
+ostream & operator<< (ostream & ost, const Tent & tent)
 {
   ost << "vertex: " << tent.vertex << ", tbot = " << tent.tbot
       << ", ttop = " << tent.ttop << endl;
   ost << "neighbour vertices: " << endl;
-  for (int k = 0; k < tent.nbv.Size(); k++)
+  for (size_t k = 0; k < tent.nbv.Size(); k++)
     ost << k << ": " << tent.nbv[k] << " " << tent.nbtime[k] << endl;
   ost << "elements: " << endl << tent.els << endl;
   ost << "internal_facets: " << endl << tent.internal_facets << endl;
@@ -518,12 +519,13 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
     adelta_facet(tent.internal_facets.Size(), lh)
 {
   int dim = ma.GetDimension();
+
   FlatArray<BaseScalarFiniteElement*> fe_nodal(tent.els.Size(),lh);
   FlatArray<FlatVector<double>> coef_delta(tent.els.Size(),lh);
   FlatArray<FlatVector<double>> coef_top(tent.els.Size(),lh);
   FlatArray<FlatVector<double>> coef_bot(tent.els.Size(),lh);
 
-  for (int i = 0; i < tent.els.Size(); i++)
+  for (size_t i = 0; i < tent.els.Size(); i++)
     {
       ElementId ei(VOL, tent.els[i]);
       // ranges and dofs were previously members of tent
@@ -556,7 +558,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
       coef_top[i].AssignMemory(fe_nodal[i]->GetNDof(), lh);
       coef_bot[i].AssignMemory(fe_nodal[i]->GetNDof(), lh);
       auto vnums = ma.GetElVertices(ei);
-      for (int k = 0; k < vnums.Size(); k++)
+      for (size_t k = 0; k < vnums.Size(); k++)
         {
           auto mapped_vnum = tent.vmap[vnums[k]]; // map periodic vertices
           auto pos = tent.nbv.Pos(mapped_vnum);
@@ -565,7 +567,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
             coef_bot[i](k) = coef_top[i](k) = tent.nbtime[pos];
 
           else {
-	    
+
 	    coef_bot[i](k) = tent.tbot;
 	    coef_top[i](k) = tent.ttop;
 	  }
@@ -579,7 +581,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
     }
     nd = dofs.Size();
 
-  for (int i = 0; i < tent.internal_facets.Size(); i++)
+  for (size_t i = 0; i < tent.internal_facets.Size(); i++)
     {
       int order = 0;
       INT<2> loc_facetnr;
@@ -604,7 +606,10 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
             }
         }
       SIMD_IntegrationRule * simd_ir_facet;
-
+      
+      // Note: size_t(-1) = 18446744073709551615 = ar.ILLEGAL_POSITION
+      // Is it OK to rely on this cast/conversion?  Is there a better way
+      // to check for the condition that an element is not in the array?
       felpos[i] = INT<2,size_t>(size_t(-1));
       for(int j : Range(elnums.Size()))
         {
@@ -636,7 +641,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
                 {
                   simd_ir_facet = new (lh)
 		    SIMD_IntegrationRule (etfacet, 2*order+1);
-					  
+
                   // quick fix to avoid usage of TP elements (slows down)
                   simd_ir_facet->SetIRX(nullptr);
                 }
@@ -717,8 +722,8 @@ void ExportTents(py::module & m) {
     .def_readonly("nbtime", &Tent::nbtime)
     .def_readonly("els", &Tent::els)
     .def_readonly("internal_facets", &Tent::internal_facets);
-    
-  
+
+
   py::class_<TentPitchedSlab<2>, shared_ptr<TentPitchedSlab<2>>>
     (m, "TentPitchedSlab2", "Tent pitched slab in 2 space + 1 time dimensions")
     .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, int heapsize)
@@ -726,19 +731,19 @@ void ExportTents(py::module & m) {
 		    auto tps = TentPitchedSlab<2>(ma, heapsize);
 		    tps.PitchTents(dt, c);
 		    return tps;
-		  }), 
+		  }),
       py::arg("mesh"), py::arg("dt"), py::arg("c"),
       py::arg("heapsize") = 1000000
       )
 
     .def("GetNTents", &TentPitchedSlab<2>::GetNTents)
-    .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)    
+    .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)
     .def("MaxSlope", &TentPitchedSlab<2>::MaxSlope)
     .def("GetTent", &TentPitchedSlab<2>::GetTent)
     .def("DrawPitchedTentsVTK",
          [](shared_ptr<TentPitchedSlab<2>> self, string vtkfilename)
-         { 
-           self->DrawPitchedTentsVTK(vtkfilename); 
+         {
+           self->DrawPitchedTentsVTK(vtkfilename);
          }, py::arg("vtkfilename")="output")
     .def("DrawPitchedTentsGL",
          [](shared_ptr<TentPitchedSlab<2>> self)
