@@ -464,16 +464,19 @@ TentPitchedSlab <DIM>::DrawPitchedTentsGL(
           if(tent.level > nlevels)
             nlevels = tent.level;
 
-          auto verts = ma->GetElVertices(ElementId(VOL,tent.els[el]));
-          for(auto v : verts)
-            {
-              auto pos = tent.nbv.Pos(v);
-              if (pos != tent.nbv.ILLEGAL_POSITION)
-                tenttimes.Append(tent.nbtime[pos]);
-              else
-                tenttimes.Append(tent.tbot);
-            }
-          tenttimes.Append(tent.ttop);
+          if constexpr (DIM == 2)
+          {
+            auto verts = ma->GetElVertices(ElementId(VOL,tent.els[el]));
+            for(auto v : verts)
+              {
+                auto pos = tent.nbv.Pos(v);
+                if (pos != tent.nbv.ILLEGAL_POSITION)
+                  tenttimes.Append(tent.nbtime[pos]);
+                else
+                  tenttimes.Append(tent.tbot);
+              }
+            tenttimes.Append(tent.ttop);
+          }
         }
     }
   nlevels+=1;
@@ -606,7 +609,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
             }
         }
       SIMD_IntegrationRule * simd_ir_facet;
-      
+
       // Note: size_t(-1) = 18446744073709551615 = ar.ILLEGAL_POSITION
       // Is it OK to rely on this cast/conversion?  Is there a better way
       // to check for the condition that an element is not in the array?
@@ -723,6 +726,43 @@ void ExportTents(py::module & m) {
     .def_readonly("els", &Tent::els)
     .def_readonly("internal_facets", &Tent::internal_facets);
 
+  //
+  // 1D spatial mesh
+  //
+  py::class_<TentPitchedSlab<1>, shared_ptr<TentPitchedSlab<1>>>
+    (m, "TentPitchedSlab1", "Tent pitched slab in 1 space + 1 time dimensions")
+    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, int heapsize)
+		  {
+		    auto tps = TentPitchedSlab<1>(ma, heapsize);
+		    tps.PitchTents(dt, c);
+		    return tps;
+		  }),
+      py::arg("mesh"), py::arg("dt"), py::arg("c"),
+      py::arg("heapsize") = 1000000
+      )
+
+    .def_readonly("mesh", &TentPitchedSlab<1>::ma)
+    .def("GetNTents", &TentPitchedSlab<1>::GetNTents)
+    .def("GetSlabHeight", &TentPitchedSlab<1>::GetSlabHeight)
+    .def("MaxSlope", &TentPitchedSlab<1>::MaxSlope)
+    .def("GetTent", &TentPitchedSlab<1>::GetTent)
+    .def("DrawPitchedTentsPlt",[](shared_ptr<TentPitchedSlab<1>> self)
+     {
+       py::list ret;
+       for(int i = 0; i < self->GetNTents(); i++)
+         {
+           const Tent & tent = self->GetTent(i);
+           py::list reti;
+           reti.append(py::make_tuple(tent.vertex,tent.ttop,tent.tbot));
+           for(int j = 0; j< tent.nbv.Size(); j++)
+             reti.append(py::make_tuple(tent.nbv[j],tent.nbtime[j]));
+           ret.append(reti);
+         }
+       return ret;
+     })
+
+
+     ; // please leave me on my own line
 
   py::class_<TentPitchedSlab<2>, shared_ptr<TentPitchedSlab<2>>>
     (m, "TentPitchedSlab2", "Tent pitched slab in 2 space + 1 time dimensions")
@@ -736,6 +776,7 @@ void ExportTents(py::module & m) {
       py::arg("heapsize") = 1000000
       )
 
+    .def_readonly("mesh", &TentPitchedSlab<2>::ma)
     .def("GetNTents", &TentPitchedSlab<2>::GetNTents)
     .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)
     .def("MaxSlope", &TentPitchedSlab<2>::MaxSlope)
@@ -762,6 +803,40 @@ void ExportTents(py::module & m) {
                times.append(tenttimes[i]);
              }
            return py::make_tuple(data,times,self->GetNTents(),nlevels);
+         })
+
+     ; // please leave me on my own line
+
+  py::class_<TentPitchedSlab<3>, shared_ptr<TentPitchedSlab<3>>>
+    (m, "TentPitchedSlab3", "Tent pitched slab in 3 space + 1 time dimensions")
+    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, int heapsize)
+		  {
+		    auto tps = TentPitchedSlab<3>(ma, heapsize);
+		    tps.PitchTents(dt, c);
+		    return tps;
+		  }),
+      py::arg("mesh"), py::arg("dt"), py::arg("c"),
+      py::arg("heapsize") = 1000000
+      )
+
+    .def_readonly("mesh", &TentPitchedSlab<3>::ma)
+    .def("GetNTents", &TentPitchedSlab<3>::GetNTents)
+    .def("GetSlabHeight", &TentPitchedSlab<3>::GetSlabHeight)
+    .def("MaxSlope", &TentPitchedSlab<3>::MaxSlope)
+    .def("GetTent", &TentPitchedSlab<3>::GetTent)
+    .def("DrawPitchedTentsGL",
+         [](shared_ptr<TentPitchedSlab<3>> self)
+         {
+           int nlevels;
+           Array<int> tentdata;
+           Array<double> tenttimes;
+           self->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
+           py::list data;
+           for(auto i : Range(tentdata))
+             {
+               data.append(tentdata[i]);
+             }
+           return py::make_tuple(data, self->GetNTents(), nlevels);
          })
 
      ; // please leave me on my own line

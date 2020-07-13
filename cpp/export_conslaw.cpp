@@ -80,32 +80,6 @@ void ExportConsLaw(py::module & m)
              throw Exception("wrong argument type for wavespeed in CreateTents");
          })
     .def("MaxSlope",[](shared_ptr<CL> self) { return self->MaxSlope(); })
-      
-    /////////////////// visualization functions ////////////////////
-    
-    .def("DrawPitchedTentsVTK",
-         [](shared_ptr<CL> self, string vtkfilename)
-         { 
-           self->DrawPitchedTentsVTK(vtkfilename); 
-         }, py::arg("vtkfilename")="output.vtk")
-    .def("DrawPitchedTentsGL",
-         [](shared_ptr<CL> self)
-         {
-           int nlevels;
-           Array<int> tentdata;
-           Array<double> tenttimes;
-           self->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
-           py::list data, times;
-           for(auto i : Range(tentdata))
-             {
-               data.append(tentdata[i]);
-               // note: time values make sense only in 2D case.
-               // times are not used in 3D case, i.e. they are
-               // ignored by tents_visualization (ngsgui) and webgui.
-               times.append(tenttimes[i]);
-             }
-           return py::make_tuple(data,times,self->GetNTents(),nlevels);
-         })
     .def("Tau",[](shared_ptr<CL> self) { return self->gftau; })
 
     ; // please keep me on my own line

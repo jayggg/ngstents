@@ -114,11 +114,11 @@ class TentPitchedSlab {
 
   Array<Tent*> tents;         // tents between two time slices
   double dt;                  // time step between two time slices
-  shared_ptr<MeshAccess> ma;  // access to base spatial mesh
   LocalHeap lh;
 
 public:
-
+  // access to base spatial mesh (public for export to Python visualization)
+  shared_ptr<MeshAccess> ma;
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
     dt(0), ma(ama), lh(heapsize, "Tents heap") { ; };
