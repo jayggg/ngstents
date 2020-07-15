@@ -13,7 +13,6 @@ add_ngsolve_python_module(tents
 	python_tents.cpp
 	tents.cpp
 	symbolicDG.cpp
-	export_conslaw.cpp
 	burgers.cpp
 )
 
