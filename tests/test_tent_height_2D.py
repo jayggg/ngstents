@@ -3,10 +3,9 @@ from ngsolve import Mesh, NodeId, FACET, VERTEX
 from tents import TentPitchedSlab2
 import numpy as np
 
-def test_tent_properties():
+def test_tent_height():
 # if True:
     mesh = Mesh(unit_square.GenerateMesh(maxh=.2))
-    pts_list = list(mesh.ngmesh.Points())
     dt = 0.05
     c = 16
     tol = 1e-5
@@ -45,23 +44,20 @@ def test_tent_properties():
                 msg += " time_node = " + str(tent.nbtime[edge_pt_local_id])
                 e.args += ("ERROR: tent.ttop is not the highest on the tent!", msg)
                 raise
-            slope = dist/np.fabs(diff_t)
             try:
-                assert (c-slope > -tol)
+                assert (dist/c >= diff_t)
             except AssertionError as e:
                 msg = "tent id = " + str(itent)+" tent_v = " + str(tent_v)
                 msg += " edge_v = " + str(edge_v) + " time_center = " + str(time_center)
                 msg += " time_node = "+str(tent.nbtime[edge_pt_local_id])
                 msg += " coord center = " + str(tent_pt)
                 msg += " coord node = " + str(edge_pt)
-                msg += " c = " + str(c) + " slope = " + str(slope)
-                # msg += " all times = " + str(tent.nbtime)
-                # msg += " all nodes = " + str(tent.nbv)
+                msg += " edge length = " + str(dist)
                 for iv in range(len(tent.nbtime)):
                     msg += " vertex = " + str(tent.nbv[iv]) + " time = " + str(tent.nbtime[iv])
-                e.args += ("ERROR: tent has slope bigger than velocity!",msg)
+                e.args += ("ERROR: tent has slope bigger than velocity!", msg)
                 raise
 
 
 if __name__ == "__main__":
-    test_tent_properties()
+    test_tent_height()
