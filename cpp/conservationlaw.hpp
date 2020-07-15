@@ -7,58 +7,8 @@
 #include "tents.hpp"
 #include <atomic>
 
-class ConservationLaw
-{
-public:
-  string equation = "";
-  shared_ptr<MeshAccess> ma = NULL;
-  shared_ptr<L2HighOrderFESpace> fes = NULL;
-  shared_ptr<GridFunction> gfu = NULL;
-  shared_ptr<GridFunction> gfres = NULL;
-  shared_ptr<GridFunction> gfuorig = NULL;
-  shared_ptr<GridFunction> gfnu = NULL;
-  shared_ptr<LocalHeap> pylh;
-
-  AutoVector u;     // u(n)
-  AutoVector uinit; // initial data, also used for bc
-  AutoVector flux;
-
-  // advancing front (used for time-dependent bc)
-  shared_ptr<GridFunction> gftau = nullptr;
-
-public:
-  ConservationLaw (shared_ptr<MeshAccess> ama) { ma = ama; };
-
-  virtual ~ConservationLaw() { ; }
-
-  virtual string Equation() = 0;
-
-  virtual void CheckBC() = 0;
-
-  ///////////////////// tent pitching functions ///////////////////////////////
-
-  virtual int GetNTents() = 0;
-
-  virtual void PitchTents(double adt,
-                          shared_ptr<CoefficientFunction> awavespeed) = 0;
-
-  virtual double MaxSlope() = 0;
-
-  virtual void DrawPitchedTentsVTK(string vtkfilename) = 0;
-
-  virtual void DrawPitchedTentsGL(Array<int> & tentdata,
-                                  Array<double> & tenttimes, int & nlevels) = 0;
-
-  virtual void PropagatePicard(int steps, BaseVector & hu,
-                               BaseVector & hu0, LocalHeap & lh) = 0;
-
-};
-
-
-////////////////////// T_ConservationLaw ///////////////////////////
-
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEPENDENT>
-class T_ConservationLaw : public ConservationLaw
+class T_ConservationLaw
 {
 protected:
   FlatVector<> nu;  // viscosity coefficient
@@ -73,10 +23,9 @@ protected:
 
   // collection of tents in timeslab
   size_t tentslab_heapsize = 10*1000000;
-  TentPitchedSlab<DIM> tps = TentPitchedSlab<DIM>(ma, tentslab_heapsize);
+  shared_ptr<TentPitchedSlab<DIM>> tps;
   
-  Table<int> & tent_dependency = tps.tent_dependency;
-
+  Table<int> & tent_dependency = tps->tent_dependency;
   double wavespeed;
 
   Array<IntegrationRule*> glrules;
@@ -84,15 +33,32 @@ protected:
   const EQUATION & Cast() const {return static_cast<const EQUATION&> (*this);}
 
 public:
-  T_ConservationLaw (shared_ptr<MeshAccess> ama, int order, const Flags & flags)
-    : ConservationLaw (ama)
+  shared_ptr<MeshAccess> ma = nullptr;
+  shared_ptr<L2HighOrderFESpace> fes = nullptr;
+  shared_ptr<GridFunction> gfu = nullptr;
+  shared_ptr<GridFunction> gfres = nullptr;
+  shared_ptr<GridFunction> gfuorig = nullptr;
+  shared_ptr<GridFunction> gfnu = nullptr;
+  shared_ptr<LocalHeap> pylh = nullptr;
+
+  AutoVector u;     // u(n)
+  AutoVector uinit; // initial data, also used for bc
+  AutoVector flux;
+
+  // advancing front (used for time-dependent bc)
+  shared_ptr<GridFunction> gftau = nullptr;
+
+  T_ConservationLaw (shared_ptr<TentPitchedSlab<DIM>> & atps, int order,
+                     const Flags & flags) : tps(atps)
   {
+    ma = tps->ma;
+
     size_t heapsize = 10*1000000;
     pylh = make_shared<LocalHeap>(heapsize,"ConsLaw - py main heap",true);
 
     Init(flags);
     // store boundary condition numbers
-    bcnr = FlatArray<int>(ama->GetNFacets(),*pylh);
+    bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
 
     // Main L2 finite element space based on spatial mesh
@@ -179,8 +145,6 @@ public:
       delete intrule;
   }
 
-  virtual string Equation() { return equation; }
-
   virtual void CheckBC()
   {
     if(!def_bcnr)
@@ -192,27 +156,27 @@ public:
         }
   }
 
-  int GetNTents() { return tps.GetNTents(); }
+  int GetNTents() { return tps->GetNTents(); }
 
   virtual void PitchTents(double adt, shared_ptr<CoefficientFunction> awavespeed)
   {
-    tps.PitchTents(adt, awavespeed);
+    tps->PitchTents(adt, awavespeed);
   }
 
   virtual double MaxSlope()
   {
-    return tps.MaxSlope();
+    return tps->MaxSlope();
   }
 
   void DrawPitchedTentsVTK(string vtkfilename)
   {
-    tps.DrawPitchedTentsVTK(vtkfilename);
+    tps->DrawPitchedTentsVTK(vtkfilename);
   }
 
   void DrawPitchedTentsGL(Array<int> & tentdata,
                           Array<double> & tenttimes, int & nlevels)
   {
-    tps.DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
+    tps->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
   }
 
   template <int W>

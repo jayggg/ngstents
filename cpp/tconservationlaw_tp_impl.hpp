@@ -16,7 +16,7 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
 	      FlatMatrixFixWidth<COMP> flux, double tstar, LocalHeap & lh)
 {
   // note: tstar is not used
-  const Tent & tent = tps.GetTent(tentnr);
+  const Tent & tent = tps->GetTent(tentnr);
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
 
@@ -169,7 +169,7 @@ void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
 Cyl2Tent (int tentnr, FlatMatrixFixWidth<COMP> uhat,
                    FlatMatrixFixWidth<COMP> u, double tstar, LocalHeap & lh)
 {
-  const Tent & tent = tps.GetTent(tentnr);
+  const Tent & tent = tps->GetTent(tentnr);
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -210,7 +210,7 @@ CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                    FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
                    FlatMatrixFixWidth<COMP> visc, LocalHeap & lh)
 {
-  const Tent & tent = tps.GetTent(tentnr);
+  const Tent & tent = tps->GetTent(tentnr);
 
   // grad(u)*grad(v) - {du/dn} * [v] - {dv/dn} * [u] + alpha * p^2 / h * [u]*[v]
   double alpha = 4.0;
@@ -372,7 +372,7 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
 {
   HeapReset hr(lh);
 
-  const Tent & tent = tps.GetTent(tentnr);
+  const Tent & tent = tps->GetTent(tentnr);
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
 
@@ -546,7 +546,7 @@ CalcViscosityCoefficientTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                               FlatMatrixFixWidth<ECOMP> res,
 			      double tstar, LocalHeap & lh)
 {
-  const Tent & tent = tps.GetTent(tentnr);
+  const Tent & tent = tps->GetTent(tentnr);
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
 
@@ -602,7 +602,7 @@ void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
 ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
          FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
 {
-  const Tent & tent = tps.GetTent(tentnr);
+  const Tent & tent = tps->GetTent(tentnr);
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -650,7 +650,7 @@ void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
 ApplyM (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
         FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
 {
-  const Tent & tent = tps.GetTent(tentnr);
+  const Tent & tent = tps->GetTent(tentnr);
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -697,7 +697,7 @@ void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
 Tent2Cyl (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
           double tstar, LocalHeap & lh)
 {
-  const Tent & tent = tps.GetTent(tentnr);
+  const Tent & tent = tps->GetTent(tentnr);
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -754,7 +754,7 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
      {
        *testout << "tent " << i << endl;
        LocalHeap slh = lh.Split();  // split to threads
-       const Tent & tent = tps.GetTent(i);
+       const Tent & tent = tps->GetTent(i);
        tent.fedata = new (slh) TentDataFE(tent, *fes, *ma, slh);
 
        int ndof = (tent.fedata)->nd;
