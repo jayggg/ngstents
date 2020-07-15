@@ -15,7 +15,7 @@ def test_tent_properties():
     assert ntents == 168
     slabheight = tentslab.GetSlabHeight()
     maxslope = tentslab.MaxSlope()
-    assert maxslope < 0.1
+    assert maxslope < 1.0/c 
     assert slabheight == 0.05
 
     tentslab.DrawPitchedTentsVTK()  # should create output.vtk
