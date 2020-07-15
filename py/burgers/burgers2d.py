@@ -4,7 +4,7 @@ Burgers equation in 2-D
 from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, CoefficientFunction, x, y, exp, Draw, Redraw
 from ngsolve import TaskManager, SetNumThreads
-from tents import ConsLaw
+from ngstents import TentSlab, Burgers
 
 # options
 saved_mesh = False
@@ -22,34 +22,36 @@ else:
     geom.AddRectangle((0, 0), (1, 1), bc=1)
     mesh = Mesh(geom.GenerateMesh(maxh=maxh))
 
+heapsize = 10*1000*1000
+dt = 0.05
+c = 16
+ts = TentSlab(mesh, dt, c, heapsize)
+print("max slope", ts.MaxSlope())
+
 order = 4
+burg = Burgers(ts, order=order)
 
-cl = ConsLaw(mesh, "burgers", order=order)
-
-sol = cl.sol
+sol = burg.sol
 
 cf = CoefficientFunction(exp(-50*((x-0.3)*(x-0.3)+(y-0.3)*(y-0.3))))
 
-cl.SetInitial(cf)
+burg.SetInitial(cf)
 
 Draw(sol)  # ,sd=5,autoscale=False)
 
-dt = 0.05
 tend = 3*dt
 t = 0
 cnt = 0
-cl.PitchTents(dt, 16)
-print("max slope", cl.MaxSlope())
 if ngs_gui:
-    Draw(cl)
+    Draw(burg)
 
 if vtk_tents:
-    cl.VTKTents('temp')
+    burg.VTKTents('temp')
 
 input('start')
 with TaskManager():
     while t < tend - dt/2:
-        cl.PropagatePicard(sol.vec, steps=order*order)
+        burg.PropagatePicard(sol.vec, steps=order*order)
         t += dt
         cnt += 1
         if cnt % 1 == 0:

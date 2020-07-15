@@ -1,6 +1,6 @@
 from netgen.geom2d import unit_square
 from ngsolve import Mesh
-from tents import Tent, TentPitchedSlab2
+from ngstents import TentSlab
 from pytest import approx
 
 
@@ -10,7 +10,7 @@ def test_tent_properties():
     c = 16
 
     # Tent slab tests
-    tentslab = TentPitchedSlab2(mesh, dt, c)
+    tentslab = TentSlab(mesh, dt, c)
     ntents = tentslab.GetNTents()
     assert ntents == 168
     slabheight = tentslab.GetSlabHeight()
@@ -35,7 +35,6 @@ def test_tent_properties():
 
     # Tent tests
     tent = tentslab.GetTent(0)
-    assert type(tent) is Tent
     assert tent.vertex == 0
     assert tent.ttop == approx(0.0125)
     assert tent.tbot == approx(0)

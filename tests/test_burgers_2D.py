@@ -1,9 +1,9 @@
 from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, CoefficientFunction, exp, x, y, TaskManager
-from tents import ConsLaw
+from ngstents import Burgers, TentSlab
 
 
-def test_conslaw_properties():
+def test_burgers2D():
     order = 2
     dt = 0.025
     c = 16
@@ -12,19 +12,15 @@ def test_conslaw_properties():
     geom = SplineGeometry()
     geom.AddRectangle((0, 0), (1, 1), bc=1)
     mesh = Mesh(geom.GenerateMesh(maxh=0.2))
+    ts = TentSlab(mesh, dt, c)
     cf = CoefficientFunction(exp(-50*((x-0.3)*(x-0.3)+(y-0.3)*(y-0.3))))
 
-    cl = ConsLaw(mesh, "burgers", order=order)
-    sol = cl.sol
-    cl.SetInitial(cf)
-    cl.PitchTents(dt, c)
-    cl.DrawPitchedTentsVTK('conslaw_tents')
-    results = cl.DrawPitchedTentsGL()
-    tentdata, tenttimes, ntents, nlevels = results
+    burg = Burgers(ts, order=order)
+    sol = burg.sol
+    burg.SetInitial(cf)
 
-    assert cl.MaxSlope() < 0.1
     t = 0
     with TaskManager():
         while t < tend - dt/2:
-            cl.PropagatePicard(sol.vec, steps=order*order)
+            burg.PropagatePicard(sol.vec, steps=order*order)
             t += dt
