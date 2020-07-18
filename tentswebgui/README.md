@@ -25,7 +25,8 @@ Note that the `.` is important; it indicates the current directory.
 
 3. Install the jupyter and jupyterlab extensions
 
-jupyter nbextension install --user --py tentswebgui
+`jupyter nbextension install --user --py tentswebgui`
+`jupyter nbextension enable --user --py tentswebgui`
 
 
 ### Testing that everything works
@@ -36,4 +37,4 @@ jupyter nbextension install --user --py tentswebgui
 
 3. To test a larger tent scene on your system, run 'drawtents2d_larger' to generate a file 'tents_larger.py'.   This should open in your browser.  Play with the controls as in the other example.
 
-
+4. Start the Jupyter notebook server: `jupyter notebook` then open and run Tents2D.ipynb and Burgers2D.ipynb.

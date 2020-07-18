@@ -98,15 +98,9 @@ class WebGLScene:
     def Draw(self):
         from IPython.display import display
         self.widget = NGSTentsWebGuiWidget()
-        # print("self.widget", self.widget)
         d = self.GetData()
-        # print("d.keys", d.keys())
-        # print("len(d['tent_nrs'])", len(d['tent_nrs']))
         self.widget.value = d
-        # print("set self.widget.value")
-        # print("self.widget.__dict__", self.widget.__dict__)
         display(self.widget)
-        print("called display self.widget")
         return self.widget
 
     def Redraw(self):
@@ -238,7 +232,6 @@ def Draw(tps, filename='output.html'):
             html = scene.GenerateHTML()
             display(HTML(html))
         else:
-            print("should render using widgets.DOMWidget")
             # render scene using widgets.DOMWidget
             scene.Draw()
             return scene

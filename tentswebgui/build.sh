@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 
 cd js
-# complile Javascript to create standalone.js and .map file
+# compile Javascript to create standalone.js and .map file
+# and files for Jupyter
 npm run build
+cp -r nbextension ../src/tentswebgui
+cp -r labextension ../src/tentswebgui
+rm -rf nbextension labextension
+
+cp extension.js ../src/tentswebgui/nbextension/static
+
 cd ..
-
-cp -r package/nbextension src/tentswebgui
-cp -r package/labextension src/tentswebgui
-cp js/extension.js src/tentswebgui/nbextension/static
-
 # insert compiled Javascript into a copy of webgui_template.py to create
 # webgui.py file
 echo "creating tentswebgui.py"
 
-python3 build.py . js
+python3 py/build.py py js 
 
-cp tentswebgui.py src/tentswebgui
+mv py/tentswebgui.py src/tentswebgui
