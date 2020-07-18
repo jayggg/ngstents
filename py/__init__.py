@@ -1,4 +1,5 @@
-__all__ = ["TentSlab", "Burgers"]
+__all__ = ["TentSlab, Burgers"]
 
-from .tentpitchedslab import TentSlab
-from .conservationlaw import Burgers
+from .tentslab import TentSlab
+from .burgers import Burgers
+

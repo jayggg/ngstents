@@ -1,22 +1,80 @@
-from ngsolve import Mesh
-from netgen.geom2d import unit_square
-from tents import TentPitchedSlab2
+from tents import (TentPitchedSlab1, TentPitchedSlab2, TentPitchedSlab3)
 
 
-# Construct a mesh of tents
+class TentSlab(object):
+    def __init__(self, mesh, dt, c, heapsize=None):
+        self.mesh = mesh
+        self.dt = dt
+        self.c = c
+        self.dim = mesh.dim
+        if self.dim == 1:
+            if heapsize is None:
+                self.slab = TentPitchedSlab1(mesh, dt, c)
+            else:
+                self.slab = TentPitchedSlab1(mesh, dt, c, heapsize=heapsize)
+        elif self.dim == 2:
+            if heapsize is None:
+                self.slab = TentPitchedSlab2(mesh, dt, c)
+            else:
+                self.slab = TentPitchedSlab2(mesh, dt, c, heapsize=heapsize)
+        elif self.dim == 3:
+            if heapsize is None:
+                self.slab = TentPitchedSlab3(mesh, dt, c)
+            else:
+                self.slab = TentPitchedSlab3(mesh, dt, c, heapsize=heapsize)
+        else:
+            raise NotImplementedError("mesh dimension not supported")
 
-mesh = Mesh(unit_square.GenerateMesh(maxh=0.1))
-tps = TentPitchedSlab2(mesh, dt=0.1, c=10)
-print('\nTent pitched spacetime slab made:')
-print('   Number of tents:', tps.GetNTents())
-print('   Maximal tent slope:', tps.MaxSlope())
+    def GetNTents(self):
+        return self.slab.GetNTents()
 
-# Query tents
+    def GetSlabHeight(self):
+        return self.slab.GetSlabHeight()
 
-n = 100
-t = tps.GetTent(n)
-print('Details of Tent #%d:' % n)
-print('  Pitching (central) vertex number:', t.vertex)
-print('  Neighbor vertex numbers:', list(t.nbv))
-print('  Tent element numbers:', list(t.els))
-print('  Neighbor vertex heights:', list(t.nbtime))
+    def MaxSlope(self):
+        return self.slab.MaxSlope()
+
+    def DrawPitchedTentsVTK(self):
+        if self.dim != 2:
+            raise NotImplementedError("Only supported for 2D spatial mesh")
+        return self.slab.DrawPitchedTentsVTK()
+
+    def DrawPitchedTentsGL(self):
+        if self.dim == 1:
+            raise NotImplementedError("1D spatial mesh not supported")
+        elif self.dim == 2:
+            return self.slab.DrawPitchedTentsGL()
+        else:
+            # times are not used in 3D case
+            data, ntents, nlevels = self.slab.DrawPitchedTentsGL()
+            return data, None, ntents, nlevels
+
+    def DrawPitchedTentsPlt(self):
+        if self.dim != 1:
+            raise NotImplementedError("Only supported for 1D spatial mesh")
+        else:
+            import matplotlib.pyplot as plt
+            tents = self.slab.DrawPitchedTentsPlt()
+            pnts = []
+            for pnt in self.mesh.ngmesh.Points():
+                pnts.append(pnt.p[0])
+            for i, tent in enumerate(tents):
+                if len(tent) == 3:
+                    xvals = [pnts[tent[1][0]],
+                             pnts[tent[0][0]], pnts[tent[2][0]]]
+                    tvals = [tent[1][1], tent[0][1], tent[2][1]]
+                    xpos = pnts[tent[0][0]]
+                    tpos = 1/3*(tent[1][1]+tent[0][1]+tent[2][1])
+                else:
+                    xvals = [pnts[tent[1][0]], pnts[tent[0][0]]]
+                    tvals = [tent[1][1], tent[0][1]]
+                    xpos = 0.5*(pnts[tent[1][0]]+pnts[tent[0][0]])
+                    tpos = 0.5*(tent[1][1]+tent[0][1])
+                plt.plot(xvals, tvals)
+                plt.text(xpos, tpos, str(i), horizontalalignment='center',
+                         verticalalignment='center')
+            plt.ylim([0, self.dt*1.1])
+            plt.show()
+
+    def GetTent(self, nr):
+        return self.slab.GetTent(nr)
