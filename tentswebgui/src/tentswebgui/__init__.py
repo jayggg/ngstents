@@ -1,4 +1,5 @@
-__all__ = "Draw"
+__all__ = ["Draw", "howtoInstallJupyterLabextension"]
 
-from .tentswebgui import Draw, _jupyter_nbextension_paths
+from .tentswebgui import (Draw, _jupyter_nbextension_paths,
+                          howtoInstallJupyterLabextension)
 

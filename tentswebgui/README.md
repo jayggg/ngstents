@@ -11,6 +11,12 @@ A GUI for visualizing space-time tents in a web browser, jupyter notebook or jup
 `jupyter nbextension install --py widgetsnbextension`
 jupyter nbextension enable --py widgetsnbextension`
 
+If you want to try to use Jupyter lab, you need this, I think:
+
+`jupyter labextension install @jupyter-widgets/jupyterlab-manager`
+
+But I haven't been able to get either tentswebgui or NGSolve's webgui working with `jupyter lab` yet.
+
 ### Installation
 
 1. Build the Javascript outputs including 'standalone.js', the notebook widget and the main Python file 'tentswebgui.py' from 'standalone.js' and tentswebgui_template.py.
@@ -29,12 +35,19 @@ Note that the `.` is important; it indicates the current directory.
 `jupyter nbextension enable --user --py tentswebgui`
 
 
-### Testing that everything works
+### Testing that this project works
 
-1. In usage_examples, run 'drawtents2d.py' by `python3 drawtents2d.py`.  This should generate a file 'tents.py'.  Open this in a browser, e.g. `firefox drawtents2d.py'
+1. In the 'demo' folder, run 'drawtents2d.py' by `python3 drawtents2d.py`.  This should generate a file 'tents.py'.  Open this in a browser, e.g. `firefox drawtents2d.py`.
 
 2. You should see a layer of red tetrahedrons viewed from above and some controls in the upper right.  Select to display by layers or tents.  Adjust the sliders by clicking or dragging or typing values in the textboxes.  Use mouse or touch to rotate, zoom and translate the tent scene.
 
-3. To test a larger tent scene on your system, run 'drawtents2d_larger' to generate a file 'tents_larger.py'.   This should open in your browser.  Play with the controls as in the other example.
+3. To test a larger tent scene on your system, run 'drawtents2d_larger.py' to generate a file 'tents_larger.py'.   This should open in your browser.  Adjust the controls as in the other example.
 
-4. Start the Jupyter notebook server: `jupyter notebook` then open and run Tents2D.ipynb and Burgers2D.ipynb.
+4. Start the Jupyter notebook server: `jupyter notebook` then open and run Tents2D.ipynb and Burgers2D.ipynb in the demo folder.
+
+5. As for the jupyterlab plugin, you can try this in ipython:
+``` 
+from tentswebgui import *
+howtoInstallJupyterLabextension()
+```
+The latter function generates a command you can try on your system.  It didn't work for me, but it gave a link to an error log.   The error messages seemed to indicate that it neededed npm install to be run again inside the labextension directory, which really seems a bit excessive.

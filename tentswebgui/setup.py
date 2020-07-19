@@ -19,10 +19,10 @@ setup(
     ],
     python_requires='>=3.6',
     packages=find_packages("src"),
-    # packages=find_packages("tentswebgui"),
     package_dir={"": "src"},
     package_data={
-        'tentswebgui': ['labextension/plugin.*', 'nbextension/static/*.*'],
+        'tentswebgui': ['labextension/*.*', 'labextension/labextension/*.*',
+                        'nbextension/static/*.*'],
     },
 )
 
