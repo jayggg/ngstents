@@ -12,4 +12,6 @@ Once this is installed, if you construct a TentSlab as e.g. 'ts', add a line in 
 
 There are also demo scripts in the demo folder that can be run, via e.g. `ngsolve drawtents2d.py`.
 
+You may see errors like "Validation Failed: Sampler error: Samplers of different types use the same texture image unit. - or - A sampler's texture unit is out of range (greater than max allowed or negative)."
 
+These errors are generated in the NGSolve/ngsgui for each scene, but they don't seem to break any of the functionality for this plugin.
