@@ -8,13 +8,3 @@ tps = TentSlab(mesh, 0.2, 8)
 Draw(mesh)
 Draw(tps)
 
-# Leave this out for now, AdvancingFront method doesn't exist.
-# But it might be useful to add this, especially in 3D case.
-
-# Draw(cl.Tau())
-# input('start')
-# for i in range(cl.GetNTents()):
-#     cl.AdvancingFront(i)
-# input('step')
-# Draw(cl.Tau())
-# print(min(cl.Tau().vec),max(cl.Tau().vec))

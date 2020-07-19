@@ -1,5 +1,5 @@
-from tentsoglgui import shader
-from tentsoglgui.tentscene import TentScene, TentSceneSlab
+from tentsngsgui import shader
+from tentsngsgui.tentscene import TentScene, TentSceneSlab
 from ngstents import TentSlab
 import ngsgui as G
 
