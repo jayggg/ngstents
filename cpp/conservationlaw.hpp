@@ -144,8 +144,11 @@ public:
     for(auto intrule : glrules)
       delete intrule;
   }
-
-  virtual void CheckBC()
+  
+  // Set the boundary condition numbers from the mesh boundary elements indices
+  // These indices are 0-based here and 1-based in Python. 
+  //  0: outflow, 1: wall, 2: inflow, 3: transparent 
+  virtual void SetBC()
   {
     if(!def_bcnr)
       for(int i : Range(ma->GetNSE()))

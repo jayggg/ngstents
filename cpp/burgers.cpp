@@ -207,7 +207,7 @@ void ExportConsLaw(py::module & m)
                   {
                     const Flags flags = py::extract<Flags> (pyflags)();
                     auto cl = make_shared<B1>(tps, order, flags);
-                    cl->CheckBC(); //use old style bc numbers for now
+                    cl->SetBC(); //use old style bc numbers for now
                     return cl;
                   }),
          py::arg("tentslab"),
@@ -245,7 +245,7 @@ void ExportConsLaw(py::module & m)
                   {
                     const Flags flags = py::extract<Flags> (pyflags)();
                     auto cl = make_shared<B2>(tps, order, flags);
-                    cl->CheckBC(); //use old style bc numbers for now
+                    cl->SetBC(); //use old style bc numbers for now
                     return cl;
                   }),
          py::arg("tentslab"),

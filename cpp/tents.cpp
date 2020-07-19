@@ -753,7 +753,8 @@ void ExportTents(py::module & m) {
          {
            const Tent & tent = self->GetTent(i);
            py::list reti;
-           reti.append(py::make_tuple(tent.vertex,tent.ttop,tent.tbot));
+           reti.append(py::make_tuple(tent.vertex, tent.ttop,
+                                      tent.tbot, tent.level));
            for(int j = 0; j< tent.nbv.Size(); j++)
              reti.append(py::make_tuple(tent.nbv[j],tent.nbtime[j]));
            ret.append(reti);

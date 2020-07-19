@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 from tents import (TentPitchedSlab1, TentPitchedSlab2, TentPitchedSlab3)
 
 
@@ -50,15 +52,19 @@ class TentSlab(object):
             return data, None, ntents, nlevels
 
     def DrawPitchedTentsPlt(self):
+        """
+        Draw 1D tents using MatPlotlib
+        """
         if self.dim != 1:
             raise NotImplementedError("Only supported for 1D spatial mesh")
         else:
-            import matplotlib.pyplot as plt
             tents = self.slab.DrawPitchedTentsPlt()
             pnts = []
+            colors = list('bgrcmyk')
             for pnt in self.mesh.ngmesh.Points():
                 pnts.append(pnt.p[0])
             for i, tent in enumerate(tents):
+                layer = tent[0][3] % 7
                 if len(tent) == 3:
                     xvals = [pnts[tent[1][0]],
                              pnts[tent[0][0]], pnts[tent[2][0]]]
@@ -70,11 +76,12 @@ class TentSlab(object):
                     tvals = [tent[1][1], tent[0][1]]
                     xpos = 0.5*(pnts[tent[1][0]]+pnts[tent[0][0]])
                     tpos = 0.5*(tent[1][1]+tent[0][1])
-                plt.plot(xvals, tvals)
+                plt.plot(xvals, tvals, color=colors[layer])
                 plt.text(xpos, tpos, str(i), horizontalalignment='center',
                          verticalalignment='center')
             plt.ylim([0, self.dt*1.1])
             plt.show()
+
 
     def GetTent(self, nr):
         return self.slab.GetTent(nr)
