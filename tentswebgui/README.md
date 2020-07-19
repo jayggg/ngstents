@@ -1,6 +1,6 @@
 ##  TentsWebGUI
 
-A GUI for visualizing space-time tents in a web browser, jupyter notebook or jupyterlab context.
+A GUI for visualizing space-time tents in a web browser, jupyter notebook or (in theory) jupyterlab context.
 
 ### Prerequisites
 

@@ -1,4 +1,4 @@
-## TentsOGLGUI
+## TentsNgsGUI
 
 This is a plugin to the [ngsgui](https://github.com/NGSolve/ngsgui) GUI for NGSolve.  It renders using OpenGL.  The documentation for ngsgui is a bit out of date.  To install it you only need to do: `pip3 install ngsgui`  This will install pyside 5.14, which works with Python 3.8 on Mac OS or Linux.
 
