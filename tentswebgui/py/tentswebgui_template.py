@@ -1,7 +1,9 @@
-from ipywidgets import DOMWidget, register
-import numpy as np
-import ngsolve as ngs
+from time import time
 import os
+
+from ipywidgets import DOMWidget, register
+import ngsolve as ngs
+import numpy as np
 
 # the build script fills the contents of the variables below
 render_js_code = ""
@@ -164,7 +166,11 @@ class WebGLScene:
         layers = []
         faces = []
         normals = []
+        setup_times = []
+        tent_times = []
+        face_times = []
         for i, d in enumerate(data):
+            start = time()
             nr, layer, vnr, elnr = d
             nrs.append(int(nr))  # convert from int64 to int
             layers.append(int(layer))
@@ -172,6 +178,8 @@ class WebGLScene:
             ttop = times[i][3]
             vertices = []
             eid = ngs.ElementId(ngs.VOL, elnr)
+            setup_times.append(time()-start)
+            start = time()  
             for j, v in enumerate(self.mesh[eid].vertices):
                 vpt = list(self.mesh[v].point)
                 # set z-coordinate to (bottom) time of vertex
@@ -184,44 +192,36 @@ class WebGLScene:
                     vertices.append(vpt_top)
                     center = j
             tentcenters.append(center)
+            tent_times.append(time()-start)
+            start = time()
             fcs, nrmls = self.GetFacesAndNormals(vertices)
+            
             faces += fcs
             gvertices += vertices
             normals += nrmls
-
+            face_times.append(time()-start)
+        print("setup: {}, tents: {} faces: {}".format(
+            sum(setup_times), sum(tent_times), sum(face_times)))
+               
         return gvertices, normals, faces, tentcenters, nrs, layers
 
     def GetFacesAndNormals(self, element):
         """
-        Given a spacetime element as a list of vertices, compute its
-        faces as lists of vertex indices, ordered counter-clockwise from
-        outside the element.  Also return the unit normals to each face
-        in order corresponding to faces.
-        """
-        faces = []
-        for i in range(4):
-            j, k, m = (i+1) % 4, (i+2) % 4, (i+3) % 4
-            signs, normals = self.GetSignsAndNormals(element)
-            faces.append([j, k, m] if signs[i] > 0 else [j, m, k])
-        return faces, normals
-
-    def GetSignsAndNormals(self, element):
-        """
         Get the sign determining the orientation of the face vertices
         for each face of the element.
         """
-        signs = []
         normals = []
+        faces = []
         pts = np.array(element).T  # four column vectors
         vecs = pts - np.roll(pts[:], 1, 1)
         for i in range(4):
-            j, k = (i+2) % 4, (i+3) % 4
-            normal = np.cross(vecs[:, j], vecs[:, k])
+            j, k, m = (i+1) % 4, (i+2) % 4, (i+3) % 4
+            normal = np.cross(vecs[:, k], vecs[:, m])
             sign = - np.sign(vecs[:, i].dot(normal))
-            signs.append(sign)
+            faces.append([j, k, m] if sign > 0 else [j, m, k])
             normal = normal / np.linalg.norm(normal) * sign
             normals.append(normal)
-        return signs, normals
+        return faces, normals
 
 
 def Draw(tps, filename='output.html'):
