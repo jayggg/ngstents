@@ -18,7 +18,7 @@ If you want to try to use Jupyter lab, you need this, I think:
 
 But I haven't been able to get either tentswebgui or NGSolve's webgui working with `jupyter lab` yet.
 
-### Installation
+### Installation and Updating
 
 1. Build the Javascript outputs including 'standalone.js', the notebook widget and the main Python file 'tentswebgui.py' from 'standalone.js' and tentswebgui_template.py.
 
@@ -32,11 +32,12 @@ You will likely see some warnings, but the build should complete without errors.
 
 Note that the `.` is important; it indicates the current directory.
 
-3. Install the jupyter and jupyterlab extensions
+3. Install the jupyter extension and set it to be automatically initialized.
 
-`jupyter nbextension install --user --py tentswebgui`
-`jupyter nbextension enable --user --py tentswebgui`
-
+```
+jupyter nbextension install --user --py tentswebgui
+jupyter nbextension enable --user --py tentswebgui
+```
 
 ### Testing that this project works
 

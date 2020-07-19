@@ -468,6 +468,9 @@ export class Scene {
 
 
     this.scene = new THREE.Scene();
+    // added to fix background issue on old Mac OS
+    this.scene.background = new THREE.Color(0xffffff);
+    console.log("scene", this.scene);
     this.axes_object = new THREE.AxesHelper(0.15);
     this.axes_object.matrixAutoUpdate = false;
 
