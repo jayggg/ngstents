@@ -31,10 +31,11 @@ A simple Matplotlib-based code provides visualization of the slab in this case.
 Several methods are available for visualizing tent-pitched slabs in two spatial dimensions plus time:
 
 * `tentswebgui` allows visualization of a tent-pitched slab in a browser directly or within a Jupyter notebook.
-* tentsngsgui is a plugin to NGSolve/ngsgui which adds a tent scene for visualizing a tent-pitched slab
+* `tentsngsgui` is a plugin to NGSolve/ngsgui which adds a tent scene for visualizing a tent-pitched slab
 * The tent slab geometry can also be exported to a VTK file for viewing with Paraview.
 
 ### 3D Visualization
 
-The tentsngsgui currently supports a tent-pitched slab on a 3D spatial mesh, but gives very incomplete visualization of the tents and layers.
+`tentsngsgui` currently supports a tent-pitched slab on a 3D spatial mesh, but gives very incomplete visualization of the tents and layers.
 
+For more details on `tentsngsgui` and `tentswebgui`, see the README.md files in their directories.
