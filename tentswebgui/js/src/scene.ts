@@ -5,6 +5,9 @@ import {
 import * as THREE from 'three';
 import dat from 'dat.gui';
 
+function hackCSS(i){document.getElementsByTagName('style')[0].innerHTML+=i};
+hackCSS(".dg.main.taller-than-window {overflow-y: visible !important;}");
+hackCSS(".dg .c select {color: black;}");
 
 function readB64(base64) {
   var binary_string = window.atob(base64);
@@ -507,10 +510,9 @@ export class Scene {
     let gui_container = document.createElement( 'div' );
     gui_container.setAttribute(
         "style",
-        'position: absolute; z-index: 200; display:block; right: 0px; top: 0px');
+        'position: absolute; z-index: 200; display:block; right: 0px; top: 0px;');
     gui_container.appendChild(gui.domElement);
     this.container.appendChild(gui_container);
-
     this.gui = gui;
     console.log("GUI", gui);
     let gui_status = this.gui_status;
