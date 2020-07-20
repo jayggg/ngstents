@@ -1,17 +1,22 @@
 from netgen.geom2d import unit_square
 from ngsolve import Mesh, NodeId, FACET, VERTEX
-from tents import TentPitchedSlab2
+from ngstents import TentSlab
 import numpy as np
 
 
 def test_tent_height():
-    # if True:
+    """Partial test for tents' height
+
+    Check if the tents' height are not bigger than any of the neighbouring
+    edges. Passing this test does NOT imply the fulfillment of causality
+    conditions."""
+
     mesh = Mesh(unit_square.GenerateMesh(maxh=.2))
     dt = 0.05
     c = 16
     tol = 1e-12
     # Tent slab tests
-    tentslab = TentPitchedSlab2(mesh, dt, c)
+    tentslab = TentSlab(mesh, dt, c)
     ntents = tentslab.GetNTents()
     for itent in range(ntents):
         tent = tentslab.GetTent(itent)
@@ -30,7 +35,7 @@ def test_tent_height():
             try:
                 assert (tent_v == other_v)
             except AssertionError as e:
-                msg = "edge_v = "+str(edge_v)+" tent_v = "+tent_v
+                msg = "edge_v = "+str(edge_v)+" tent_v = "+str(tent_v)
                 msg += " edge.v[0] = " + str(edge.vertices[0].nr)
                 msg += " edge.v[1] = " + str(edge.vertices[1].nr)
                 e.args += ("ERROR on tent data structure", msg)
