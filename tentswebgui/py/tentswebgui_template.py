@@ -9,6 +9,7 @@ import numpy as np
 render_js_code = ""
 widgets_version = ""
 
+
 def _jupyter_nbextension_paths():
     return [
         {
@@ -18,6 +19,7 @@ def _jupyter_nbextension_paths():
             "require": "ngstents_jupyter_widgets/extension",
         }
     ]
+
 
 try:
     __IPYTHON__
@@ -154,12 +156,12 @@ class WebGLScene:
         We can cache the spatial data if there are performance issues,
         but doing it this way ensures that the times match the vertices.
         """
+        mesh = self.mesh
         data, times, ntents, nlayers = self.tps.DrawPitchedTentsGL()
         d['ntents'] = ntents
         d['nlayers'] = nlayers
         data = np.array(data).reshape(-1, 4)
         times = np.array(times).reshape(-1, 4)
-
         gvertices = []
         tentcenters = []
         nrs = []
@@ -179,9 +181,9 @@ class WebGLScene:
             vertices = []
             eid = ngs.ElementId(ngs.VOL, elnr)
             setup_times.append(time()-start)
-            start = time()  
-            for j, v in enumerate(self.mesh[eid].vertices):
-                vpt = list(self.mesh[v].point)
+            start = time()
+            for j, v in enumerate(mesh[eid].vertices):
+                vpt = list(mesh[v].point)
                 # set z-coordinate to (bottom) time of vertex
                 vpt.append(tbots[j])
                 vertices.append(vpt)
@@ -195,33 +197,32 @@ class WebGLScene:
             tent_times.append(time()-start)
             start = time()
             fcs, nrmls = self.GetFacesAndNormals(vertices)
-            
-            faces += fcs
-            gvertices += vertices
-            normals += nrmls
+
+            faces.extend(fcs)
+            gvertices.extend(vertices)
+            normals.extend(nrmls)
             face_times.append(time()-start)
         print("setup: {}, tents: {} faces: {}".format(
             sum(setup_times), sum(tent_times), sum(face_times)))
-               
+
         return gvertices, normals, faces, tentcenters, nrs, layers
 
     def GetFacesAndNormals(self, element):
         """
-        Get the sign determining the orientation of the face vertices
-        for each face of the element.
+        Compute the outward normal vectors for each face of the element
+        and return the normal vectors along with the faces, where a 'face'
+        is a list of vertex indices ordered counterclockwise from outside.
         """
-        normals = []
-        faces = []
-        pts = np.array(element).T  # four column vectors
-        vecs = pts - np.roll(pts[:], 1, 1)
-        for i in range(4):
-            j, k, m = (i+1) % 4, (i+2) % 4, (i+3) % 4
-            normal = np.cross(vecs[:, k], vecs[:, m])
-            sign = - np.sign(vecs[:, i].dot(normal))
-            faces.append([j, k, m] if sign > 0 else [j, m, k])
-            normal = normal / np.linalg.norm(normal) * sign
-            normals.append(normal)
-        return faces, normals
+        pts = np.array(element)  # four row vectors of length 3
+        vecs = pts - np.roll(pts[:], 1, 0)
+        normals = np.cross(np.roll(vecs[:], 2, 0), np.roll(vecs[:], 1, 0))
+        signs = - np.sign((vecs*normals).sum(1))
+        normals /= ((normals**2).sum(1)**(1./2)*signs).reshape(4, 1)
+        faces = [[1, 2, 3], [2, 3, 0], [3, 0, 1], [0, 1, 2]]
+        for i, s in enumerate(signs):
+            if s < 0:
+                faces[i].reverse()
+        return faces, normals.tolist()
 
 
 def Draw(tps, filename='output.html'):
