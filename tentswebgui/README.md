@@ -8,9 +8,14 @@ A GUI for visualizing space-time tents in a web browser, jupyter notebook or (in
 * Jupyter
 * nodejs and npm (node package manager).  On Mac OS, `brew install node` should work. On Linux there are several options.
 * ipywidgets and widgets notebook extension
-`pip3 install --user ipywidgets`
-`jupyter nbextension install --py widgetsnbextension`
-jupyter nbextension enable --py widgetsnbextension`
+
+In the pip and jupyter commands below, depending on your setup, you may be able to specify `pip` instead of `pip3` and omit the `--user` option.
+
+```
+pip3 install --user ipywidgets
+jupyter nbextension install --user --py widgetsnbextension
+jupyter nbextension enable --user --py widgetsnbextension
+```
 
 If you want to try to use Jupyter lab, you need this, I think:
 
