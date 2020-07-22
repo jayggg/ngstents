@@ -124,6 +124,7 @@ public:
     dt(0), ma(ama), lh(heapsize, "Tents heap") { ; };
   void PitchTents(double dt, double cmax);
   void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax);
+  void PitchTents_New(double dt, shared_ptr<CoefficientFunction> cmax);
 
   // Get object features
   int GetNTents() { return tents.Size(); }
