@@ -375,7 +375,9 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
     analysing the minimum length of the edges around
     a given vertex. However, this does not imply
     in causality. The inverse of the gradient of the
-    H1 vertex functions are now used for this purpose. */
+    H1 vertex functions are now used for this purpose, as
+    one can obtain the minimum distance to the boundaries
+    of the vertex patch. */
   for (Ngs_Element el : ma->Elements(VOL))
     {
       //set all edges belonging to the mesh
@@ -395,7 +397,7 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
                          default: return nullptr;
                          }}();
 
-      FiniteElement* my_fel = [&]() -> FiniteElement* {
+      auto my_fel = [&]() -> FiniteElement* {
                       switch(eltype){
                       case ET_SEGM: return new (lh) ScalarFE<ET_SEGM,1>;
                       case ET_TRIG: return new (lh) ScalarFE<ET_TRIG,1>;
@@ -407,8 +409,7 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
           cout<< "Aborting..." << endl;
           exit(-1);
         }
-      Array<int> vnums;
-      ma->GetElVertices(ei, vnums);
+      auto vnums = ma->GetElVertices(ei);
       Vector<double> coeff_vec(nvertices), gradphi(DIM);
       
       IntegrationRule ir(eltype, 0);//TODO: what about curved elements?
@@ -422,16 +423,13 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
           const double gradphi_norm = [&]()
             {
               my_diffop->Apply(*my_fel, mip, coeff_vec, gradphi, lh);
-              double gradnorm = 0;
-              for(auto igrad : gradphi) gradnorm += igrad*igrad;
-              return sqrt(gradnorm);
+              return L2Norm(gradphi);
             }();
-          cout<<"gradphi norm: "<<gradphi_norm<<endl;
-          cout<<"refdt: "<< 1/(gradphi_norm*cmax[el.Nr()])<<endl;
+          // cout<<"gradphi norm: "<<gradphi_norm<<endl;
+          // cout<<"refdt: "<< 1/(gradphi_norm*cmax[el.Nr()])<<endl;
           vertex_refdt[global_v] = min(vertex_refdt[global_v],
                                        1/(gradphi_norm*cmax[el.Nr()]));
         }
-      // delete my_fel;
     }
   // remove periodic edges
   for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
@@ -444,6 +442,8 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
   tau = 0.0;
   // max time increase allowed at vertex, depends on tau of neighbors
   Array<double> ktilde(ma->GetNV());
+  //at the beginning the advancing front is at a constant t=0
+  //so ktilde can be set as vertex_refdt
   ktilde = vertex_refdt;
 
   // array of vertices ready for pitching a tent
@@ -582,7 +582,7 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
 	  for (int nb2_index : v2v[nb].Range())
 	    {
 	      int nb2 = vmap[v2v[nb][nb2_index]];
-	      double kt1 = tau[nb2]-tau[nb]+vertex_refdt[nb2];
+	      double kt1 = tau[nb2]-tau[nb]+vertex_refdt[nb];
 	      kt = min (kt, kt1);
 	    }
 
