@@ -41,9 +41,9 @@ public:
   shared_ptr<GridFunction> gfnu = nullptr;
   shared_ptr<LocalHeap> pylh = nullptr;
 
-  AutoVector u;     // u(n)
-  AutoVector uinit; // initial data, also used for bc
-  AutoVector flux;
+  shared_ptr<BaseVector> u;     // u(n)
+  shared_ptr<BaseVector> uinit; // initial data, also used for bc
+  shared_ptr<BaseVector> flux;
 
   // advancing front (used for time-dependent bc)
   shared_ptr<GridFunction> gftau = nullptr;
@@ -127,9 +127,9 @@ public:
 
   void AllocateVectors()
   {
-    u.AssignPointer(gfu->GetVectorPtr());
-    uinit.AssignPointer(u.CreateVector());
-    flux.AssignPointer(u.CreateVector());
+    u = gfu->GetVectorPtr();
+    uinit = u->CreateVector();
+    flux = u->CreateVector();
     if(gfnu != NULL)
       {
 	gfnu->Update();

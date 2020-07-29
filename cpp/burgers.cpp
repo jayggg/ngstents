@@ -232,7 +232,7 @@ void ExportConsLaw(py::module & m)
          {
            if(steps==-1)
              steps = 1;
-           self->PropagatePicard(steps,*vecu,self->uinit,*(self->pylh));
+           self->PropagatePicard(steps,*vecu,*(self->uinit),*(self->pylh));
          }, py::arg("vec"),py::arg("steps")=-1)
     .def("Tau",[](shared_ptr<B1> self) { return self->gftau; })
 
@@ -270,7 +270,7 @@ void ExportConsLaw(py::module & m)
          {
            if(steps==-1)
              steps = 1;
-           self->PropagatePicard(steps,*vecu,self->uinit,*(self->pylh));
+           self->PropagatePicard(steps,*vecu,*(self->uinit),*(self->pylh));
          }, py::arg("vec"),py::arg("steps")=-1)
     .def("Tau",[](shared_ptr<B2> self) { return self->gftau; })
 
