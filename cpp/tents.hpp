@@ -124,8 +124,15 @@ public:
     dt(0), ma(ama), lh(heapsize, "Tents heap") { ; };
   void PitchTents(double dt, double cmax);
   void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax);
-  void PitchTents_New(double dt, shared_ptr<CoefficientFunction> cmax);
 
+  //Given the current advancing (time) front, calculates the
+  //maximum advance on a tent centered on vi that will still
+  //guarantee causality
+  double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, LocalHeap & lh) const;
+  
+  //uses the exact calculation of the gradient for pitching the tent
+  void PitchTentsGradient(double dt, double cmax);
+  void PitchTentsGradient(double dt, shared_ptr<CoefficientFunction> cmax);
   // Get object features
   int GetNTents() { return tents.Size(); }
   double GetSlabHeight() { return dt; }

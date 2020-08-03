@@ -339,8 +339,126 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
      });
 }
 
+template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, LocalHeap & lh) const{
+
+  constexpr ELEMENT_TYPE  el_type = [&]() -> ELEMENT_TYPE {
+    if constexpr (DIM == 1) return ET_SEGM;
+    else if constexpr (DIM == 2) return ET_TRIG;
+    else if constexpr (DIM == 3) return ET_TET;
+    else return ET_POINT;//
+  }();//this assumes that there is only one type of element per mesh
+
+  //number of vertices of the current element (always the simplex associated to DIM)
+  constexpr int n_vertices = DIM+1;
+  //finite element created for calculating the barycentric coordinates
+  BaseScalarFiniteElement *my_fel = new (lh) ScalarFE<el_type,1>();
+  // array of all elements containing vertex vi
+  Array<int>
+      els;
+  ma->GetVertexElements(vi, els);
+
+  double pole_height = std::numeric_limits<double>::max();
+  //vector containing the advancing front time for each vertex (except vi)
+  Vector<double> coeff_vec(n_vertices);
+  //gradient of basis functions onthe current element
+  Matrix<double> gradphi(n_vertices,DIM);
+  for (int el : els)
+    {
+      ElementId ei(VOL,el);
+      //c_max^2
+      const double c_max_sq = cmax[ei.Nr()] * cmax[ei.Nr()]; 
+      //mapping of the current el
+      ElementTransformation &trafo = ma->GetTrafo(ei, lh);
+      //vertices of current el
+      auto v_indices = ma->GetElVertices(ei);
+      //vi position in current el
+      const auto local_vi = v_indices.Pos(vi);
+      //integration rule for reference el
+      IntegrationRule ir(el_type,1);
+      //integration point on deformed element
+      MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
+      my_fel->CalcMappedDShape(mip,gradphi);
+
+      //sets the coefficient vec
+      for (auto k : IntRange(0, v_indices.Size()))
+        coeff_vec[k] = tau[v_indices[k]];
+      coeff_vec[local_vi] = 0;
+      cout<<"el = "<<ei.Nr()<<"\tvi = "<<vi;
+      cout<<"\tlocal vi = "<<local_vi<<endl;
+      for (auto k : IntRange(0, v_indices.Size()))
+        {
+          cout << "\tk = "<<k<<"\tv_n = "<<v_indices[k];
+          cout <<"\talpha_k = "<<coeff_vec[k]<<"\ttau_k = "<<tau[v_indices[k]]<<endl;
+        }
+      /*writing the quadratic eq for tau_v
+       \tau_{v}^2 ( \nabla\,\phi_{vi} \cdot \nabla\, \phi_{vi})
+                   ^^^^^^^^^^^^^^^^^^alpha^^^^^^^^^^^^^^^^^^^^^^
+       +\tau_{v} (\sum_{i \neq v} (\tau_i \nabla,\phi_i \cdot \nabla\,\phi_v))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^beta^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+       + (\sum_{i\neq v}\sum_{j\neq v}\left(\tau_i\tau_j \nabla \phi_i 
+``        \cdot \nabla \phi_j\right)-\frac{1}{c}^2)
+         ^^^^^^^^^^^^^^^^^^gamma^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
+
+      
+      // square of the norm of gradphi_vi
+      const double alpha = InnerProduct(gradphi.Row(local_vi),gradphi.Row(local_vi));
+      Vec<DIM> tau_i_grad_i = Trans(gradphi) * coeff_vec;
+      const double beta = 2 * InnerProduct(tau_i_grad_i,gradphi.Row(local_vi));
+      const double gamma = InnerProduct(tau_i_grad_i, tau_i_grad_i) - 1.0/c_max_sq;
+      const double sq_delta = sqrt(beta * beta - 4 * alpha * gamma);
+      try
+        {
+          if(beta * beta - 4 * alpha * gamma < 0) throw std::domain_error("Error solving quadratic equation!");
+        }
+      catch (const std::domain_error &error)
+        {
+          Matrix<double> jac(DIM,DIM);
+          trafo.CalcJacobian(ir[0],jac);
+          cout << error.what() << endl;
+          cout<<"transform =\n"<<jac<<endl;
+          cout<<"gradphi =\n"<<gradphi<<endl;
+          cout << "a = "<<alpha<<"\tb = "<<beta<<"\tc = "<<gamma<<endl;
+          cout << "delta = " << beta * beta - 4 * alpha * gamma << endl;
+          exit(-1);
+        }
+
+      //since alpha will always be positive (and so will sq_delta),
+      //we dont need to consider the solution (-beta-sq_delta)/(2*alpha)
+      const double sol1 = (-beta+sq_delta)/(2*alpha);
+      const double sol2 = (-beta-sq_delta)/(2*alpha);
+      
+      if(sol1 > sol2) pole_height = min(pole_height,sol1);
+      else pole_height = min(pole_height,sol2);
+      cout<<"a = "<<alpha<<"\tb = "<<beta<<"\tc = "<<gamma<<endl;
+      cout<<"sol 1:"<< sol1<<"\tsol 2:"<<sol2<<endl;
+    }
+
+  //the return value is actually the ADVANCE in the current vi
+  pole_height -= tau[vi];
+  try
+    {
+      if(pole_height < 0) throw std::runtime_error("Error in pole height!");
+    }
+  catch (const std::runtime_error &error)
+    {
+      cout<< error.what() << endl;
+      cout<<"pole_height(old) = "<<pole_height+tau[vi]<<endl;
+      cout<<"pole_height = "<<pole_height<<endl;
+      cout<<"tau(old) = "<<tau[vi]<<endl;
+      exit(-1);
+    }
+  return pole_height;
+ }
+
 template <int DIM> void
-TentPitchedSlab <DIM>::PitchTents_New(double dt,
+TentPitchedSlab<DIM>::PitchTentsGradient(double dt, double wavespeed)
+{
+  auto cf = make_shared<ConstantCoefficientFunction>(wavespeed);
+  PitchTentsGradient(dt, cf);
+}
+
+template <int DIM> void
+TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
 				  shared_ptr<CoefficientFunction> wavespeed)
 {
   this->dt = dt; // set it so that GetSlabHeight can return it
@@ -351,7 +469,6 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
 
   for (int i : Range(ma->GetNV()))
     vmap[i] = i;
-
   for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
     {
       const auto & periodic_nodes = ma->GetPeriodicNodes(NT_VERTEX, idnr);
@@ -361,23 +478,11 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
 
   // element-wise maximal wave-speeds
   Array<double> cmax (ma->GetNE());
-
-  // compute vertex-based max time-differences
-  Array<double> vertex_refdt(ma->GetNV());
-
-  vertex_refdt = std::numeric_limits<double>::max();
-
   // check if edge is contained in mesh
   BitArray fine_edges(ma->GetNEdges());
-  fine_edges.Clear();
-
-  /*The reference dt would previously be computed
-    analysing the minimum length of the edges around
-    a given vertex. However, this does not imply
-    in causality. The inverse of the gradient of the
-    H1 vertex functions are now used for this purpose, as
-    one can obtain the minimum distance to the boundaries
-    of the vertex patch. */
+  fine_edges.Clear();  
+  
+  //identify fine edges and evaluate maximum wavespeed for each element
   for (Ngs_Element el : ma->Elements(VOL))
     {
       //set all edges belonging to the mesh
@@ -386,50 +491,10 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
 
       auto ei = ElementId(el);
       auto eltype = ma->GetElType(ei);
-      const auto nvertices = ElementTopology::GetNVertices(eltype);
-
       ElementTransformation & trafo = ma->GetTrafo (ei, lh);
-      auto my_diffop = [&] () -> std::shared_ptr<DifferentialOperator> {
-                         switch(eltype){
-                         case ET_SEGM: return make_shared<T_DifferentialOperator<DiffOpGradient<1>>>();
-                         case ET_TRIG: return make_shared<T_DifferentialOperator<DiffOpGradient<2>>>();
-                         case ET_TET: return make_shared<T_DifferentialOperator<DiffOpGradient<3>>>();
-                         default: return nullptr;
-                         }}();
-
-      auto my_fel = [&]() -> FiniteElement* {
-                      switch(eltype){
-                      case ET_SEGM: return new (lh) ScalarFE<ET_SEGM,1>;
-                      case ET_TRIG: return new (lh) ScalarFE<ET_TRIG,1>;
-                      case ET_TET: return new (lh) ScalarFE<ET_TET,1>;
-                      default: return nullptr;
-                      }}();
-      if(!my_fel)
-        {
-          cout<< "Aborting..." << endl;
-          exit(-1);
-        }
-      auto vnums = ma->GetElVertices(ei);
-      Vector<double> coeff_vec(nvertices), gradphi(DIM);
-      
-      IntegrationRule ir(eltype, 0);//TODO: what about curved elements?
+      IntegrationRule ir(eltype, 0);
       MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
       cmax[el.Nr()] = wavespeed->Evaluate(mip);
-      for(auto iv = 0; iv < nvertices; iv++)
-        {
-          const auto global_v = vnums[iv];
-          coeff_vec = 0;
-          coeff_vec[iv] = 1;
-          const double gradphi_norm = [&]()
-            {
-              my_diffop->Apply(*my_fel, mip, coeff_vec, gradphi, lh);
-              return L2Norm(gradphi);
-            }();
-          // cout<<"gradphi norm: "<<gradphi_norm<<endl;
-          // cout<<"refdt: "<< 1/(gradphi_norm*cmax[el.Nr()])<<endl;
-          vertex_refdt[global_v] = min(vertex_refdt[global_v],
-                                       1/(gradphi_norm*cmax[el.Nr()]));
-        }
     }
   // remove periodic edges
   for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
@@ -440,22 +505,37 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
     }
   Array<double> tau(ma->GetNV());  // advancing front values at vertices
   tau = 0.0;
+
+  /*The reference dt would previously be computed
+    analysing the minimum length of the edges around
+    a given vertex. However, this does not imply
+    in causality. The inverse of the gradient of the
+    barycentric coordinates (H1 vertex functions)
+    are now used for this purpose, as one can obtain the
+    minimum distance to the opposite facet in relation
+    to the vertex patch. */
+
+  // compute vertex-based max time-differences
+  Array<double> vertex_refdt(ma->GetNV());
+  vertex_refdt = std::numeric_limits<double>::max();
+
+  // array of vertices ready for pitching a tent
+  Array<int> ready_vertices;
+  // array for checking if a given vertex is ready
+  Array<bool> vertex_ready(ma->GetNV());
+  vertex_ready = false;
+  for (auto i = 0; i < ma->GetNV(); i++)
+    if(vmap[i]==i) // non-periodic
+      {
+        ready_vertices.Append (i);
+        vertex_ready[i] = true;
+        vertex_refdt[i] = GetPoleHeight(i, tau, cmax, lh);
+      }
   // max time increase allowed at vertex, depends on tau of neighbors
   Array<double> ktilde(ma->GetNV());
   //at the beginning the advancing front is at a constant t=0
   //so ktilde can be set as vertex_refdt
   ktilde = vertex_refdt;
-
-  // array of vertices ready for pitching a tent
-  Array<int> ready_vertices;
-  Array<bool> vertex_ready(ma->GetNV());
-  vertex_ready = false;
-  for (int i = 0; i < ma->GetNV(); i++)
-    if(vmap[i]==i) // non-periodic
-      {
-        ready_vertices.Append (i);
-        vertex_ready[i] = true;
-      }
 
   // build vertex2edge and vertex2vertex tables
   TableCreator<int> create_v2e, create_v2v;
@@ -503,7 +583,10 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
     }
   Table<int> slave_verts = create_slave_verts.MoveTable();
 
-  Array<int> latest_tent(ma->GetNV()), vertices_level(ma->GetNV());
+  //array containing the latest tent in which the vertex was included
+  Array<int> latest_tent(ma->GetNV());
+  //array containing the current level of the tent to be pitched at vertex vi
+  Array<int> vertices_level(ma->GetNV());
   latest_tent = -1;
   vertices_level = 0;
 
@@ -512,16 +595,18 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
   // ---------------------------------------------
   while (ready_vertices.Size())
     {
+      //minimum vertex level among the ready_vertices
       int minlevel = 1000;
+      //position of tent pole vertex vi in ready_vertices
       int posmin = 0;
       // Choose tent pole vertex vi and remove it from vertex_ready
-      for(size_t i = 0; i < ready_vertices.Size(); i++)
+      for(auto i = 0; i < ready_vertices.Size(); i++)
 	if(vertices_level[ready_vertices[i]] < minlevel)
 	  {
 	    minlevel = vertices_level[ready_vertices[i]];
 	    posmin = i;
 	  }
-      int vi = ready_vertices[posmin];
+      const int vi = ready_vertices[posmin];
       ready_vertices.DeleteElement(posmin);
       vertex_ready[vi] = false;
 
@@ -533,12 +618,13 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
       tent->level = vertices_level[vi]; // 0;
       tau[vi] = tent->ttop;
 
-      // update level of neighbor vertices
+      //add neighboring vertices and update their level
       for (int nb : v2v[vi])
 	{
           nb = vmap[nb]; // only update master if periodic
 	  tent->nbv.Append (nb);
 	  tent->nbtime.Append (tau[nb]);
+          //update level of vertices if needed
 	  if(vertices_level[nb] < tent->level + 1)
 	    vertices_level[nb] = tent->level + 1;
           // tent number is just array index in tents
@@ -557,10 +643,12 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
       else
         {
 	  // DIM == 3 => internal facets are faces
+          //points contained in a given facet
           ArrayMem<int,4> fpnts;
           for (auto elnr : ma->GetVertexElements(vi))
             for (auto f : ma->GetElement(ElementId(VOL,elnr)).Faces())
               {
+                //get facet vertices
                 ma->GetFacetPNums(f, fpnts);
                 if (fpnts.Contains(vi) && !tent->internal_facets.Contains(f))
                   tent->internal_facets.Append(f);
@@ -581,9 +669,9 @@ TentPitchedSlab <DIM>::PitchTents_New(double dt,
 	  double kt = std::numeric_limits<double>::max();
 	  for (int nb2_index : v2v[nb].Range())
 	    {
-	      int nb2 = vmap[v2v[nb][nb2_index]];
-	      double kt1 = tau[nb2]-tau[nb]+vertex_refdt[nb];
-	      kt = min (kt, kt1);
+	      const int nb2 = vmap[v2v[nb][nb2_index]];
+	      const double kttemp = GetPoleHeight(nb2,tau,cmax,lh);
+	      kt = min (kt, kttemp);
 	    }
 
 	  ktilde[nb] = kt;
@@ -1070,14 +1158,16 @@ void ExportTents(py::module & m) {
   //
   py::class_<TentPitchedSlab<1>, shared_ptr<TentPitchedSlab<1>>>
     (m, "TentPitchedSlab1", "Tent pitched slab in 1 space + 1 time dimensions")
-    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, int heapsize)
+    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c,
+                     bool exact, int heapsize)
 		  {
 		    auto tps = TentPitchedSlab<1>(ma, heapsize);
-		    tps.PitchTents(dt, c);
+                    if(exact) tps.PitchTentsGradient(dt,c);
+		    else tps.PitchTents(dt, c);
 		    return tps;
 		  }),
       py::arg("mesh"), py::arg("dt"), py::arg("c"),
-      py::arg("heapsize") = 1000000
+      py::arg("exact") = false, py::arg("heapsize") = 1000000
       )
 
     .def_readonly("mesh", &TentPitchedSlab<1>::ma)
@@ -1106,14 +1196,15 @@ void ExportTents(py::module & m) {
 
   py::class_<TentPitchedSlab<2>, shared_ptr<TentPitchedSlab<2>>>
     (m, "TentPitchedSlab2", "Tent pitched slab in 2 space + 1 time dimensions")
-    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, int heapsize)
+    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, bool exact, int heapsize)
 		  {
 		    auto tps = TentPitchedSlab<2>(ma, heapsize);
-		    tps.PitchTents(dt, c);
+		    if(exact) tps.PitchTentsGradient(dt,c);
+		    else tps.PitchTents(dt, c);
 		    return tps;
 		  }),
       py::arg("mesh"), py::arg("dt"), py::arg("c"),
-      py::arg("heapsize") = 1000000
+      py::arg("exact") = false, py::arg("heapsize") = 1000000
       )
 
     .def_readonly("mesh", &TentPitchedSlab<2>::ma)
@@ -1149,14 +1240,15 @@ void ExportTents(py::module & m) {
 
   py::class_<TentPitchedSlab<3>, shared_ptr<TentPitchedSlab<3>>>
     (m, "TentPitchedSlab3", "Tent pitched slab in 3 space + 1 time dimensions")
-    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, int heapsize)
+    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, bool exact,  int heapsize)
 		  {
 		    auto tps = TentPitchedSlab<3>(ma, heapsize);
-		    tps.PitchTents(dt, c);
+		    if(exact) tps.PitchTentsGradient(dt,c);
+		    else tps.PitchTents(dt, c);
 		    return tps;
 		  }),
       py::arg("mesh"), py::arg("dt"), py::arg("c"),
-      py::arg("heapsize") = 1000000
+      py::arg("exact") = false, py::arg("heapsize") = 1000000
       )
 
     .def_readonly("mesh", &TentPitchedSlab<3>::ma)
