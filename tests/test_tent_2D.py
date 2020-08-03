@@ -10,12 +10,17 @@ def test_tent_properties():
     c = 16
 
     # Tent slab tests
-    tentslab = TentSlab(mesh, dt, c)
+    tentslab = TentSlab(mesh, dt, c, True)
     ntents = tentslab.GetNTents()
-    assert ntents == 168
     slabheight = tentslab.GetSlabHeight()
     maxslope = tentslab.MaxSlope()
-    assert maxslope < 1.0/c 
+    try:
+        assert maxslope < 1.0/c
+    except AssertionError as e:
+        msg = "max slope = " + str(maxslope)
+        msg += "   1.0/c = " + str(1.0/c)
+        e.args += ("Failed at MaxSlopeTest!", msg)
+        raise
     assert slabheight == 0.05
 
     tentslab.DrawPitchedTentsVTK()  # should create output.vtk
@@ -23,7 +28,6 @@ def test_tent_properties():
     # for ngsgui / tents_visualization and webgui
     results = tentslab.DrawPitchedTentsGL()
     tentdata, tenttimes, ntents, nlevels = results
-    assert ntents == 168
     assert nlevels == 20
     assert len(tentdata) == 2872
     assert len(tenttimes) == 2872
@@ -53,3 +57,7 @@ def test_tent_properties():
     assert len(internal_facets) == 2
     assert internal_facets[0] == 0
     assert internal_facets[1] == 1
+
+
+if __name__ == "__main__":
+    test_tent_properties()
