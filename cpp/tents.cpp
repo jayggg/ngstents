@@ -351,10 +351,10 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
   //number of vertices of the current element (always the simplex associated to DIM)
   constexpr int n_vertices = DIM+1;
   //finite element created for calculating the barycentric coordinates
-  BaseScalarFiniteElement *my_fel = new (lh) ScalarFE<el_type,1>();
+  ScalarFE<el_type,1> my_fel;
   // array of all elements containing vertex vi
-  Array<int>
-      els;
+  ArrayMem<int,30>  els;
+  els.SetSize(0);
   ma->GetVertexElements(vi, els);
 
   double pole_height = std::numeric_limits<double>::max();
@@ -377,19 +377,13 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
       IntegrationRule ir(el_type,1);
       //integration point on deformed element
       MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
-      my_fel->CalcMappedDShape(mip,gradphi);
+      my_fel.CalcMappedDShape(mip,gradphi);
 
       //sets the coefficient vec
       for (auto k : IntRange(0, v_indices.Size()))
         coeff_vec[k] = tau[v_indices[k]];
       coeff_vec[local_vi] = 0;
-      cout<<"el = "<<ei.Nr()<<"\tvi = "<<vi;
-      cout<<"\tlocal vi = "<<local_vi<<endl;
-      for (auto k : IntRange(0, v_indices.Size()))
-        {
-          cout << "\tk = "<<k<<"\tv_n = "<<v_indices[k];
-          cout <<"\talpha_k = "<<coeff_vec[k]<<"\ttau_k = "<<tau[v_indices[k]]<<endl;
-        }
+      
       /*writing the quadratic eq for tau_v
        \tau_{v}^2 ( \nabla\,\phi_{vi} \cdot \nabla\, \phi_{vi})
                    ^^^^^^^^^^^^^^^^^^alpha^^^^^^^^^^^^^^^^^^^^^^
@@ -424,17 +418,14 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
 
       //since alpha will always be positive (and so will sq_delta),
       //we dont need to consider the solution (-beta-sq_delta)/(2*alpha)
-      const double sol1 = (-beta+sq_delta)/(2*alpha);
-      const double sol2 = (-beta-sq_delta)/(2*alpha);
-      
-      if(sol1 > sol2) pole_height = min(pole_height,sol1);
-      else pole_height = min(pole_height,sol2);
-      cout<<"a = "<<alpha<<"\tb = "<<beta<<"\tc = "<<gamma<<endl;
-      cout<<"sol 1:"<< sol1<<"\tsol 2:"<<sol2<<endl;
+      const double sol = (-beta+sq_delta)/(2*alpha);
+      pole_height = min(pole_height,sol);
     }
 
   //the return value is actually the ADVANCE in the current vi
   pole_height -= tau[vi];
+  constexpr double num_tol = 1e-15;
+  if( fabs(pole_height) < num_tol ) return 0.0;
   try
     {
       if(pole_height < 0) throw std::runtime_error("Error in pole height!");
@@ -447,7 +438,7 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
       cout<<"tau(old) = "<<tau[vi]<<endl;
       exit(-1);
     }
-  return pole_height;
+  return pole_height - num_tol;//just to enforce causality
  }
 
 template <int DIM> void
@@ -666,14 +657,7 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
 	{
           nb = vmap[nb]; // map periodic vertices
           if (tau[nb] >= dt) continue;
-	  double kt = std::numeric_limits<double>::max();
-	  for (int nb2_index : v2v[nb].Range())
-	    {
-	      const int nb2 = vmap[v2v[nb][nb2_index]];
-	      const double kttemp = GetPoleHeight(nb2,tau,cmax,lh);
-	      kt = min (kt, kttemp);
-	    }
-
+	  const double kt = GetPoleHeight(nb, tau, cmax, lh);
 	  ktilde[nb] = kt;
 	  if (kt > 0.5 * vertex_refdt[nb])
             if (!vertex_ready[nb])
