@@ -46,6 +46,7 @@ public:
   int level;                   // parallel layer number
   Array<int> dependent_tents;  // these tents depend on me
 
+  double MaxSlope() const;
 };
 
 ostream & operator<< (ostream & ost, const Tent & tent);

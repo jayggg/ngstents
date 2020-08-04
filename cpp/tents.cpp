@@ -17,6 +17,16 @@ void GetVertexElements(shared_ptr<MeshAccess> ma, int vnr_master,
 
 Array<int> Tent::vmap;
 
+/////////////////// Tent methods ////////////////////////////////////////////
+double Tent::MaxSlope() const{
+  double maxgrad = 0.0;
+  for (int j : Range(this->els.Size()))
+    {
+      const auto norm = L2Norm(this->gradphi_top[j]);
+      maxgrad =  max(maxgrad, norm);
+    }
+  return maxgrad;
+}
 
 /////////////////// Tent meshing ///////////////////////////////////////////
 
@@ -762,10 +772,7 @@ double TentPitchedSlab <DIM>::MaxSlope() const{
      [&] (int i)
      {
        Tent & tent = *tents[i];
-       for (int j : Range(tent.els.Size())) {
-	 auto norm = L2Norm(tent.gradphi_top[j]);
-	 AtomicMax(maxgrad, norm);
-       }
+       AtomicMax(maxgrad , tent.MaxSlope() );
      });
   return maxgrad;
 }
@@ -1135,7 +1142,8 @@ void ExportTents(py::module & m) {
     .def_readonly("nbv", &Tent::nbv)
     .def_readonly("nbtime", &Tent::nbtime)
     .def_readonly("els", &Tent::els)
-    .def_readonly("internal_facets", &Tent::internal_facets);
+    .def_readonly("internal_facets", &Tent::internal_facets)
+    .def("MaxSlope", &Tent::MaxSlope);
 
   //
   // 1D spatial mesh
