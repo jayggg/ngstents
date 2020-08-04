@@ -752,7 +752,7 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
 
 
 template <int DIM>
-double TentPitchedSlab <DIM>::MaxSlope() {
+double TentPitchedSlab <DIM>::MaxSlope() const{
 
   // Return  max(|| gradphi_top||, ||gradphi_bot||)
 

@@ -139,7 +139,7 @@ public:
   const Tent & GetTent(int i) { return *tents[i];}
 
   // Return  max(|| gradphi_top||, ||gradphi_bot||)
-  double MaxSlope();
+  double MaxSlope() const;
 
   // Drawing
   void DrawPitchedTents(int level=1) ;
