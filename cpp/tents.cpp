@@ -1166,7 +1166,7 @@ void ExportTents(py::module & m) {
     .def("GetNTents", &TentPitchedSlab<1>::GetNTents)
     .def("GetSlabHeight", &TentPitchedSlab<1>::GetSlabHeight)
     .def("MaxSlope", &TentPitchedSlab<1>::MaxSlope)
-    .def("GetTent", &TentPitchedSlab<1>::GetTent)
+    .def("GetTent", &TentPitchedSlab<1>::GetTent, pybind11::return_value_policy::reference)
     .def("DrawPitchedTentsPlt",[](shared_ptr<TentPitchedSlab<1>> self)
      {
        py::list ret;
@@ -1203,7 +1203,7 @@ void ExportTents(py::module & m) {
     .def("GetNTents", &TentPitchedSlab<2>::GetNTents)
     .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)
     .def("MaxSlope", &TentPitchedSlab<2>::MaxSlope)
-    .def("GetTent", &TentPitchedSlab<2>::GetTent)
+    .def("GetTent", &TentPitchedSlab<2>::GetTent, pybind11::return_value_policy::reference)
     .def("DrawPitchedTentsVTK",
          [](shared_ptr<TentPitchedSlab<2>> self, string vtkfilename)
          {
@@ -1247,7 +1247,7 @@ void ExportTents(py::module & m) {
     .def("GetNTents", &TentPitchedSlab<3>::GetNTents)
     .def("GetSlabHeight", &TentPitchedSlab<3>::GetSlabHeight)
     .def("MaxSlope", &TentPitchedSlab<3>::MaxSlope)
-    .def("GetTent", &TentPitchedSlab<3>::GetTent)
+    .def("GetTent", &TentPitchedSlab<3>::GetTent, pybind11::return_value_policy::reference)
     .def("DrawPitchedTentsGL",
          [](shared_ptr<TentPitchedSlab<3>> self)
          {
