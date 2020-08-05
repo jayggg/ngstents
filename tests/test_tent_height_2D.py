@@ -61,8 +61,19 @@ def test_tent_height():
                 for iv in range(len(tent.nbtime)):
                     msg += " vertex = " + \
                         str(tent.nbv[iv]) + " time = " + str(tent.nbtime[iv])
-                e.args += ("ERROR: tent has slope bigger than velocity!", msg)
+                e.args += ("ERROR: tent has slope bigger than velocity" +
+                           " along edge!", msg)
                 raise
+        try:
+
+            assert (1.0/c >= tent.MaxSlope())
+
+        except AssertionError as e:
+            msg = "tent id = " + str(itent)+" tent_v = " + str(tent_v)
+            msg += "max slope = " + str(tent.MaxSlope())
+            msg += "1/c = " + str(1.0/c)
+            e.args += ("ERROR: tent has slope bigger than velocity!", msg)
+            raise
 
 
 if __name__ == "__main__":
