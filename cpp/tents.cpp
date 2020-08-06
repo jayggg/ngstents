@@ -1058,6 +1058,7 @@ void ExportTents(py::module & m) {
 
   py::class_<Tent, shared_ptr<Tent>>(m, "Tent", "Tent structure")
     .def_readonly("vertex", &Tent::vertex)
+    .def_readonly("level", &Tent::level)
     .def_readonly("ttop", &Tent::ttop)
     .def_readonly("tbot", &Tent::tbot)
     .def_readonly("nbv", &Tent::nbv)
