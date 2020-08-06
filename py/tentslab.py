@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import ngsolve as ng
+import numpy as np
 
 from tents import (TentPitchedSlab1, TentPitchedSlab2, TentPitchedSlab3)
 
@@ -82,6 +84,53 @@ class TentSlab(object):
             plt.ylim([0, self.dt*1.1])
             plt.show()
 
+    def Draw3DTentPlt(self, tentnr):
+        """
+        Draw a single 3D tent using Matplotlib. Colors are used to represent
+        the times of the neighbor vertices.  The tent pole height is represented
+        by the size of the central vertex.
+        """
+        if self.dim != 3:
+            raise NotImplementedError("Only supported for 3D spatial mesh")
+        mesh = self.mesh
+        tent = self.GetTent(tentnr)
+        vtx = tent.vertex
+        nbv = list(tent.nbv)
+        tt = tent.ttop
+        tb = tent.tbot
+        nbtime = list(tent.nbtime)
+
+        mvs = [mesh[ng.NodeId(ng.VERTEX, v)] for v in [vtx]+nbv]
+        mels = [mesh[ng.ElementId(ng.VOL, e)] for e in tent.els]
+        pts = np.array([v.point for v in mvs])
+        facetvs = [[mvs.index(v) for v in el.vertices if v != mvs[0]]
+                   for el in mels]
+        fig = plt.figure()
+        fig.suptitle('Tent {} at level {}'.format(tentnr, tent.level))
+        ax = fig.add_subplot(111, projection='3d')
+        # edges from central vertex to neighbors
+        for i in range(1, pts.shape[0]):
+            ax.plot([pts[0, 0], pts[i, 0]], [pts[0, 1], pts[i, 1]],
+                    [pts[0, 2], pts[i, 2]], color='blue', linewidth=.5)
+
+        # outlines of facets
+        for i, f in enumerate(facetvs):
+            xs = [pts[v, 0] for v in f] + [pts[f[0], 0]]
+            ys = [pts[v, 1] for v in f] + [pts[f[0], 1]]
+            zs = [pts[v, 2] for v in f] + [pts[f[0], 2]]
+            ax.plot(xs, ys, zs, color='red', linewidth=.5)
+
+        # vertices
+        s = [20 + 50*(tt-tb)] + [10]*(len(mvs)-1)
+        scatter = ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2],
+                             c=[tt]+nbtime, s=s)
+
+        legend = ax.legend(*scatter.legend_elements(),
+                           loc="lower left", title="Times")
+        ax.add_artist(legend)
+        print("Tent pole top: {:.3f}, bottom: {:.3f}, height: {:.3f}"
+              .format(tb, tt, tt-tb))
+        return ax
 
     def GetTent(self, nr):
         return self.slab.GetTent(nr)
