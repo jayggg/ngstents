@@ -1,7 +1,10 @@
+"""
+Select a 3D tents to visualize in pyplot
+"""
+
 from ngstents import TentSlab
 from netgen.csg import unit_cube
 import ngsolve as ng
-import numpy as np
 import matplotlib.pyplot as plt
 
 mesh = ng.Mesh(unit_cube.GenerateMesh(maxh=0.3))
@@ -12,7 +15,7 @@ print("The slab has {} tents.".format(ntents))
 resp = ""
 plt.ion()
 while True:
-    resp = input("Enter a tent number in 0:{} or q to quit: ".format(ntents))
+    resp = input("Enter a tent number in 0:{} or q to quit: ".format(ntents-1))
     plt.close()
     if resp.lower() == 'q':
         break
@@ -20,8 +23,8 @@ while True:
         n = int(resp)
     except ValueError:
         continue
-    ax = tps.Draw3DTentPlt(n)
-    plt.show()
-
-
-
+    if 0 <= n < ntents:
+        ax = tps.Draw3DTentPlt(n)
+        plt.show()
+    else:
+        print("Invalid tent number")
