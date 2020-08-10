@@ -30,6 +30,12 @@ double Tent::MaxSlope() const{
 
 /////////////////// Tent meshing ///////////////////////////////////////////
 
+constexpr ELEMENT_TYPE EL_TYPE(int DIM)
+{
+  return DIM == 1 ? ET_SEGM : DIM == 2 ? ET_TRIG : ET_TET;
+}//this assumes that there is only one type of element per mesh
+
+
 template <int DIM> void
 TentPitchedSlab<DIM>::PitchTents(double dt, double wavespeed)
 {
@@ -313,18 +319,15 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
 
 	 ElementId ej (VOL, tent.els[j]);
 	 ELEMENT_TYPE eltype = ma->GetElType(ej);
-	 BaseScalarFiniteElement *fe;
-	 switch(DIM)
-	   {
-	   case 1: fe = new (lh) ScalarFE<ET_SEGM,1>(); break;
-	   case 2: fe = new (lh) ScalarFE<ET_TRIG,1>(); break;
-	   default: fe = new (lh) ScalarFE<ET_TET,1>();
-	   }
-	 Vector<> shape_nodal(fe->GetNDof());
-	 Matrix<> dshape_nodal(fe->GetNDof(), DIM);
+         constexpr auto el_type = EL_TYPE(DIM);        
+         constexpr int n_vertices = DIM+1;
+         ScalarFE<el_type,1> fe;
+	 
+	 Vector<> shape_nodal(n_vertices);
+	 Matrix<> dshape_nodal(n_vertices, DIM);
 	 Vector<> coef_bot, coef_top; // coefficient of tau (top & bot)
-	 coef_bot.SetSize(fe->GetNDof());
-	 coef_top.SetSize(fe->GetNDof());
+	 coef_bot.SetSize(n_vertices);
+	 coef_top.SetSize(n_vertices);
 	 auto vnums = ma->GetElVertices (ej);
 	 for (size_t k = 0; k < vnums.Size(); k++) {
 	   if (vnums[k] == tent.vertex)  { // central vertex
@@ -342,7 +345,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
 	 MappedIntegrationPoint<DIM, DIM> mip(ir[0], trafo);
 	 tent.gradphi_bot[j].SetSize(DIM);
 	 tent.gradphi_top[j].SetSize(DIM);
-	 fe->CalcMappedDShape(mip, dshape_nodal);
+	 fe.CalcMappedDShape(mip, dshape_nodal);
 	 tent.gradphi_bot[j] = Trans(dshape_nodal) * coef_bot;
 	 tent.gradphi_top[j] = Trans(dshape_nodal) * coef_top;
        }
@@ -350,14 +353,9 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
 }
 
 template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, LocalHeap & lh) const{
+  HeapReset hr(lh);
 
-  constexpr ELEMENT_TYPE  el_type = [&]() -> ELEMENT_TYPE {
-    if constexpr (DIM == 1) return ET_SEGM;
-    else if constexpr (DIM == 2) return ET_TRIG;
-    else if constexpr (DIM == 3) return ET_TET;
-    else return ET_POINT;//
-  }();//this assumes that there is only one type of element per mesh
-
+  constexpr auto el_type = EL_TYPE(DIM);
   //number of vertices of the current element (always the simplex associated to DIM)
   constexpr int n_vertices = DIM+1;
   //finite element created for calculating the barycentric coordinates
@@ -482,21 +480,24 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   // check if edge is contained in mesh
   BitArray fine_edges(ma->GetNEdges());
   fine_edges.Clear();  
-  
-  //identify fine edges and evaluate maximum wavespeed for each element
-  for (Ngs_Element el : ma->Elements(VOL))
-    {
-      //set all edges belonging to the mesh
-      for (int e : el.Edges())	
-        fine_edges.SetBit(e);
-
-      auto ei = ElementId(el);
-      auto eltype = ma->GetElType(ei);
-      ElementTransformation & trafo = ma->GetTrafo (ei, lh);
-      IntegrationRule ir(eltype, 0);
-      MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
-      cmax[el.Nr()] = wavespeed->Evaluate(mip);
-    }
+  {
+    HeapReset hr(lh);
+    //identify fine edges and evaluate maximum wavespeed for each element
+    for (Ngs_Element el : ma->Elements(VOL))
+      {
+        
+        //set all edges belonging to the mesh
+        for (int e : el.Edges())	
+          fine_edges.SetBit(e);
+        
+        auto ei = ElementId(el);
+        auto eltype = ma->GetElType(ei);
+        ElementTransformation & trafo = ma->GetTrafo (ei, lh);
+        IntegrationRule ir(eltype, 0);
+        MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
+        cmax[el.Nr()] = wavespeed->Evaluate(mip);
+      }
+  }
   // remove periodic edges
   for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
     {
@@ -724,18 +725,16 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
 
 	 ElementId ej (VOL, tent.els[j]);
 	 ELEMENT_TYPE eltype = ma->GetElType(ej);
-	 BaseScalarFiniteElement *fe;
-	 switch(DIM)
-	   {
-	   case 1: fe = new (lh) ScalarFE<ET_SEGM,1>(); break;
-	   case 2: fe = new (lh) ScalarFE<ET_TRIG,1>(); break;
-	   default: fe = new (lh) ScalarFE<ET_TET,1>();
-	   }
-	 Vector<> shape_nodal(fe->GetNDof());
-	 Matrix<> dshape_nodal(fe->GetNDof(), DIM);
+         constexpr auto el_type = EL_TYPE(DIM);
+         //number of vertices of the current element (always the simplex associated to DIM)
+         constexpr int n_vertices = DIM+1;
+         //finite element created for calculating the barycentric coordinates
+         ScalarFE<el_type,1> fe;
+	 Vector<> shape_nodal(n_vertices);
+	 Matrix<> dshape_nodal(n_vertices, DIM);
 	 Vector<> coef_bot, coef_top; // coefficient of tau (top & bot)
-	 coef_bot.SetSize(fe->GetNDof());
-	 coef_top.SetSize(fe->GetNDof());
+	 coef_bot.SetSize(n_vertices);
+	 coef_top.SetSize(n_vertices);
 	 auto vnums = ma->GetElVertices (ej);
 	 for (size_t k = 0; k < vnums.Size(); k++) {
 	   if (vnums[k] == tent.vertex)  { // central vertex
@@ -753,7 +752,7 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
 	 MappedIntegrationPoint<DIM, DIM> mip(ir[0], trafo);
 	 tent.gradphi_bot[j].SetSize(DIM);
 	 tent.gradphi_top[j].SetSize(DIM);
-	 fe->CalcMappedDShape(mip, dshape_nodal);
+	 fe.CalcMappedDShape(mip, dshape_nodal);
 	 tent.gradphi_bot[j] = Trans(dshape_nodal) * coef_bot;
 	 tent.gradphi_top[j] = Trans(dshape_nodal) * coef_top;
        }
