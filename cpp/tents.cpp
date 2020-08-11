@@ -432,20 +432,8 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
 
   //the return value is actually the ADVANCE in the current vi
   pole_height -= tau[vi];
-  constexpr double num_tol = 1e-15;
+  constexpr double num_tol = 1e-14;
   if( fabs(pole_height) < num_tol ) return 0.0;
-  try
-    {
-      if(pole_height < 0) throw std::runtime_error("Error in pole height!");
-    }
-  catch (const std::runtime_error &error)
-    {
-      cout<< error.what() << endl;
-      cout<<"pole_height(old) = "<<pole_height+tau[vi]<<endl;
-      cout<<"pole_height = "<<pole_height<<endl;
-      cout<<"tau(old) = "<<tau[vi]<<endl;
-      exit(-1);
-    }
   return pole_height - num_tol;//just to enforce causality
  }
 
