@@ -183,96 +183,148 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
   Array<int> latest_tent(ma->GetNV()), vertices_level(ma->GetNV());
   latest_tent = -1;
   vertices_level = 0;
-
-  // ---------------------------------------------
-  // Main loop: constructs one tent each iteration
-  // ---------------------------------------------
-  while (ready_vertices.Size())
+  
+  //for an advance to be considered good, dt >= factor * refdt
+  double initial_adv_factor{0.5};
+  double adv_factor{initial_adv_factor};
+  bool slab_complete{false};
+  while ( adv_factor > 0.1 && ! slab_complete )
     {
-      int minlevel = 1000;
-      int posmin = 0;
-      // Choose tent pole vertex vi and remove it from vertex_ready
-      for(size_t i = 0; i < ready_vertices.Size(); i++)
-	if(vertices_level[ready_vertices[i]] < minlevel)
-	  {
-	    minlevel = vertices_level[ready_vertices[i]];
-	    posmin = i;
-	  }
-      int vi = ready_vertices[posmin];
-      ready_vertices.DeleteElement(posmin);
-      vertex_ready[vi] = false;
-
-      // advance by ktilde:
-      Tent * tent = new Tent;
-      tent->vertex = vi;
-      tent->tbot = tau[vi];
-      tent->ttop = min (dt, tau[vi]+ktilde[vi]);
-      tent->level = vertices_level[vi]; // 0;
-      tau[vi] = tent->ttop;
-
-      // update level of neighbor vertices
-      for (int nb : v2v[vi])
-	{
-          nb = vmap[nb]; // only update master if periodic
-	  tent->nbv.Append (nb);
-	  tent->nbtime.Append (tau[nb]);
-	  if(vertices_level[nb] < tent->level + 1)
-	    vertices_level[nb] = tent->level + 1;
-          // tent number is just array index in tents
-	  if (latest_tent[nb] != -1)
-	      tents[latest_tent[nb]]->dependent_tents.Append (tents.Size());
-	}
-      latest_tent[vi] = tents.Size();
-      vertices_level[vi]++;
-
-      // Set tent internal facets
-      if(DIM==1)
-        // vertex itself represents the only internal edge/facet
-       	tent->internal_facets.Append (vi);
-      else if (DIM == 2)
-        for (int e : v2e[vi]) tent->internal_facets.Append (e);
-      else
+      // ---------------------------------------------
+      // Main loop: constructs one tent each iteration
+      // ---------------------------------------------
+      while (ready_vertices.Size())
         {
-	  // DIM == 3 => internal facets are faces
-          ArrayMem<int,4> fpnts;
-          for (auto elnr : ma->GetVertexElements(vi))
-            for (auto f : ma->GetElement(ElementId(VOL,elnr)).Faces())
+          int minlevel = 1000;
+          int posmin = 0;
+          // Choose tent pole vertex vi and remove it from vertex_ready
+          for(size_t i = 0; i < ready_vertices.Size(); i++)
+            if(vertices_level[ready_vertices[i]] < minlevel)
               {
-                ma->GetFacetPNums(f, fpnts);
-                if (fpnts.Contains(vi) && !tent->internal_facets.Contains(f))
-                  tent->internal_facets.Append(f);
+                minlevel = vertices_level[ready_vertices[i]];
+                posmin = i;
+              }
+          int vi = ready_vertices[posmin];
+          ready_vertices.DeleteElement(posmin);
+          vertex_ready[vi] = false;
+
+          // advance by ktilde:
+          Tent * tent = new Tent;
+          tent->vertex = vi;
+          tent->tbot = tau[vi];
+          tent->ttop = min (dt, tau[vi]+ktilde[vi]);
+          tent->level = vertices_level[vi]; // 0;
+          tau[vi] = tent->ttop;
+
+          // update level of neighbor vertices
+          for (int nb : v2v[vi])
+            {
+              nb = vmap[nb]; // only update master if periodic
+              tent->nbv.Append (nb);
+              tent->nbtime.Append (tau[nb]);
+              if(vertices_level[nb] < tent->level + 1)
+                vertices_level[nb] = tent->level + 1;
+              // tent number is just array index in tents
+              if (latest_tent[nb] != -1)
+                tents[latest_tent[nb]]->dependent_tents.Append (tents.Size());
+            }
+          latest_tent[vi] = tents.Size();
+          vertices_level[vi]++;
+
+          // Set tent internal facets
+          if(DIM==1)
+            // vertex itself represents the only internal edge/facet
+            tent->internal_facets.Append (vi);
+          else if (DIM == 2)
+            for (int e : v2e[vi]) tent->internal_facets.Append (e);
+          else
+            {
+              // DIM == 3 => internal facets are faces
+              ArrayMem<int,4> fpnts;
+              for (auto elnr : ma->GetVertexElements(vi))
+                for (auto f : ma->GetElement(ElementId(VOL,elnr)).Faces())
+                  {
+                    ma->GetFacetPNums(f, fpnts);
+                    if (fpnts.Contains(vi) && !tent->internal_facets.Contains(f))
+                      tent->internal_facets.Append(f);
+                  }
+            }
+
+          if(slave_verts[vi].Size()==0)
+            ma->GetVertexElements (vi, tent->els);
+          else
+            GetVertexElements(ma,vi,slave_verts[vi],tent->els);
+
+          // update max step ktilde for neighbors, and append them
+          // to ready_vertices (if not there) once ktilde is large enough
+          for (int nb : v2v[vi])
+            {
+              nb = vmap[nb]; // map periodic vertices
+              if (tau[nb] >= dt) continue;
+              double kt = std::numeric_limits<double>::max();
+              for (int nb2_index : v2v[nb].Range())
+                {
+                  int nb2 = vmap[v2v[nb][nb2_index]];
+                  double kt1 = tau[nb2]-tau[nb]+edge_refdt[v2e[nb][nb2_index]];
+                  kt = min (kt, kt1);
+                }
+
+              ktilde[nb] = kt;
+              if (kt > adv_factor * vertex_refdt[nb])
+                if (!vertex_ready[nb])
+                  {
+                    ready_vertices.Append (nb);
+                    vertex_ready[nb] = true;
+                  }
+            }
+          tents.Append (tent);
+        }
+         //check if slab is complete
+      slab_complete = true;
+      constexpr double num_tol = 1e-16;
+      for( auto it : latest_tent )
+        {
+          double diff = dt - tents[it]->ttop;
+          if ( diff > num_tol ) slab_complete = false;
+        }
+      if(!slab_complete)
+        {
+          adv_factor *= 0.5;
+          vertex_ready = false;
+          for (auto i = 0; i < ma->GetNV(); i++)
+            if(vmap[i] == i)
+              {
+                if (ktilde[i] > adv_factor * vertex_refdt[i])
+                  if (!vertex_ready[i])
+                    {
+                      ready_vertices.Append (i);
+                      vertex_ready[i] = true;
+                    }
               }
         }
-
-      if(slave_verts[vi].Size()==0)
-        ma->GetVertexElements (vi, tent->els);
-      else
-        GetVertexElements(ma,vi,slave_verts[vi],tent->els);
-
-      // update max step ktilde for neighbors, and append them
-      // to ready_vertices (if not there) once ktilde is large enough
-      for (int nb : v2v[vi])
-	{
-          nb = vmap[nb]; // map periodic vertices
-          if (tau[nb] >= dt) continue;
-	  double kt = std::numeric_limits<double>::max();
-	  for (int nb2_index : v2v[nb].Range())
-	    {
-	      int nb2 = vmap[v2v[nb][nb2_index]];
-	      double kt1 = tau[nb2]-tau[nb]+edge_refdt[v2e[nb][nb2_index]];
-	      kt = min (kt, kt1);
-	    }
-
-	  ktilde[nb] = kt;
-	  if (kt > 0.5 * vertex_refdt[nb])
-            if (!vertex_ready[nb])
-              {
-                ready_vertices.Append (nb);
-                vertex_ready[nb] = true;
-              }
-	}
-      tents.Append (tent);
     }
+  
+  try
+    {
+      if(!slab_complete) throw std::logic_error("Could not pitch whole slab");
+    }
+  catch (const std::logic_error &error)
+    {
+      cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
+
+      constexpr double num_tol = 1e-16;
+      for( auto it : latest_tent )
+        {
+          double diff = dt - tents[it]->ttop;
+          if ( diff > num_tol )
+            {
+              cout << "tent "<< it << " diff = " << diff << endl;
+              cout << "\t"<<*(tents[it]) << endl;
+            }
+        }
+      exit(-1);
+    }
+
 
   // set lists of internal facets of each element of each tent
   ParallelFor
@@ -580,93 +632,146 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   latest_tent = -1;
   vertices_level = 0;
 
-  // ---------------------------------------------
-  // Main loop: constructs one tent each iteration
-  // ---------------------------------------------
-  while (ready_vertices.Size())
+  //for an advance to be considered good, dt >= factor * refdt
+  double initial_adv_factor{0.5};
+  double adv_factor{initial_adv_factor};
+  bool slab_complete{false};
+  while ( adv_factor > 0.1 && ! slab_complete )
     {
-      //minimum vertex level among the ready_vertices
-      int minlevel = 1000;
-      //position of tent pole vertex vi in ready_vertices
-      int posmin = 0;
-      // Choose tent pole vertex vi and remove it from vertex_ready
-      for(auto i = 0; i < ready_vertices.Size(); i++)
-	if(vertices_level[ready_vertices[i]] < minlevel)
-	  {
-	    minlevel = vertices_level[ready_vertices[i]];
-	    posmin = i;
-	  }
-      const int vi = ready_vertices[posmin];
-      ready_vertices.DeleteElement(posmin);
-      vertex_ready[vi] = false;
-
-      // advance by ktilde:
-      Tent * tent = new Tent;
-      tent->vertex = vi;
-      tent->tbot = tau[vi];
-      tent->ttop = min (dt, tau[vi]+ktilde[vi]);
-      tent->level = vertices_level[vi]; // 0;
-      tau[vi] = tent->ttop;
-
-      //add neighboring vertices and update their level
-      for (int nb : v2v[vi])
-	{
-          nb = vmap[nb]; // only update master if periodic
-	  tent->nbv.Append (nb);
-	  tent->nbtime.Append (tau[nb]);
-          //update level of vertices if needed
-	  if(vertices_level[nb] < tent->level + 1)
-	    vertices_level[nb] = tent->level + 1;
-          // tent number is just array index in tents
-	  if (latest_tent[nb] != -1)
-	      tents[latest_tent[nb]]->dependent_tents.Append (tents.Size());
-	}
-      latest_tent[vi] = tents.Size();
-      vertices_level[vi]++;
-
-      // Set tent internal facets
-      if(DIM==1)
-        // vertex itself represents the only internal edge/facet
-       	tent->internal_facets.Append (vi);
-      else if (DIM == 2)
-        for (int e : v2e[vi]) tent->internal_facets.Append (e);
-      else
+      
+      // ---------------------------------------------
+      // Main loop: constructs one tent each iteration
+      // ---------------------------------------------
+      while (ready_vertices.Size())
         {
-	  // DIM == 3 => internal facets are faces
-          //points contained in a given facet
-          ArrayMem<int,4> fpnts;
-          for (auto elnr : ma->GetVertexElements(vi))
-            for (auto f : ma->GetElement(ElementId(VOL,elnr)).Faces())
+          //minimum vertex level among the ready_vertices
+          int minlevel = 1000;
+          //position of tent pole vertex vi in ready_vertices
+          int posmin = 0;
+          // Choose tent pole vertex vi and remove it from vertex_ready
+          for(auto i = 0; i < ready_vertices.Size(); i++)
+            if(vertices_level[ready_vertices[i]] < minlevel)
               {
-                //get facet vertices
-                ma->GetFacetPNums(f, fpnts);
-                if (fpnts.Contains(vi) && !tent->internal_facets.Contains(f))
-                  tent->internal_facets.Append(f);
+                minlevel = vertices_level[ready_vertices[i]];
+                posmin = i;
+              }
+          const int vi = ready_vertices[posmin];
+          ready_vertices.DeleteElement(posmin);
+          vertex_ready[vi] = false;
+
+          // advance by ktilde:
+          Tent * tent = new Tent;
+          tent->vertex = vi;
+          tent->tbot = tau[vi];
+          tent->ttop = min (dt, tau[vi]+ktilde[vi]);
+          tent->level = vertices_level[vi]; // 0;
+          tau[vi] = tent->ttop;
+
+          //add neighboring vertices and update their level
+          for (int nb : v2v[vi])
+            {
+              nb = vmap[nb]; // only update master if periodic
+              tent->nbv.Append (nb);
+              tent->nbtime.Append (tau[nb]);
+              //update level of vertices if needed
+              if(vertices_level[nb] < tent->level + 1)
+                vertices_level[nb] = tent->level + 1;
+              // tent number is just array index in tents
+              if (latest_tent[nb] != -1)
+                tents[latest_tent[nb]]->dependent_tents.Append (tents.Size());
+            }
+          latest_tent[vi] = tents.Size();
+          vertices_level[vi]++;
+
+          // Set tent internal facets
+          if(DIM==1)
+            // vertex itself represents the only internal edge/facet
+            tent->internal_facets.Append (vi);
+          else if (DIM == 2)
+            for (int e : v2e[vi]) tent->internal_facets.Append (e);
+          else
+            {
+              // DIM == 3 => internal facets are faces
+              //points contained in a given facet
+              ArrayMem<int,4> fpnts;
+              for (auto elnr : ma->GetVertexElements(vi))
+                for (auto f : ma->GetElement(ElementId(VOL,elnr)).Faces())
+                  {
+                    //get facet vertices
+                    ma->GetFacetPNums(f, fpnts);
+                    if (fpnts.Contains(vi) && !tent->internal_facets.Contains(f))
+                      tent->internal_facets.Append(f);
+                  }
+            }
+
+          if(slave_verts[vi].Size()==0)
+            ma->GetVertexElements (vi, tent->els);
+          else
+            GetVertexElements(ma,vi,slave_verts[vi],tent->els);
+
+          // update max step ktilde for neighbors, and append them
+          // to ready_vertices (if not there) once ktilde is large enough
+          for (int nb : v2v[vi])
+            {
+              nb = vmap[nb]; // map periodic vertices
+              if (tau[nb] >= dt) continue;
+              const double kt = GetPoleHeight(nb, tau, cmax, lh);
+              ktilde[nb] = kt;
+              if (kt > adv_factor * vertex_refdt[nb])
+                if (!vertex_ready[nb])
+                  {
+                    ready_vertices.Append (nb);
+                    vertex_ready[nb] = true;
+                  }
+            }
+          tents.Append (tent);
+        }
+      //check if slab is complete
+      slab_complete = true;
+      constexpr double num_tol = 1e-16;
+      for( auto it : latest_tent )
+        {
+          double diff = dt - tents[it]->ttop;
+          if ( diff > num_tol ) slab_complete = false;
+        }
+      if(!slab_complete)
+        {
+          adv_factor *= 0.5;
+          vertex_ready = false;
+          for (auto i = 0; i < ma->GetNV(); i++)
+            if(vmap[i] == i)
+              {
+                if (ktilde[i] > adv_factor * vertex_refdt[i])
+                  if (!vertex_ready[i])
+                    {
+                      ready_vertices.Append (i);
+                      vertex_ready[i] = true;
+                    }
               }
         }
-
-      if(slave_verts[vi].Size()==0)
-        ma->GetVertexElements (vi, tent->els);
-      else
-        GetVertexElements(ma,vi,slave_verts[vi],tent->els);
-
-      // update max step ktilde for neighbors, and append them
-      // to ready_vertices (if not there) once ktilde is large enough
-      for (int nb : v2v[vi])
-	{
-          nb = vmap[nb]; // map periodic vertices
-          if (tau[nb] >= dt) continue;
-	  const double kt = GetPoleHeight(nb, tau, cmax, lh);
-	  ktilde[nb] = kt;
-	  if (kt > 0.5 * vertex_refdt[nb])
-            if (!vertex_ready[nb])
-              {
-                ready_vertices.Append (nb);
-                vertex_ready[nb] = true;
-              }
-	}
-      tents.Append (tent);
     }
+  
+  try
+    {
+      if(!slab_complete) throw std::logic_error("Could not pitch whole slab");
+    }
+  catch (const std::logic_error &error)
+    {
+      cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
+
+      constexpr double num_tol = 1e-16;
+      for( auto it : latest_tent )
+        {
+          double diff = dt - tents[it]->ttop;
+          if ( diff > num_tol )
+            {
+              cout << "tent "<< it << " diff = " << diff << endl;
+              cout << "\t"<<*(tents[it]) << endl;
+            }
+        }
+      exit(-1);
+    }
+  
 
   // set lists of internal facets of each element of each tent
   ParallelFor
