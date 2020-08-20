@@ -129,7 +129,7 @@ public:
   //Given the current advancing (time) front, calculates the
   //maximum advance on a tent centered on vi that will still
   //guarantee causality
-  double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, LocalHeap & lh) const;
+  double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, LocalHeap & lh) const;
   
   //uses the exact calculation of the gradient for pitching the tent
   void PitchTentsGradient(double dt, double cmax);

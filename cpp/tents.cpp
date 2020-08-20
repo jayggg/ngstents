@@ -404,7 +404,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
      });
 }
 
-template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, LocalHeap & lh) const{
+template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, LocalHeap & lh) const{
   HeapReset hr(lh);
 
   constexpr auto el_type = EL_TYPE(DIM);
@@ -417,7 +417,8 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
   els.SetSize(0);
   ma->GetVertexElements(vi, els);
 
-  double pole_height = std::numeric_limits<double>::max();
+  constexpr double init_pole_height = std::numeric_limits<double>::max();
+  double pole_height = init_pole_height;
   //vector containing the advancing front time for each vertex (except vi)
   Vector<double> coeff_vec(n_vertices);
   //gradient of basis functions onthe current element
@@ -441,7 +442,9 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
 
       //sets the coefficient vec
       for (auto k : IntRange(0, v_indices.Size()))
-        coeff_vec[k] = tau[v_indices[k]];
+        for (int l = 0; l < nbv.Size(); l++)
+          if (nbv[l] == v_indices[k])
+            coeff_vec(k) = tau[nbv[l]];//is this really necessary?
       coeff_vec[local_vi] = 0;
       
       /*writing the quadratic eq for tau_v
@@ -459,26 +462,14 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
       Vec<DIM> tau_i_grad_i = Trans(gradphi) * coeff_vec;
       const double beta = 2 * InnerProduct(tau_i_grad_i,gradphi.Row(local_vi));
       const double gamma = InnerProduct(tau_i_grad_i, tau_i_grad_i) - 1.0/c_max_sq;
-      const double sq_delta = sqrt(beta * beta - 4 * alpha * gamma);
-      try
-        {
-          if(beta * beta - 4 * alpha * gamma < 0) throw std::domain_error("Error solving quadratic equation!");
-        }
-      catch (const std::domain_error &error)
-        {
-          Matrix<double> jac(DIM,DIM);
-          trafo.CalcJacobian(ir[0],jac);
-          cout << error.what() << endl;
-          cout<<"transform =\n"<<jac<<endl;
-          cout<<"gradphi =\n"<<gradphi<<endl;
-          cout << "a = "<<alpha<<"\tb = "<<beta<<"\tc = "<<gamma<<endl;
-          cout << "delta = " << beta * beta - 4 * alpha * gamma << endl;
-          exit(-1);
-        }
+      const double delta = beta * beta - 4 * alpha * gamma;
 
       //since alpha will always be positive (and so will sq_delta),
       //we dont need to consider the solution (-beta-sq_delta)/(2*alpha)
-      const double sol = (-beta+sq_delta)/(2*alpha);
+      const double sol = [alpha,beta,delta,init_pole_height](){
+        if(delta > 0) return(-beta+sqrt(delta))/(2*alpha);
+        return init_pole_height;
+      }();
       pole_height = min(pole_height,sol);
     }
 
@@ -545,17 +536,33 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
       for (const auto& per_edges : periodic_edges)
         fine_edges.Clear(per_edges[1]);
     }
+
+
+
+  // build vertex2edge and vertex2vertex tables
+  TableCreator<int> create_v2e, create_v2v;
+  for ( ; !create_v2e.Done(); create_v2e++, create_v2v++)
+    {
+      for (int e : IntRange (0, ma->GetNEdges()))
+        if(fine_edges.Test(e))
+          {
+            auto vts = ma->GetEdgePNums (e);
+            int v1 = vts[0], v2 = vts[1];
+            //if v1 (or v2) is not periodic, vmap[v1] == v1
+            create_v2v.Add (vmap[v1], v2);
+            create_v2e.Add (vmap[v1], e);
+            create_v2v.Add (vmap[v2], v1);
+            create_v2e.Add (vmap[v2], e);
+          }
+    }
+
+  //at pos-i it contains the neighbours of v[i]
+  Table<int> v2v = create_v2v.MoveTable();
+  //at pos-i it contains the edges connected to v[i]
+  Table<int> v2e = create_v2e.MoveTable();
+  
   Array<double> tau(ma->GetNV());  // advancing front values at vertices
   tau = 0.0;
-
-  /*The reference dt would previously be computed
-    analysing the minimum length of the edges around
-    a given vertex. However, this does not imply
-    in causality. The inverse of the gradient of the
-    barycentric coordinates (H1 vertex functions)
-    are now used for this purpose, as one can obtain the
-    minimum distance to the opposite facet in relation
-    to the vertex patch. */
 
   // compute vertex-based max time-differences
   Array<double> vertex_refdt(ma->GetNV());
@@ -571,49 +578,13 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
       {
         ready_vertices.Append (i);
         vertex_ready[i] = true;
-        vertex_refdt[i] = GetPoleHeight(i, tau, cmax, lh);
+        vertex_refdt[i] = GetPoleHeight(i, tau, cmax, v2v[i],lh);
       }
   // max time increase allowed at vertex, depends on tau of neighbors
   Array<double> ktilde(ma->GetNV());
   //at the beginning the advancing front is at a constant t=0
   //so ktilde can be set as vertex_refdt
   ktilde = vertex_refdt;
-
-  // build vertex2edge and vertex2vertex tables
-  TableCreator<int> create_v2e, create_v2v;
-  for ( ; !create_v2e.Done(); create_v2e++, create_v2v++)
-    {
-      for (int e : IntRange (0, ma->GetNEdges()))
-        if(fine_edges.Test(e))
-          {
-            auto vts = ma->GetEdgePNums (e);
-            int v1 = vts[0], v2 = vts[1];
-            if(v1==vmap[v1]) // non-periodic
-              {
-                create_v2v.Add (v1, v2);
-                create_v2e.Add (v1, e);
-              }
-            else
-              {
-                create_v2v.Add (vmap[v1], v2);
-                create_v2e.Add (vmap[v1], e);
-              }
-            if(v2==vmap[v2])
-              {
-                create_v2v.Add (v2, v1);
-                create_v2e.Add (v2, e);
-              }
-            else
-              {
-                create_v2v.Add (vmap[v2], v1);
-                create_v2e.Add (vmap[v2], e);
-              }
-          }
-    }
-
-
-  Table<int> v2v = create_v2v.MoveTable();
-  Table<int> v2e = create_v2e.MoveTable();
 
   // added for periodic tents
   TableCreator<int> create_slave_verts(ma->GetNV());
@@ -633,9 +604,12 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   vertices_level = 0;
 
   //for an advance to be considered good, dt >= factor * refdt
-  double initial_adv_factor{0.5};
+  constexpr double initial_adv_factor{0.5};
   double adv_factor{initial_adv_factor};
   bool slab_complete{false};
+  Array<bool> complete_vertices(ma->GetNV());
+  complete_vertices = false;
+  constexpr double num_tol = 1e-16;
   while ( adv_factor > 0.1 && ! slab_complete )
     {
       
@@ -645,9 +619,9 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
       while (ready_vertices.Size())
         {
           //minimum vertex level among the ready_vertices
-          int minlevel = 1000;
+          int minlevel = std::numeric_limits<int>::max();
           //position of tent pole vertex vi in ready_vertices
-          int posmin = 0;
+          int posmin = -1;
           // Choose tent pole vertex vi and remove it from vertex_ready
           for(auto i = 0; i < ready_vertices.Size(); i++)
             if(vertices_level[ready_vertices[i]] < minlevel)
@@ -655,18 +629,20 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
                 minlevel = vertices_level[ready_vertices[i]];
                 posmin = i;
               }
+          //vertex index at which the current tent is being pitched
           const int vi = ready_vertices[posmin];
           ready_vertices.DeleteElement(posmin);
           vertex_ready[vi] = false;
 
-          // advance by ktilde:
+          //current tent
           Tent * tent = new Tent;
           tent->vertex = vi;
           tent->tbot = tau[vi];
           tent->ttop = min (dt, tau[vi]+ktilde[vi]);
+          if(dt-tent->ttop < num_tol) complete_vertices[vi] = true;
           tent->level = vertices_level[vi]; // 0;
           tau[vi] = tent->ttop;
-
+          ktilde[vi] = 0;//assuming that ktilde[vi] was the maximum advance
           //add neighboring vertices and update their level
           for (int nb : v2v[vi])
             {
@@ -715,25 +691,40 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
             {
               nb = vmap[nb]; // map periodic vertices
               if (tau[nb] >= dt) continue;
-              const double kt = GetPoleHeight(nb, tau, cmax, lh);
+              const double kt = GetPoleHeight(nb, tau, cmax, v2v[nb], lh);
               ktilde[nb] = kt;
               if (kt > adv_factor * vertex_refdt[nb])
-                if (!vertex_ready[nb])
-                  {
-                    ready_vertices.Append (nb);
-                    vertex_ready[nb] = true;
-                  }
+                {
+                  if (!vertex_ready[nb] && !complete_vertices[nb])
+                    {
+                      ready_vertices.Append (nb);
+                      vertex_ready[nb] = true;
+                    }
+                }
+              else
+                {
+                  if (!complete_vertices[nb])
+                    {
+                      vertex_ready[nb] = false;
+                      const auto pos_nb = ready_vertices.Pos(nb);
+                      if(pos_nb != ready_vertices.ILLEGAL_POSITION)
+                        {
+                          ready_vertices.RemoveElement(pos_nb);
+                        }
+                    }
+                }
             }
           tents.Append (tent);
         }
       //check if slab is complete
       slab_complete = true;
-      constexpr double num_tol = 1e-16;
-      for( auto it : latest_tent )
-        {
-          double diff = dt - tents[it]->ttop;
-          if ( diff > num_tol ) slab_complete = false;
-        }
+      for(int i = 0; i < ma->GetNV(); i++)
+        if(vmap[i] == i)
+          if(complete_vertices[i] == false)
+            {
+              slab_complete = false;
+              break;
+            }
       if(!slab_complete)
         {
           adv_factor *= 0.5;
@@ -741,6 +732,7 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
           for (auto i = 0; i < ma->GetNV(); i++)
             if(vmap[i] == i)
               {
+                // ktilde[i] = GetPoleHeight(i,tau,cmax,v2v[i],lh);
                 if (ktilde[i] > adv_factor * vertex_refdt[i])
                   if (!vertex_ready[i])
                     {
@@ -759,16 +751,18 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
     {
       cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
 
-      constexpr double num_tol = 1e-16;
-      for( auto it : latest_tent )
-        {
-          double diff = dt - tents[it]->ttop;
-          if ( diff > num_tol )
+      int it = -1;
+      for(int i = 0; i < ma->GetNV(); i++)
+        if(vmap[i] == i)
+          if(complete_vertices[i] == false)
             {
-              cout << "tent "<< it << " diff = " << diff << endl;
-              cout << "\t"<<*(tents[it]) << endl;
+              it = i;
             }
-        }
+      //get the latest tent erected at the vertex
+      it = latest_tent[it];
+      const double diff = dt - tents[it]->ttop;
+      cout << "tent "<< it << " diff = " << diff << endl;
+      cout << "\t"<<*(tents[it]) << endl;
       exit(-1);
     }
   

@@ -7,16 +7,20 @@ import numpy as np
 def test_tent_height():
     """Partial test for tents' height
 
+
     Check if the tents' height are not bigger than any of the neighbouring
     edges. Passing this test does NOT imply the fulfillment of causality
     conditions."""
 
     mesh = Mesh(unit_square.GenerateMesh(maxh=.2))
+    nref = 2
+    for i in range(nref):
+        mesh.Refine()
     dt = 0.05
     c = 16
     tol = 1e-12
     # Tent slab tests
-    tentslab = TentSlab(mesh, dt, c)
+    tentslab = TentSlab(mesh, dt, c, True, 10**7)
     ntents = tentslab.GetNTents()
     for itent in range(ntents):
         tent = tentslab.GetTent(itent)
