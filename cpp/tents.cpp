@@ -75,27 +75,31 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
   BitArray fine_edges(ma->GetNEdges());
   fine_edges.Clear();
 
-  // Compute a reference dt for each edge based on edge length and
-  // the wavespeed on each element
-  for (Ngs_Element el : ma->Elements(VOL))
-    {
-      ElementId ei = ElementId(el);
-      ELEMENT_TYPE eltype = ma->GetElType(ei);
-      IntegrationRule ir (eltype, 0);
-      ElementTransformation & trafo = ma->GetTrafo (ei, lh);
-      MappedIntegrationPoint<DIM,DIM> mip(ir[0], trafo);
-      cmax[el.Nr()] = wavespeed->Evaluate(mip);
+  {//scope for HeapReset
+    HeapReset hr(lh);
+    // Compute a reference dt for each edge based on edge length and
+    // the wavespeed on each element
+    for (Ngs_Element el : ma->Elements(VOL))
+      {
+        ElementId ei = ElementId(el);
+        ELEMENT_TYPE eltype = ma->GetElType(ei);
+        IntegrationRule ir (eltype, 0);
+        ElementTransformation & trafo = ma->GetTrafo (ei, lh);
+        MappedIntegrationPoint<DIM,DIM> mip(ir[0], trafo);
+        cmax[el.Nr()] = wavespeed->Evaluate(mip);
 
-      for (int e : el.Edges())
-	{
-          auto pnts = ma->GetEdgePNums(e);
-          auto v1 = pnts[0], v2 = pnts[1];
-	  double len = L2Norm (ma-> template GetPoint<DIM>(v1)
-                             - ma-> template GetPoint<DIM>(v2));
-	  edge_refdt[e] = min (edge_refdt[e], len/cmax[el.Nr()]);
-          fine_edges.SetBit(e);
-	}
-    }
+        for (int e : el.Edges())
+          {
+            auto pnts = ma->GetEdgePNums(e);
+            auto v1 = pnts[0], v2 = pnts[1];
+            double len = L2Norm (ma-> template GetPoint<DIM>(v1)
+                                 - ma-> template GetPoint<DIM>(v2));
+            edge_refdt[e] = min (edge_refdt[e], len/cmax[el.Nr()]);
+            fine_edges.SetBit(e);
+          }
+      }
+  }
+  
   // remove periodic edges
   for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
     {
@@ -185,9 +189,12 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
   vertices_level = 0;
   
   //for an advance to be considered good, dt >= factor * refdt
-  double initial_adv_factor{0.5};
+  constexpr double initial_adv_factor{0.5};
   double adv_factor{initial_adv_factor};
   bool slab_complete{false};
+  Array<bool> complete_vertices(ma->GetNV());
+  complete_vertices = false;
+  constexpr double num_tol = 1e-16;
   while ( adv_factor > 0.1 && ! slab_complete )
     {
       // ---------------------------------------------
@@ -195,8 +202,8 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
       // ---------------------------------------------
       while (ready_vertices.Size())
         {
-          int minlevel = 1000;
-          int posmin = 0;
+          int minlevel = std::numeric_lmits<int>::max();
+          int posmin = -1;
           // Choose tent pole vertex vi and remove it from vertex_ready
           for(size_t i = 0; i < ready_vertices.Size(); i++)
             if(vertices_level[ready_vertices[i]] < minlevel)
@@ -204,7 +211,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
                 minlevel = vertices_level[ready_vertices[i]];
                 posmin = i;
               }
-          int vi = ready_vertices[posmin];
+          const int vi = ready_vertices[posmin];
           ready_vertices.DeleteElement(posmin);
           vertex_ready[vi] = false;
 
@@ -213,9 +220,10 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
           tent->vertex = vi;
           tent->tbot = tau[vi];
           tent->ttop = min (dt, tau[vi]+ktilde[vi]);
+          if(dt-tent->ttop < num_tol) complete_vertices[vi] = true;
           tent->level = vertices_level[vi]; // 0;
           tau[vi] = tent->ttop;
-
+          ktilde[vi] = 0;//assumind that ktilde[vi] was the maximum advance
           // update level of neighbor vertices
           for (int nb : v2v[vi])
             {
@@ -281,12 +289,14 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
         }
          //check if slab is complete
       slab_complete = true;
-      constexpr double num_tol = 1e-16;
-      for( auto it : latest_tent )
-        {
-          double diff = dt - tents[it]->ttop;
-          if ( diff > num_tol ) slab_complete = false;
-        }
+      for(int i = 0; i < ma->GetNV(); i++)
+        if(vmap[i] == i)
+          if(complete_vertices[i] == false)
+            {
+              slab_complete = false;
+              break;
+            }
+      
       if(!slab_complete)
         {
           adv_factor *= 0.5;
@@ -309,19 +319,20 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
       if(!slab_complete) throw std::logic_error("Could not pitch whole slab");
     }
   catch (const std::logic_error &error)
-    {
-      cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
+    cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
 
-      constexpr double num_tol = 1e-16;
-      for( auto it : latest_tent )
-        {
-          double diff = dt - tents[it]->ttop;
-          if ( diff > num_tol )
+      int it = -1;
+      for(int i = 0; i < ma->GetNV(); i++)
+        if(vmap[i] == i)
+          if(complete_vertices[i] == false)
             {
-              cout << "tent "<< it << " diff = " << diff << endl;
-              cout << "\t"<<*(tents[it]) << endl;
+              it = i;
             }
-        }
+      //get the latest tent erected at the vertex
+      it = latest_tent[it];
+      const double diff = dt - tents[it]->ttop;
+      cout << "tent "<< it << " diff = " << diff << endl;
+      cout << "\t"<<*(tents[it]) << endl;
       exit(-1);
     }
 
