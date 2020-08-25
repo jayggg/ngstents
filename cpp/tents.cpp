@@ -202,7 +202,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
       // ---------------------------------------------
       while (ready_vertices.Size())
         {
-          int minlevel = std::numeric_lmits<int>::max();
+          int minlevel = std::numeric_limits<int>::max();
           int posmin = -1;
           // Choose tent pole vertex vi and remove it from vertex_ready
           for(size_t i = 0; i < ready_vertices.Size(); i++)
@@ -319,7 +319,8 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
       if(!slab_complete) throw std::logic_error("Could not pitch whole slab");
     }
   catch (const std::logic_error &error)
-    cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
+    {
+      cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
 
       int it = -1;
       for(int i = 0; i < ma->GetNV(); i++)
