@@ -622,7 +622,7 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   Array<bool> complete_vertices(ma->GetNV());
   complete_vertices = false;
   constexpr double num_tol = 1e-16;
-  while ( adv_factor > 0.1 && ! slab_complete )
+  while ( !slab_complete )
     {
       
       // ---------------------------------------------
@@ -739,19 +739,27 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
             }
       if(!slab_complete)
         {
-          adv_factor *= 0.5;
+          //how many times the adv_factor will be relaxed looking for new vertices
+          constexpr int n_attempts = 5;
           vertex_ready = false;
-          for (auto i = 0; i < ma->GetNV(); i++)
-            if(vmap[i] == i)
-              {
-                // ktilde[i] = GetPoleHeight(i,tau,cmax,v2v[i],lh);
-                if (ktilde[i] > adv_factor * vertex_refdt[i])
-                  if (!vertex_ready[i])
-                    {
-                      ready_vertices.Append (i);
-                      vertex_ready[i] = true;
-                    }
-              }
+          for(auto i = 0; i < n_attempts; i++)
+            {
+              adv_factor *= 0.75;
+              for (auto i = 0; i < ma->GetNV(); i++)
+                if(vmap[i] == i)
+                  {
+                    // ktilde[i] = GetPoleHeight(i,tau,cmax,v2v[i],lh);
+                    if (ktilde[i] > adv_factor * vertex_refdt[i])
+                      if (!vertex_ready[i])
+                        {
+                          ready_vertices.Append (i);
+                          vertex_ready[i] = true;
+                        }
+                  }
+              if(ready_vertices.Size()) break;
+            }
+          
+          adv_factor = initial_adv_factor;
         }
     }
   
