@@ -484,10 +484,13 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
       }();
       pole_height = min(pole_height,sol);
     }
+  constexpr double num_tol = std::numeric_limits<double>::epsilon();
 
+  //a solution for the quadratic equation could not be found
+  if(fabs(pole_height - init_pole_height) < num_tol) return 0;
+  
   //the return value is actually the ADVANCE in the current vi
   pole_height -= tau[vi];
-  constexpr double num_tol = 1e-14;
   if( fabs(pole_height) < num_tol ) return 0.0;
   return pole_height - num_tol;//just to enforce causality
  }
