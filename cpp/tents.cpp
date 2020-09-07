@@ -624,7 +624,8 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   bool slab_complete{false};
   Array<bool> complete_vertices(ma->GetNV());
   complete_vertices = false;
-  constexpr double num_tol = 1e-16;
+  //numeric tolerance
+  const double num_tol = std::numeric_limits<double>::epsilon() * dt;
   while ( !slab_complete )
     {
       
@@ -653,8 +654,24 @@ TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
           Tent * tent = new Tent;
           tent->vertex = vi;
           tent->tbot = tau[vi];
-          tent->ttop = min (dt, tau[vi]+ktilde[vi]);
-          if(dt-tent->ttop < num_tol) complete_vertices[vi] = true;
+
+          const auto new_ttop = tau[vi] + ktilde[vi];
+          if(dt - new_ttop > num_tol)
+            {//not close to the end of the time slab
+              tent->ttop = new_ttop;
+            }
+          else if(new_ttop >= dt)
+            {//vertex is complete
+              tent->ttop = dt;
+              complete_vertices[vi] = true;
+            }
+          else
+            {//vertex is really close to the end of time slab.
+             //in this scenario, we might want to pitch a lower
+             //tent to avoid numerical issues with degenerate tents
+              tent->ttop = ktilde[vi] * 0.75 + tau[vi];
+            }
+          
           tent->level = vertices_level[vi]; // 0;
           tau[vi] = tent->ttop;
           ktilde[vi] = 0;//assuming that ktilde[vi] was the maximum advance
