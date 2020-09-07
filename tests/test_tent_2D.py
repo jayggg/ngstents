@@ -1,7 +1,6 @@
 from netgen.geom2d import unit_square
 from ngsolve import Mesh
 from ngstents import TentSlab
-from pytest import approx
 
 
 def test_tent_properties():
@@ -14,7 +13,6 @@ def test_tent_properties():
     # Tent slab tests
     tentslab = TentSlab(mesh, dt, c, True, 100000000)
     ntents = tentslab.GetNTents()
-    slabheight = tentslab.GetSlabHeight()
     maxslope = tentslab.MaxSlope()
     try:
         assert maxslope < 1.0/c
@@ -23,7 +21,6 @@ def test_tent_properties():
         msg += "   1.0/c = " + str(1.0/c)
         e.args += ("Failed at MaxSlopeTest!", msg)
         raise
-    assert slabheight == 0.05
 
     tentslab.DrawPitchedTentsVTK()  # should create output.vtk
 
@@ -31,7 +28,7 @@ def test_tent_properties():
     results = tentslab.DrawPitchedTentsGL()
     tentdata, tenttimes, ntents, nlevels = results
     print(ntents)
-    
+
 
 if __name__ == "__main__":
     test_tent_properties()
