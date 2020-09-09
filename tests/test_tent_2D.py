@@ -15,7 +15,7 @@ def test_tent_properties():
     ntents = tentslab.GetNTents()
     maxslope = tentslab.MaxSlope()
     try:
-        assert maxslope < 1.0/c
+        assert maxslope <= 1.0/c
     except AssertionError as e:
         msg = "max slope = " + str(maxslope)
         msg += "   1.0/c = " + str(1.0/c)
