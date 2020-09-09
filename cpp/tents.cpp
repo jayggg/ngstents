@@ -435,6 +435,10 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
   Vector<double> coeff_vec(n_vertices);
   //gradient of basis functions onthe current element
   Matrix<double> gradphi(n_vertices,DIM);
+  //numerical tolerance (NOT YET SCALED)
+  double num_tol = std::numeric_limits<double>::epsilon();
+
+  double det_jac_inv = -1; 
   for (int el : els)
     {
       ElementId ei(VOL,el);
@@ -450,13 +454,12 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
       IntegrationRule ir(el_type,1);
       //integration point on deformed element
       MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
+      det_jac_inv = max (det_jac_inv, 1/mip.GetJacobiDet());
       my_fel.CalcMappedDShape(mip,gradphi);
 
       //sets the coefficient vec
       for (auto k : IntRange(0, v_indices.Size()))
-        for (int l = 0; l < nbv.Size(); l++)
-          if (nbv[l] == v_indices[k])
-            coeff_vec(k) = tau[nbv[l]];//is this really necessary?
+        coeff_vec(k) = tau[v_indices[k]];
       coeff_vec[local_vi] = 0;
       
       /*writing the quadratic eq for tau_v
@@ -468,30 +471,40 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
 ``        \cdot \nabla \phi_j\right)-\frac{1}{c}^2)
          ^^^^^^^^^^^^^^^^^^gamma^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^*/
 
-      
       // square of the norm of gradphi_vi
       const double alpha = InnerProduct(gradphi.Row(local_vi),gradphi.Row(local_vi));
+      //since alpha>0 we can scale the equation by alpha
       Vec<DIM> tau_i_grad_i = Trans(gradphi) * coeff_vec;
-      const double beta = 2 * InnerProduct(tau_i_grad_i,gradphi.Row(local_vi));
-      const double gamma = InnerProduct(tau_i_grad_i, tau_i_grad_i) - 1.0/c_max_sq;
-      const double delta = beta * beta - 4 * alpha * gamma;
+      const double beta = 2 * InnerProduct(tau_i_grad_i,gradphi.Row(local_vi))/alpha;
+      const double gamma = (InnerProduct(tau_i_grad_i, tau_i_grad_i) - 1.0/c_max_sq)/alpha;
+      const double delta = beta * beta - 4 * gamma;
 
-      //since alpha will always be positive (and so will sq_delta),
+      //since sq_delta will always be positive
       //we dont need to consider the solution (-beta-sq_delta)/(2*alpha)
-      const double sol = [alpha,beta,delta,init_pole_height](){
-        if(delta > 0) return(-beta+sqrt(delta))/(2*alpha);
-        return init_pole_height;
+      const double sol = [alpha,beta, gamma, delta,init_pole_height,num_tol](){
+        if(delta > num_tol * alpha)//positive delta
+          {
+            if(beta > num_tol * alpha)
+              return - (2.0 * gamma) / (beta + sqrt(delta));
+            else
+              return (sqrt(delta)-beta)/2.0;
+          }
+        else if (delta > -num_tol*alpha)//zero delta
+          {
+            return -beta/2.0;
+          }
+        return init_pole_height;//negative delta
       }();
       pole_height = min(pole_height,sol);
     }
-  constexpr double num_tol = std::numeric_limits<double>::epsilon();
 
-  //a solution for the quadratic equation could not be found
-  if(fabs(pole_height - init_pole_height) < num_tol) return 0;
-  
+  //scaling of numerical tolerance
+  num_tol *= det_jac_inv;
+  //check if a real solution to the quadratic equation was found
+  if(fabs(pole_height - init_pole_height) < num_tol) return 0.0;
   //the return value is actually the ADVANCE in the current vi
   pole_height -= tau[vi];
-  if( fabs(pole_height) < num_tol ) return 0.0;
+  if( pole_height < num_tol ) return 0.0;
   return pole_height - num_tol;//just to enforce causality
  }
 
