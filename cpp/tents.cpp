@@ -416,7 +416,100 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
      });
 }
 
-template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, LocalHeap & lh) const{
+template <int DIM> void
+TentPitchedSlab<DIM>::PitchTentsGradient(double dt, double wavespeed)
+{
+  auto cf = make_shared<ConstantCoefficientFunction>(wavespeed);
+  PitchTentsGradient(dt, cf);
+}
+
+
+template<int DIM>
+TentSlabPitcher<DIM>::TentSlabPitcher(shared_ptr<MeshAccess> ama, Array<int> &avmap) : ma(ama), cmax(ama->GetNE()), fine_edges(ma->GetNE()), vmap(avmap), vertex_refdt(ma->GetNV()) {
+}
+
+template<int DIM>
+void TentSlabPitcher<DIM>::MapPeriodicVertices()
+{
+  //periodic vertices were already mapped
+  if(vmap.Size()) return;
+  vmap.SetSize(ma->GetNV());
+  for (int i : Range(ma->GetNV()))
+    vmap[i] = i;
+  for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
+    {
+      const auto & periodic_nodes = ma->GetPeriodicNodes(NT_VERTEX, idnr);
+      for (const auto& per_verts : periodic_nodes)
+        vmap[per_verts[1]] = vmap[per_verts[0]];
+    }
+}
+
+template <int DIM> void
+VolumeGradientPitcher<DIM>::InitializeMeshData(LocalHeap &lh, shared_ptr<CoefficientFunction>wavespeed)
+{
+  
+  this->fine_edges.Clear();  
+  {
+    HeapReset hr(lh);
+    //identify fine edges and evaluate maximum wavespeed for each element
+    for (Ngs_Element el : this->ma->Elements(VOL))
+      {
+        
+        //set all edges belonging to the mesh
+        for (int e : el.Edges())	
+          this->fine_edges.SetBit(e);
+        
+        auto ei = ElementId(el);
+        auto eltype = this->ma->GetElType(ei);
+        ElementTransformation & trafo = this->ma->GetTrafo (ei, lh);
+        IntegrationRule ir(eltype, 0);
+        MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
+        this->cmax[el.Nr()] = wavespeed->Evaluate(mip);
+      }
+  }
+  
+}
+
+
+
+template <int DIM>
+void TentSlabPitcher<DIM>::RemovePeriodicEdges()
+{
+  for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
+    {
+      const auto & periodic_edges = this->ma->GetPeriodicNodes(NT_EDGE, idnr);
+      for (const auto& per_edges : periodic_edges)
+        fine_edges.Clear(per_edges[1]);
+    }
+}
+
+template< int DIM>
+void TentSlabPitcher<DIM>::ComputeNeighbouringData()
+{
+  TableCreator<int> create_v2e, create_v2v;
+  for ( ; !create_v2e.Done(); create_v2e++, create_v2v++)
+    {
+      for (int e : IntRange (0, ma->GetNEdges()))
+        if(fine_edges.Test(e))
+          {
+            auto vts = ma->GetEdgePNums (e);
+            int v1 = vts[0], v2 = vts[1];
+            //if v1 (or v2) is not periodic, vmap[v1] == v1
+            create_v2v.Add (vmap[v1], v2);
+            create_v2e.Add (vmap[v1], e);
+            create_v2v.Add (vmap[v2], v1);
+            create_v2e.Add (vmap[v2], e);
+          }
+    }
+
+  //at pos-i it contains the neighbours of v[i]
+  v2v = create_v2v.MoveTable();
+  //at pos-i it contains the edges connected to v[i]
+  v2e = create_v2e.MoveTable();
+}
+
+
+template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi, const map<int,double> & tau, const Array<double> & cmax, FlatArray<int> nbv, LocalHeap & lh) const{
   HeapReset hr(lh);
 
   constexpr auto el_type = EL_TYPE(DIM);
@@ -427,7 +520,7 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
   // array of all elements containing vertex vi
   ArrayMem<int,30>  els;
   els.SetSize(0);
-  ma->GetVertexElements(vi, els);
+  this->ma->GetVertexElements(vi, els);
 
   constexpr double init_pole_height = std::numeric_limits<double>::max();
   double pole_height = init_pole_height;
@@ -445,9 +538,9 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
       //c_max^2
       const double c_max_sq = cmax[ei.Nr()] * cmax[ei.Nr()]; 
       //mapping of the current el
-      ElementTransformation &trafo = ma->GetTrafo(ei, lh);
+      ElementTransformation &trafo = this->ma->GetTrafo(ei, lh);
       //vertices of current el
-      auto v_indices = ma->GetElVertices(ei);
+      auto v_indices = this->ma->GetElVertices(ei);
       //vi position in current el
       const auto local_vi = v_indices.Pos(vi);
       //integration rule for reference el
@@ -459,7 +552,7 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
 
       //sets the coefficient vec
       for (auto k : IntRange(0, v_indices.Size()))
-        coeff_vec(k) = tau[v_indices[k]];
+        coeff_vec(k) = tau.at(v_indices[k]);
       coeff_vec[local_vi] = 0;
       
       /*writing the quadratic eq for tau_v
@@ -503,400 +596,353 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
   //check if a real solution to the quadratic equation was found
   if(fabs(pole_height - init_pole_height) < num_tol) return 0.0;
   //the return value is actually the ADVANCE in the current vi
-  pole_height -= tau[vi];
+  pole_height -= tau.at(vi);
   if( pole_height < num_tol ) return 0.0;
   return pole_height - num_tol;//just to enforce causality
  }
 
-template <int DIM> void
-TentPitchedSlab<DIM>::PitchTentsGradient(double dt, double wavespeed)
+template<int DIM>
+void VolumeGradientPitcher<DIM>::ComputeVerticesReferenceHeight(Array<bool> &vertex_ready, Array<int> &ready_vertices, LocalHeap &lh)
 {
-  auto cf = make_shared<ConstantCoefficientFunction>(wavespeed);
-  PitchTentsGradient(dt, cf);
+  this->vertex_refdt = std::numeric_limits<double>::max();
+  HeapReset hr(lh);
+  for (auto i = 0; i < this->ma->GetNV(); i++)
+    if(this->vmap[i]==i) // non-periodic
+      {
+        map<int,double> tau;
+        for(auto neigh : this->v2v[i]) tau[neigh] = 0;
+        tau[i] = 0;
+        ready_vertices.Append (i);
+        vertex_ready[i] = true;
+        this->vertex_refdt[i] = this->GetPoleHeight(i, tau, this->cmax, this->v2v[i],lh);
+      }
+  
 }
-
-template <int DIM> void
-TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
+template <int DIM>
+void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
 				  shared_ptr<CoefficientFunction> wavespeed)
 {
   this->dt = dt; // set it so that GetSlabHeight can return it
 
-  // maps regular vertices to themselves, periodic slave vertices to masters
-  auto & vmap = Tent::vmap;
-  vmap.SetSize(ma->GetNV());
-
-  for (int i : Range(ma->GetNV()))
-    vmap[i] = i;
-  for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
-    {
-      const auto & periodic_nodes = ma->GetPeriodicNodes(NT_VERTEX, idnr);
-      for (const auto& per_verts : periodic_nodes)
-        vmap[per_verts[1]] = vmap[per_verts[0]];
-    }
-
-  // element-wise maximal wave-speeds
-  Array<double> cmax (ma->GetNE());
-  // check if edge is contained in mesh
-  BitArray fine_edges(ma->GetNEdges());
-  fine_edges.Clear();  
-  {
-    HeapReset hr(lh);
-    //identify fine edges and evaluate maximum wavespeed for each element
-    for (Ngs_Element el : ma->Elements(VOL))
+  auto &vmap = Tent::vmap;
+  unique_ptr<TentSlabPitcher<DIM>>slabpitcher = [this](Array<int> &vvmap){
+    TentSlabPitcher<DIM> *dummy = nullptr;
+    switch (this->method)
       {
-        
-        //set all edges belonging to the mesh
-        for (int e : el.Edges())	
-          fine_edges.SetBit(e);
-        
-        auto ei = ElementId(el);
-        auto eltype = ma->GetElType(ei);
-        ElementTransformation & trafo = ma->GetTrafo (ei, lh);
-        IntegrationRule ir(eltype, 0);
-        MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
-        cmax[el.Nr()] = wavespeed->Evaluate(mip);
+        case EVolGrad :
+          dummy = new VolumeGradientPitcher<DIM>(this->ma,vvmap);
+        default:
+          throw std::logic_error("Trying to pitch tent without setting a pitching method");
       }
-  }
-  // remove periodic edges
-  for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
-    {
-      const auto & periodic_edges = ma->GetPeriodicNodes(NT_EDGE, idnr);
-      for (const auto& per_edges : periodic_edges)
-        fine_edges.Clear(per_edges[1]);
-    }
+    return unique_ptr<TentSlabPitcher<DIM>>(dummy);
+  }(vmap);
 
-
-
-  // build vertex2edge and vertex2vertex tables
-  TableCreator<int> create_v2e, create_v2v;
-  for ( ; !create_v2e.Done(); create_v2e++, create_v2v++)
-    {
-      for (int e : IntRange (0, ma->GetNEdges()))
-        if(fine_edges.Test(e))
-          {
-            auto vts = ma->GetEdgePNums (e);
-            int v1 = vts[0], v2 = vts[1];
-            //if v1 (or v2) is not periodic, vmap[v1] == v1
-            create_v2v.Add (vmap[v1], v2);
-            create_v2e.Add (vmap[v1], e);
-            create_v2v.Add (vmap[v2], v1);
-            create_v2e.Add (vmap[v2], e);
-          }
-    }
-
-  //at pos-i it contains the neighbours of v[i]
-  Table<int> v2v = create_v2v.MoveTable();
-  //at pos-i it contains the edges connected to v[i]
-  Table<int> v2e = create_v2e.MoveTable();
+  //map periodic vertices
+  slabpitcher->MapPeriodicVertices();
+  //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
+  slabpitcher->InitializeMeshData(lh,wavespeed);
+  //remove periodic edges
+  slabpitcher->RemovePeriodicEdges();
   
   Array<double> tau(ma->GetNV());  // advancing front values at vertices
   tau = 0.0;
-
-  // compute vertex-based max time-differences
-  Array<double> vertex_refdt(ma->GetNV());
-  vertex_refdt = std::numeric_limits<double>::max();
 
   // array of vertices ready for pitching a tent
   Array<int> ready_vertices;
   // array for checking if a given vertex is ready
   Array<bool> vertex_ready(ma->GetNV());
   vertex_ready = false;
-  for (auto i = 0; i < ma->GetNV(); i++)
-    if(vmap[i]==i) // non-periodic
-      {
-        ready_vertices.Append (i);
-        vertex_ready[i] = true;
-        vertex_refdt[i] = GetPoleHeight(i, tau, cmax, v2v[i],lh);
-      }
-  // max time increase allowed at vertex, depends on tau of neighbors
-  Array<double> ktilde(ma->GetNV());
-  //at the beginning the advancing front is at a constant t=0
-  //so ktilde can be set as vertex_refdt
-  ktilde = vertex_refdt;
 
-  // added for periodic tents
-  TableCreator<int> create_slave_verts(ma->GetNV());
-  for ( ; !create_slave_verts.Done(); create_slave_verts++)
-    {
-      for(auto i : Range(vmap))
-        if(vmap[i]!=i)
-          create_slave_verts.Add(vmap[i],i);
-    }
-  Table<int> slave_verts = create_slave_verts.MoveTable();
+  slabpitcher->ComputeVerticesReferenceHeight(vertex_ready, ready_vertices, lh);
+ 
+  // // max time increase allowed at vertex, depends on tau of neighbors
+  // //at the beginning the advancing front is at a constant t=0
+  // //so ktilde can be set as vertex_refdt
+  // Array<double> ktilde = slabpitcher->GetVerticesReferenceHeight();
+  
+  // // added for periodic tents
+  // TableCreator<int> create_slave_verts(ma->GetNV());
+  // for ( ; !create_slave_verts.Done(); create_slave_verts++)
+  //   {
+  //     for(auto i : Range(vmap))
+  //       if(vmap[i]!=i)
+  //         create_slave_verts.Add(vmap[i],i);
+  //   }
+  // Table<int> slave_verts = create_slave_verts.MoveTable();
 
-  //array containing the latest tent in which the vertex was included
-  Array<int> latest_tent(ma->GetNV());
-  //array containing the current level of the tent to be pitched at vertex vi
-  Array<int> vertices_level(ma->GetNV());
-  latest_tent = -1;
-  vertices_level = 0;
+  // //array containing the latest tent in which the vertex was included
+  // Array<int> latest_tent(ma->GetNV());
+  // //array containing the current level of the tent to be pitched at vertex vi
+  // Array<int> vertices_level(ma->GetNV());
+  // latest_tent = -1;
+  // vertices_level = 0;
 
-  //for an advance to be considered good, dt >= factor * refdt
-  constexpr double initial_adv_factor{0.5};
-  double adv_factor{initial_adv_factor};
-  bool slab_complete{false};
-  Array<bool> complete_vertices(ma->GetNV());
-  complete_vertices = false;
-  //numeric tolerance
-  const double num_tol = std::numeric_limits<double>::epsilon() * dt;
-  while ( !slab_complete )
-    {
+  // //for an advance to be considered good, dt >= factor * refdt
+  // constexpr double initial_adv_factor{0.5};
+  // double adv_factor{initial_adv_factor};
+  // bool slab_complete{false};
+  // Array<bool> complete_vertices(ma->GetNV());
+  // complete_vertices = false;
+  // //numeric tolerance
+  // const double num_tol = std::numeric_limits<double>::epsilon() * dt;
+  // while ( !slab_complete )
+  //   {
       
-      // ---------------------------------------------
-      // Main loop: constructs one tent each iteration
-      // ---------------------------------------------
-      while (ready_vertices.Size())
-        {
-          //minimum vertex level among the ready_vertices
-          int minlevel = std::numeric_limits<int>::max();
-          //position of tent pole vertex vi in ready_vertices
-          int posmin = -1;
-          // Choose tent pole vertex vi and remove it from vertex_ready
-          for(auto i = 0; i < ready_vertices.Size(); i++)
-            if(vertices_level[ready_vertices[i]] < minlevel)
-              {
-                minlevel = vertices_level[ready_vertices[i]];
-                posmin = i;
-              }
-          //vertex index at which the current tent is being pitched
-          const int vi = ready_vertices[posmin];
-          ready_vertices.DeleteElement(posmin);
-          vertex_ready[vi] = false;
+  //     // ---------------------------------------------
+  //     // Main loop: constructs one tent each iteration
+  //     // ---------------------------------------------
+  //     while (ready_vertices.Size())
+  //       {
+  //         //minimum vertex level among the ready_vertices
+  //         int minlevel = std::numeric_limits<int>::max();
+  //         //position of tent pole vertex vi in ready_vertices
+  //         int posmin = -1;
+  //         // Choose tent pole vertex vi and remove it from vertex_ready
+  //         for(auto i = 0; i < ready_vertices.Size(); i++)
+  //           if(vertices_level[ready_vertices[i]] < minlevel)
+  //             {
+  //               minlevel = vertices_level[ready_vertices[i]];
+  //               posmin = i;
+  //             }
+  //         //vertex index at which the current tent is being pitched
+  //         const int vi = ready_vertices[posmin];
+  //         ready_vertices.DeleteElement(posmin);
+  //         vertex_ready[vi] = false;
 
-          //current tent
-          Tent * tent = new Tent;
-          tent->vertex = vi;
-          tent->tbot = tau[vi];
+  //         //current tent
+  //         Tent * tent = new Tent;
+  //         tent->vertex = vi;
+  //         tent->tbot = tau[vi];
 
-          const auto new_ttop = tau[vi] + ktilde[vi];
-          if(dt - new_ttop > num_tol)
-            {//not close to the end of the time slab
-              tent->ttop = new_ttop;
-            }
-          else if(new_ttop >= dt)
-            {//vertex is complete
-              tent->ttop = dt;
-              complete_vertices[vi] = true;
-            }
-          else
-            {//vertex is really close to the end of time slab.
-             //in this scenario, we might want to pitch a lower
-             //tent to avoid numerical issues with degenerate tents
-              tent->ttop = ktilde[vi] * 0.75 + tau[vi];
-            }
+  //         const auto new_ttop = tau[vi] + ktilde[vi];
+  //         if(dt - new_ttop > num_tol)
+  //           {//not close to the end of the time slab
+  //             tent->ttop = new_ttop;
+  //           }
+  //         else if(new_ttop >= dt)
+  //           {//vertex is complete
+  //             tent->ttop = dt;
+  //             complete_vertices[vi] = true;
+  //           }
+  //         else
+  //           {//vertex is really close to the end of time slab.
+  //            //in this scenario, we might want to pitch a lower
+  //            //tent to avoid numerical issues with degenerate tents
+  //             tent->ttop = ktilde[vi] * 0.75 + tau[vi];
+  //           }
           
-          tent->level = vertices_level[vi]; // 0;
-          tau[vi] = tent->ttop;
-          ktilde[vi] = 0;//assuming that ktilde[vi] was the maximum advance
-          //add neighboring vertices and update their level
-          for (int nb : v2v[vi])
-            {
-              nb = vmap[nb]; // only update master if periodic
-              tent->nbv.Append (nb);
-              tent->nbtime.Append (tau[nb]);
-              //update level of vertices if needed
-              if(vertices_level[nb] < tent->level + 1)
-                vertices_level[nb] = tent->level + 1;
-              // tent number is just array index in tents
-              if (latest_tent[nb] != -1)
-                tents[latest_tent[nb]]->dependent_tents.Append (tents.Size());
-            }
-          latest_tent[vi] = tents.Size();
-          vertices_level[vi]++;
+  //         tent->level = vertices_level[vi]; // 0;
+  //         tau[vi] = tent->ttop;
+  //         ktilde[vi] = 0;//assuming that ktilde[vi] was the maximum advance
+  //         //add neighboring vertices and update their level
+  //         for (int nb : v2v[vi])
+  //           {
+  //             nb = vmap[nb]; // only update master if periodic
+  //             tent->nbv.Append (nb);
+  //             tent->nbtime.Append (tau[nb]);
+  //             //update level of vertices if needed
+  //             if(vertices_level[nb] < tent->level + 1)
+  //               vertices_level[nb] = tent->level + 1;
+  //             // tent number is just array index in tents
+  //             if (latest_tent[nb] != -1)
+  //               tents[latest_tent[nb]]->dependent_tents.Append (tents.Size());
+  //           }
+  //         latest_tent[vi] = tents.Size();
+  //         vertices_level[vi]++;
 
-          // Set tent internal facets
-          if(DIM==1)
-            // vertex itself represents the only internal edge/facet
-            tent->internal_facets.Append (vi);
-          else if (DIM == 2)
-            for (int e : v2e[vi]) tent->internal_facets.Append (e);
-          else
-            {
-              // DIM == 3 => internal facets are faces
-              //points contained in a given facet
-              ArrayMem<int,4> fpnts;
-              for (auto elnr : ma->GetVertexElements(vi))
-                for (auto f : ma->GetElement(ElementId(VOL,elnr)).Faces())
-                  {
-                    //get facet vertices
-                    ma->GetFacetPNums(f, fpnts);
-                    if (fpnts.Contains(vi) && !tent->internal_facets.Contains(f))
-                      tent->internal_facets.Append(f);
-                  }
-            }
+  //         // Set tent internal facets
+  //         if(DIM==1)
+  //           // vertex itself represents the only internal edge/facet
+  //           tent->internal_facets.Append (vi);
+  //         else if (DIM == 2)
+  //           for (int e : v2e[vi]) tent->internal_facets.Append (e);
+  //         else
+  //           {
+  //             // DIM == 3 => internal facets are faces
+  //             //points contained in a given facet
+  //             ArrayMem<int,4> fpnts;
+  //             for (auto elnr : ma->GetVertexElements(vi))
+  //               for (auto f : ma->GetElement(ElementId(VOL,elnr)).Faces())
+  //                 {
+  //                   //get facet vertices
+  //                   ma->GetFacetPNums(f, fpnts);
+  //                   if (fpnts.Contains(vi) && !tent->internal_facets.Contains(f))
+  //                     tent->internal_facets.Append(f);
+  //                 }
+  //           }
 
-          if(slave_verts[vi].Size()==0)
-            ma->GetVertexElements (vi, tent->els);
-          else
-            GetVertexElements(ma,vi,slave_verts[vi],tent->els);
+  //         if(slave_verts[vi].Size()==0)
+  //           ma->GetVertexElements (vi, tent->els);
+  //         else
+  //           GetVertexElements(ma,vi,slave_verts[vi],tent->els);
 
-          // update max step ktilde for neighbors, and append them
-          // to ready_vertices (if not there) once ktilde is large enough
-          for (int nb : v2v[vi])
-            {
-              nb = vmap[nb]; // map periodic vertices
-              if (tau[nb] >= dt) continue;
-              const double kt = GetPoleHeight(nb, tau, cmax, v2v[nb], lh);
-              ktilde[nb] = kt;
-              if (kt > adv_factor * vertex_refdt[nb])
-                {
-                  if (!vertex_ready[nb] && !complete_vertices[nb])
-                    {
-                      ready_vertices.Append (nb);
-                      vertex_ready[nb] = true;
-                    }
-                }
-              else
-                {
-                  if (!complete_vertices[nb])
-                    {
-                      vertex_ready[nb] = false;
-                      const auto pos_nb = ready_vertices.Pos(nb);
-                      if(pos_nb != ready_vertices.ILLEGAL_POSITION)
-                        {
-                          ready_vertices.RemoveElement(pos_nb);
-                        }
-                    }
-                }
-            }
-          tents.Append (tent);
-        }
-      //check if slab is complete
-      slab_complete = true;
-      for(int i = 0; i < ma->GetNV(); i++)
-        if(vmap[i] == i)
-          if(complete_vertices[i] == false)
-            {
-              slab_complete = false;
-              break;
-            }
-      if(!slab_complete)
-        {
-          //how many times the adv_factor will be relaxed looking for new vertices
-          constexpr int n_attempts = 5;
-          vertex_ready = false;
-          for(auto i = 0; i < n_attempts; i++)
-            {
-              adv_factor *= 0.75;
-              for (auto i = 0; i < ma->GetNV(); i++)
-                if(vmap[i] == i)
-                  {
-                    // ktilde[i] = GetPoleHeight(i,tau,cmax,v2v[i],lh);
-                    if (ktilde[i] > adv_factor * vertex_refdt[i])
-                      if (!vertex_ready[i])
-                        {
-                          ready_vertices.Append (i);
-                          vertex_ready[i] = true;
-                        }
-                  }
-              if(ready_vertices.Size()) break;
-            }
+  //         // update max step ktilde for neighbors, and append them
+  //         // to ready_vertices (if not there) once ktilde is large enough
+  //         for (int nb : v2v[vi])
+  //           {
+  //             nb = vmap[nb]; // map periodic vertices
+  //             if (tau[nb] >= dt) continue;
+  //             const double kt = GetPoleHeight(nb, tau, cmax, v2v[nb], lh);
+  //             ktilde[nb] = kt;
+  //             if (kt > adv_factor * vertex_refdt[nb])
+  //               {
+  //                 if (!vertex_ready[nb] && !complete_vertices[nb])
+  //                   {
+  //                     ready_vertices.Append (nb);
+  //                     vertex_ready[nb] = true;
+  //                   }
+  //               }
+  //             else
+  //               {
+  //                 if (!complete_vertices[nb])
+  //                   {
+  //                     vertex_ready[nb] = false;
+  //                     const auto pos_nb = ready_vertices.Pos(nb);
+  //                     if(pos_nb != ready_vertices.ILLEGAL_POSITION)
+  //                       {
+  //                         ready_vertices.RemoveElement(pos_nb);
+  //                       }
+  //                   }
+  //               }
+  //           }
+  //         tents.Append (tent);
+  //       }
+  //     //check if slab is complete
+  //     slab_complete = true;
+  //     for(int i = 0; i < ma->GetNV(); i++)
+  //       if(vmap[i] == i)
+  //         if(complete_vertices[i] == false)
+  //           {
+  //             slab_complete = false;
+  //             break;
+  //           }
+  //     if(!slab_complete)
+  //       {
+  //         //how many times the adv_factor will be relaxed looking for new vertices
+  //         constexpr int n_attempts = 5;
+  //         vertex_ready = false;
+  //         for(auto i = 0; i < n_attempts; i++)
+  //           {
+  //             adv_factor *= 0.75;
+  //             for (auto i = 0; i < ma->GetNV(); i++)
+  //               if(vmap[i] == i)
+  //                 {
+  //                   // ktilde[i] = GetPoleHeight(i,tau,cmax,v2v[i],lh);
+  //                   if (ktilde[i] > adv_factor * vertex_refdt[i])
+  //                     if (!vertex_ready[i])
+  //                       {
+  //                         ready_vertices.Append (i);
+  //                         vertex_ready[i] = true;
+  //                       }
+  //                 }
+  //             if(ready_vertices.Size()) break;
+  //           }
           
-          adv_factor = initial_adv_factor;
-        }
-    }
+  //         adv_factor = initial_adv_factor;
+  //       }
+  //   }
   
-  try
-    {
-      if(!slab_complete) throw std::logic_error("Could not pitch whole slab");
-    }
-  catch (const std::logic_error &error)
-    {
-      cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
+  // try
+  //   {
+  //     if(!slab_complete) throw std::logic_error("Could not pitch whole slab");
+  //   }
+  // catch (const std::logic_error &error)
+  //   {
+  //     cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
 
-      int it = -1;
-      for(int i = 0; i < ma->GetNV(); i++)
-        if(vmap[i] == i)
-          if(complete_vertices[i] == false)
-            {
-              it = i;
-            }
-      //get the latest tent erected at the vertex
-      it = latest_tent[it];
-      const double diff = dt - tents[it]->ttop;
-      cout << "tent "<< it << " diff = " << diff << endl;
-      cout << "\t"<<*(tents[it]) << endl;
-      exit(-1);
-    }
+  //     int it = -1;
+  //     for(int i = 0; i < ma->GetNV(); i++)
+  //       if(vmap[i] == i)
+  //         if(complete_vertices[i] == false)
+  //           {
+  //             it = i;
+  //           }
+  //     //get the latest tent erected at the vertex
+  //     it = latest_tent[it];
+  //     const double diff = dt - tents[it]->ttop;
+  //     cout << "tent "<< it << " diff = " << diff << endl;
+  //     cout << "\t"<<*(tents[it]) << endl;
+  //     exit(-1);
+  //   }
   
 
-  // set lists of internal facets of each element of each tent
-  ParallelFor
-    (Range(tents),
-     [&] (int i)
-     {
-       Tent & tent = *tents[i];
-       TableCreator<int> elfnums_creator(tent.els.Size());
+  // // set lists of internal facets of each element of each tent
+  // ParallelFor
+  //   (Range(tents),
+  //    [&] (int i)
+  //    {
+  //      Tent & tent = *tents[i];
+  //      TableCreator<int> elfnums_creator(tent.els.Size());
 
-       for ( ; !elfnums_creator.Done(); elfnums_creator++)  {
-	 for(int j : Range(tent.els)) {
+  //      for ( ; !elfnums_creator.Done(); elfnums_creator++)  {
+  //        for(int j : Range(tent.els)) {
 
-	   auto fnums = ma->GetElFacets (tent.els[j]);
-	   for(int fnum : fnums)
-	     if (tent.internal_facets.Pos(fnum) !=
-                 tent.internal_facets.ILLEGAL_POSITION)
-	       elfnums_creator.Add(j,fnum);
-	 }
-       }
-       tent.elfnums = elfnums_creator.MoveTable();
-     });
+  //          auto fnums = ma->GetElFacets (tent.els[j]);
+  //          for(int fnum : fnums)
+  //            if (tent.internal_facets.Pos(fnum) !=
+  //                tent.internal_facets.ILLEGAL_POSITION)
+  //              elfnums_creator.Add(j,fnum);
+  //        }
+  //      }
+  //      tent.elfnums = elfnums_creator.MoveTable();
+  //    });
 
-  // build dependency graph (used by RunParallelDependency)
-  TableCreator<int> create_dag(tents.Size());
-  for ( ; !create_dag.Done(); create_dag++)
-    {
-      for (int i : tents.Range())
-	for (int d : tents[i]->dependent_tents)
-	  create_dag.Add(i, d);
-    }
-  tent_dependency = create_dag.MoveTable();
+  // // build dependency graph (used by RunParallelDependency)
+  // TableCreator<int> create_dag(tents.Size());
+  // for ( ; !create_dag.Done(); create_dag++)
+  //   {
+  //     for (int i : tents.Range())
+  //       for (int d : tents[i]->dependent_tents)
+  //         create_dag.Add(i, d);
+  //   }
+  // tent_dependency = create_dag.MoveTable();
 
-  // set advancing front gradients
-  ParallelFor
-    (Range(tents),
-     [&] (int i)     {
+  // // set advancing front gradients
+  // ParallelFor
+  //   (Range(tents),
+  //    [&] (int i)     {
 
-       Tent & tent = *tents[i];
-       int nels = tent.els.Size();
-       tent.gradphi_bot.SetSize(nels);
-       tent.gradphi_top.SetSize(nels);
+  //      Tent & tent = *tents[i];
+  //      int nels = tent.els.Size();
+  //      tent.gradphi_bot.SetSize(nels);
+  //      tent.gradphi_top.SetSize(nels);
 
-       for (int j : Range(nels)) { //  loop over elements in a tent
+  //      for (int j : Range(nels)) { //  loop over elements in a tent
 
-	 ElementId ej (VOL, tent.els[j]);
-	 ELEMENT_TYPE eltype = ma->GetElType(ej);
-         constexpr auto el_type = EL_TYPE(DIM);
-         //number of vertices of the current element (always the simplex associated to DIM)
-         constexpr int n_vertices = DIM+1;
-         //finite element created for calculating the barycentric coordinates
-         ScalarFE<el_type,1> fe;
-	 Vector<> shape_nodal(n_vertices);
-	 Matrix<> dshape_nodal(n_vertices, DIM);
-	 Vector<> coef_bot, coef_top; // coefficient of tau (top & bot)
-	 coef_bot.SetSize(n_vertices);
-	 coef_top.SetSize(n_vertices);
-	 auto vnums = ma->GetElVertices (ej);
-	 for (size_t k = 0; k < vnums.Size(); k++) {
-	   if (vnums[k] == tent.vertex)  { // central vertex
-	     coef_bot(k) = tent.tbot;
-	     coef_top(k) = tent.ttop;
-	   }
-	   else
-	     for (size_t l = 0; l < tent.nbv.Size(); l++)
-	       if (tent.nbv[l] == vnums[k])
-		 coef_bot(k) = coef_top(k) = tent.nbtime[l];
-	 }
+  //        ElementId ej (VOL, tent.els[j]);
+  //        ELEMENT_TYPE eltype = ma->GetElType(ej);
+  //        constexpr auto el_type = EL_TYPE(DIM);
+  //        //number of vertices of the current element (always the simplex associated to DIM)
+  //        constexpr int n_vertices = DIM+1;
+  //        //finite element created for calculating the barycentric coordinates
+  //        ScalarFE<el_type,1> fe;
+  //        Vector<> shape_nodal(n_vertices);
+  //        Matrix<> dshape_nodal(n_vertices, DIM);
+  //        Vector<> coef_bot, coef_top; // coefficient of tau (top & bot)
+  //        coef_bot.SetSize(n_vertices);
+  //        coef_top.SetSize(n_vertices);
+  //        auto vnums = ma->GetElVertices (ej);
+  //        for (size_t k = 0; k < vnums.Size(); k++) {
+  //          if (vnums[k] == tent.vertex)  { // central vertex
+  //            coef_bot(k) = tent.tbot;
+  //            coef_top(k) = tent.ttop;
+  //          }
+  //          else
+  //            for (size_t l = 0; l < tent.nbv.Size(); l++)
+  //              if (tent.nbv[l] == vnums[k])
+  //       	 coef_bot(k) = coef_top(k) = tent.nbtime[l];
+  //        }
 
-	 IntegrationRule ir(eltype, 0);
-	 ElementTransformation & trafo = ma->GetTrafo (ej, lh);
-	 MappedIntegrationPoint<DIM, DIM> mip(ir[0], trafo);
-	 tent.gradphi_bot[j].SetSize(DIM);
-	 tent.gradphi_top[j].SetSize(DIM);
-	 fe.CalcMappedDShape(mip, dshape_nodal);
-	 tent.gradphi_bot[j] = Trans(dshape_nodal) * coef_bot;
-	 tent.gradphi_top[j] = Trans(dshape_nodal) * coef_top;
-       }
-     });
+  //        IntegrationRule ir(eltype, 0);
+  //        ElementTransformation & trafo = ma->GetTrafo (ej, lh);
+  //        MappedIntegrationPoint<DIM, DIM> mip(ir[0], trafo);
+  //        tent.gradphi_bot[j].SetSize(DIM);
+  //        tent.gradphi_top[j].SetSize(DIM);
+  //        fe.CalcMappedDShape(mip, dshape_nodal);
+  //        tent.gradphi_bot[j] = Trans(dshape_nodal) * coef_bot;
+  //        tent.gradphi_top[j] = Trans(dshape_nodal) * coef_top;
+  //      }
+  //    });
 }
 
 

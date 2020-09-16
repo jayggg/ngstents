@@ -116,6 +116,8 @@ class TentPitchedSlab {
   Array<Tent*> tents;         // tents between two time slices
   double dt;                  // time step between two time slices
   LocalHeap lh;
+  enum PitchingMethod {EVolGrad = 1};
+  PitchingMethod method;
 
 public:
   // access to base spatial mesh (public for export to Python visualization)
@@ -125,11 +127,6 @@ public:
     dt(0), ma(ama), lh(heapsize, "Tents heap") { ; };
   void PitchTents(double dt, double cmax);
   void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax);
-
-  //Given the current advancing (time) front, calculates the
-  //maximum advance on a tent centered on vi that will still
-  //guarantee causality
-  double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, LocalHeap & lh) const;
   
   //uses the exact calculation of the gradient for pitching the tent
   void PitchTentsGradient(double dt, double cmax);
@@ -153,5 +150,60 @@ public:
   Table<int> tent_dependency; // DAG of tent dependencies
 };
 
+//Abstract class with the interface of methods used for pitching a tent
+template <int DIM>//TODO: does it really need a template param on the base class?
+class TentSlabPitcher{
+protected:
+  //access to base spatial mesh
+  shared_ptr<MeshAccess> ma;
+  //element-wise maximal wave-speeds
+  Array<double> cmax;
+  //check if edges belong to an elements side
+  BitArray fine_edges;
+  //map for periodic vertices
+  Array<int> &vmap;
+  //table with vertices' neighbouring relationship
+  Table<int> v2v;
+  //table with adjacent edges from each vertex
+  Table<int> v2e;
+  //reference heights for each vertex
+  Array<double> vertex_refdt;
+public:
+  //constructor
+  TentSlabPitcher(shared_ptr<MeshAccess> ama, Array<int> &avmap);
+  //destructor
+  virtual ~TentSlabPitcher(){;}
+  //calculates the wavespeed for each element. on the child class it might do something else as well, hence it's virtual
+  virtual void InitializeMeshData(LocalHeap &lh, shared_ptr<CoefficientFunction> wavespeed ) = 0;
 
+  //compute the vertex based max time-differences assumint tau=0 and sets vertex_ready[i] = true for every position
+  //corresponding to a non-periodic vertex
+  virtual void ComputeVerticesReferenceHeight(Array<bool> &vertex_ready, Array<int> &ready_vertices, LocalHeap &lh) = 0;
+
+  //maps regular vertices to themselves, periodic slave vertices to masters
+  void MapPeriodicVertices();
+
+  //removes periodic edges of the fine_edges bitarray
+  void RemovePeriodicEdges();
+  
+  //Create v2v and v2e neighbouring data structures
+  void ComputeNeighbouringData();
+
+  //it does NOT compute, only returns a copy of vertex_refdt
+  Array<double> GetVerticesReferenceHeight(){ return Array<double>(vertex_refdt);}
+};
+
+template <int DIM>
+class VolumeGradientPitcher : public TentSlabPitcher<DIM>{
+  
+  void InitializeMeshData(LocalHeap &lh, shared_ptr<CoefficientFunction> wavespeed) override;
+
+  //Given the current advancing (time) front, calculates the
+  //maximum advance on a tent centered on vi that will still
+  //guarantee causality
+  double GetPoleHeight(const int vi, const map<int,double> & tau, const Array<double> & cmax, FlatArray<int> nbv, LocalHeap & lh) const;
+public:
+  VolumeGradientPitcher(shared_ptr<MeshAccess> ama, Array<int> &avmap) : TentSlabPitcher<DIM>(ama,avmap){;}
+  void ComputeVerticesReferenceHeight(Array<bool> &vertex_ready,Array<int> &ready_vertices, LocalHeap &lh) override;
+};
 #endif
