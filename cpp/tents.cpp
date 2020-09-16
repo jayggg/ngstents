@@ -484,10 +484,10 @@ template <int DIM> double TentPitchedSlab<DIM>::GetPoleHeight(const int vi, cons
       const double sol = [alpha,beta, gamma, delta,init_pole_height,num_tol](){
         if(delta > num_tol * alpha)//positive delta
           {
-            if(beta > num_tol * alpha)
-              return - (2.0 * gamma) / (beta + sqrt(delta));
-            else
+            if(beta <= num_tol * alpha)
               return (sqrt(delta)-beta)/2.0;
+            else
+              return - (2.0 * gamma) / (beta + sqrt(delta));
           }
         else if (delta > -num_tol*alpha)//zero delta
           {
