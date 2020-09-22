@@ -171,9 +171,10 @@ public:
 
   //compute the vertex based max time-differences assumint tau=0
   //corresponding to a non-periodic vertex
-  void ComputeVerticesReferenceHeight(const Table<int> &v2v, const Array<double> &tau, LocalHeap &lh);
+  void ComputeVerticesReferenceHeight(const Table<int> &v2v, const Table<int> &v2e, const Array<double> &tau,
+                                      LocalHeap &lh);
 
-  void UpdateNeighbours(const int vi, const double adv_factor, const Table<int> &v2v,
+  void UpdateNeighbours(const int vi, const double adv_factor, const Table<int> &v2v,const Table<int> &v2e,
                         const Array<double> &tau, const Array<bool> &complete_vertices,
                         Array<double> &ktilde, Array<bool> &vertex_ready,
                         Array<int> &ready_vertices, LocalHeap &lh);
@@ -189,7 +190,7 @@ public:
   //Given the current advancing (time) front, calculates the
   //maximum advance on a tent centered on vi that will still
   //guarantee causality
-  virtual double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, LocalHeap & lh) const = 0;
+  virtual double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const = 0;
 
   //Returns the position in ready_vertices containing the vertex in which a tent will be pitched (and its level)
   [[nodiscard]] std::tuple<int,int> PickNextVertexForPitching(const Array<int> &ready_vertices, const Array<double> &ktilde, const Array<int> &vertices_level);
@@ -199,10 +200,24 @@ template <int DIM>
 class VolumeGradientPitcher : public TentSlabPitcher{
 public:
   
+  VolumeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama){;}
+  
   void InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction> wavespeed) override;
 
-  VolumeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama){;}
+  double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv,
+                       FlatArray<int> nbe, LocalHeap & lh) const override;
+};
 
-  double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, LocalHeap & lh) const override;
+template <int DIM>
+class EdgeGradientPitcher : public TentSlabPitcher{
+  Array<double> edge_refdt;
+public:
+  
+  EdgeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama), edge_refdt(ama->GetNEdges()) {;}
+
+  void InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction> wavespeed) override;
+
+  double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv,
+                       FlatArray<int> nbe, LocalHeap & lh) const override;
 };
 #endif

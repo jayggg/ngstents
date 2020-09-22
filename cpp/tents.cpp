@@ -485,14 +485,14 @@ bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor
   return found;
 }
 
-void TentSlabPitcher::ComputeVerticesReferenceHeight(const Table<int> &v2v, const Array<double> &tau, LocalHeap &lh)
+void TentSlabPitcher::ComputeVerticesReferenceHeight(const Table<int> &v2v, const Table<int> &v2e, const Array<double> &tau, LocalHeap &lh)
 {
   auto &vmap = Tent::vmap;
   this->vertex_refdt = std::numeric_limits<double>::max();
   for (auto i = 0; i < this->ma->GetNV(); i++)
     if(vmap[i]==i) // non-periodic
       {
-        this->vertex_refdt[i] = this->GetPoleHeight(i, tau, this->cmax, v2v[i],lh);
+        this->vertex_refdt[i] = this->GetPoleHeight(i, tau, this->cmax, v2v[i],v2e[i],lh);
       }
   
 }
@@ -512,15 +512,16 @@ std::tuple<int,int> TentSlabPitcher::PickNextVertexForPitching(const Array<int> 
 }
 
 void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, const Table<int> &v2v,
-                                       const Array<double> &tau, const Array<bool> &complete_vertices,
-                                       Array<double> &ktilde, Array<bool> &vertex_ready,
-                                       Array<int> &ready_vertices, LocalHeap &lh){
+                                       const Table<int> &v2e, const Array<double> &tau,
+                                       const Array<bool> &complete_vertices, Array<double> &ktilde,
+                                       Array<bool> &vertex_ready, Array<int> &ready_vertices,
+                                       LocalHeap &lh){
   auto &vmap = Tent::vmap;
   for (int nb : v2v[vi])
     {
       nb = vmap[nb]; // map periodic vertices
       if (complete_vertices[nb]) continue;
-      const double kt = GetPoleHeight(nb, tau, cmax, v2v[nb], lh);
+      const double kt = GetPoleHeight(nb, tau, cmax, v2v[nb], v2e[nb],lh);
       ktilde[nb] = kt;
       if (kt > adv_factor * vertex_refdt[nb])
         {
@@ -565,7 +566,7 @@ VolumeGradientPitcher<DIM>::InitializeMeshData(LocalHeap &lh, BitArray &fine_edg
   
 }
 
-template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, LocalHeap & lh) const{
+template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
   HeapReset hr(lh);
   constexpr auto el_type = EL_TYPE(DIM);
   //number of vertices of the current element (always the simplex associated to DIM)
@@ -657,6 +658,50 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
  }
 
 template <int DIM>
+void EdgeGradientPitcher<DIM>::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction>wavespeed)
+{
+  HeapReset hr(lh);
+  fine_edges.Clear();
+  //identify fine edges and evaluate maximum wavespeed for each element
+  for (Ngs_Element el : this->ma->Elements(VOL))
+    {       
+        
+      auto ei = ElementId(el);
+      auto eltype = this->ma->GetElType(ei);
+      ElementTransformation & trafo = this->ma->GetTrafo (ei, lh);
+      IntegrationRule ir(eltype, 0);
+      MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
+      this->cmax[el.Nr()] = wavespeed->Evaluate(mip);
+
+            //set all edges belonging to the mesh
+      for (int e : el.Edges())
+        {
+          auto pnts = ma->GetEdgePNums(e);
+          auto v1 = pnts[0], v2 = pnts[1];
+          double len = L2Norm (ma-> template GetPoint<DIM>(v1)
+                               - ma-> template GetPoint<DIM>(v2));
+          edge_refdt[e] = min (edge_refdt[e], len/cmax[el.Nr()]);
+          fine_edges.SetBit(e);
+        }
+    }
+  
+}
+
+template <int DIM>
+double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
+  auto &vmap = Tent::vmap;
+  double kt = std::numeric_limits<double>::max();
+  for (int nb_index : nbv.Range())
+    {
+      int nb = vmap[nbv[nb_index]];
+      double kt1 = tau[nb]-tau[vi]+edge_refdt[nbe[nb_index]];
+      kt = min (kt, kt1);
+    }
+  
+  return kt;
+}
+
+template <int DIM>
 void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
 				  shared_ptr<CoefficientFunction> wavespeed)
 {
@@ -665,13 +710,15 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   TentSlabPitcher * slabpitcher = [this]() ->TentSlabPitcher* {
     switch (this->method)
       {
-        case EVolGrad :
-          return new VolumeGradientPitcher<DIM>(this->ma);
-          break;
-        default:
-          throw std::logic_error("Trying to pitch tent without setting a pitching method");
-          return nullptr;
-          break;
+      case EVolGrad :
+        return new VolumeGradientPitcher<DIM>(this->ma);
+        break;
+      case EEdgeGrad:
+        return new EdgeGradientPitcher<DIM>(this->ma);
+      default:
+        throw std::logic_error("Trying to pitch tent without setting a pitching method");
+        return nullptr;
+        break;
       }
   }();
   cout << "Created slab pitcher"<<endl;
@@ -710,7 +757,7 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   tau = 0.0;
 
   
-  slabpitcher->ComputeVerticesReferenceHeight(v2v, tau, lh);
+  slabpitcher->ComputeVerticesReferenceHeight(v2v, v2e, tau, lh);
   cout << "Computed reference heights" << endl;
   // max time increase allowed at vertex, depends on tau of neighbors
   //at the beginning the advancing front is at a constant t=0
@@ -817,8 +864,8 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
           if(DIM==1)
             // vertex itself represents the only internal edge/facet
             tent->internal_facets.Append (vi);
-          // else if (DIM == 2)
-            // for (int e : v2e[vi]) tent->internal_facets.Append (e);
+          else if (DIM == 2)
+            for (int e : v2e[vi]) tent->internal_facets.Append (e);
           else
             {
               // DIM == 3 => internal facets are faces
@@ -839,7 +886,7 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
           else
             GetVertexElements(ma,vi,slave_verts[vi],tent->els);
 
-          slabpitcher->UpdateNeighbours(vi,adv_factor,v2v,tau,complete_vertices,
+          slabpitcher->UpdateNeighbours(vi,adv_factor,v2v,v2e,tau,complete_vertices,
                                         ktilde,vertex_ready,ready_vertices,lh);
           tents.Append (tent);
         }
