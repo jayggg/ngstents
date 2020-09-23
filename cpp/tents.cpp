@@ -903,7 +903,9 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
               break;
             }
     }
-  
+
+  //let us delete it before perhaps catching an exception
+  delete slabpitcher;
   try
     {
       if(!slab_complete) throw std::logic_error("Could not pitch whole slab");
