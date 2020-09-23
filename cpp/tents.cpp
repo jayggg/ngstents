@@ -692,15 +692,25 @@ void EdgeGradientPitcher<DIM>::InitializeMeshData(LocalHeap &lh, BitArray &fine_
 template <int DIM>
 double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
   auto &vmap = Tent::vmap;
+  double num_tol = std::numeric_limits<double>::epsilon();
   double kt = std::numeric_limits<double>::max();
   for (int nb_index : nbv.Range())
     {
       int nb = vmap[nbv[nb_index]];
       double kt1 = tau[nb]-tau[vi]+edge_refdt[nbe[nb_index]];
-      kt = min (kt, kt1);
+      if (kt1 > 0)
+        {          
+          kt = min (kt, kt1);
+        }
+      else continue;
+      
     }
-  
-  return kt;
+  //could not advance
+  if (fabs(kt-std::numeric_limits<double>::max()) < 1) return 0.0;
+  //ensuring causality (inequality)
+  kt -= num_tol;
+  if(kt > num_tol) return kt;
+  else return 0.0;
 }
 
 template <int DIM>
