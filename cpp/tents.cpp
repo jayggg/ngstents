@@ -462,17 +462,16 @@ bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor
   constexpr int n_attempts = 5;
   vertex_ready = false;
   const double initial_adv_factor = adv_factor;
-  for(auto i = 0; i < n_attempts; i++)
+  for(auto ia = 0; ia < n_attempts; ia++)
     {
-      adv_factor /= 2;
-      for (auto i = 0; i < ma->GetNV(); i++)
-        if(vmap[i] == i && !complete_vertices[i])
+      for (auto iv = 0; iv < ma->GetNV(); iv++)
+        if(vmap[iv] == iv && !complete_vertices[iv] )
           {
-            if (ktilde[i] > adv_factor * vertex_refdt[i])
-              if (!vertex_ready[i])
+            if (ktilde[iv] > adv_factor * vertex_refdt[iv])
+              if (!vertex_ready[iv])
                 {
-                  ready_vertices.Append (i);
-                  vertex_ready[i] = true;
+                  ready_vertices.Append (iv);
+                  vertex_ready[iv] = true;
                 }
           }
       if(ready_vertices.Size())
@@ -480,6 +479,7 @@ bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor
           found = true;
           break;
         }
+      adv_factor /= 2;
     }
   if(reset_adv_factor)
     adv_factor = initial_adv_factor;
