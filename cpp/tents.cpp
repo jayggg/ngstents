@@ -454,8 +454,8 @@ TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama) : ma(ama), cmax(ama
 
 
 bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor,
-                                            const Array<double> &ktilde, Array<bool> &vertex_ready,
-                                            Array<int> &ready_vertices){
+                                       const Array<double> &ktilde, const Array<bool> &complete_vertices,
+                                       Array<bool> &vertex_ready, Array<int> &ready_vertices){
   auto &vmap = Tent::vmap;
   bool found{false};
   //how many times the adv_factor will be relaxed looking for new vertices
@@ -466,7 +466,7 @@ bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor
     {
       adv_factor /= 2;
       for (auto i = 0; i < ma->GetNV(); i++)
-        if(vmap[i] == i)
+        if(vmap[i] == i && !complete_vertices[i])
           {
             if (ktilde[i] > adv_factor * vertex_refdt[i])
               if (!vertex_ready[i])
@@ -803,7 +803,7 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
     {
       cout << "Setting ready vertices" << endl;
       const bool found_vertices =
-        slabpitcher->GetReadyVertices(adv_factor,reset_adv_factor,ktilde,vertex_ready,ready_vertices);
+        slabpitcher->GetReadyVertices(adv_factor,reset_adv_factor,ktilde,complete_vertices, vertex_ready,ready_vertices);
       //no possible vertex in which a tent could be pitched was found
       if(!found_vertices) break;
       // ---------------------------------------------

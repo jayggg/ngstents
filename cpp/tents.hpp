@@ -184,7 +184,8 @@ public:
 
   //Populate the set of ready vertices with vertices satisfying ktilde > adv_factor * refdt. returns false if
   //no such vertex was found
-  [[nodiscard]] bool GetReadyVertices(double &adv_factor, bool reset_adv_factor,const Array<double> &ktilde,
+  [[nodiscard]] bool GetReadyVertices(double &adv_factor, bool reset_adv_factor,
+                                      const Array<double> &ktilde, const Array<bool> &complete_vertices,
                                       Array<bool> &vertex_ready, Array<int> &ready_vertices);
 
   //Given the current advancing (time) front, calculates the
