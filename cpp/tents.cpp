@@ -663,6 +663,7 @@ void EdgeGradientPitcher<DIM>::InitializeMeshData(LocalHeap &lh, BitArray &fine_
 {
   HeapReset hr(lh);
   fine_edges.Clear();
+  edge_refdt = std::numeric_limits<double>::max();
   //identify fine edges and evaluate maximum wavespeed for each element
   for (Ngs_Element el : this->ma->Elements(VOL))
     {       
