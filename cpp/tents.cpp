@@ -444,6 +444,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
 template <int DIM> void
 TentPitchedSlab<DIM>::PitchTentsGradient(double dt, double wavespeed)
 {
+  cout << "Pitching with wavespeed = " << wavespeed << endl;
   auto cf = make_shared<ConstantCoefficientFunction>(wavespeed);
   PitchTentsGradient(dt, cf);
 }
@@ -797,9 +798,9 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   complete_vertices = false;
   //numerical tolerance
   const double num_tol = std::numeric_limits<double>::epsilon() * dt;
-  cout << "Pitching tents..." << endl;
   while ( !slab_complete )
     {
+      cout << "Setting ready vertices" << endl;
       const bool found_vertices =
         slabpitcher->GetReadyVertices(adv_factor,reset_adv_factor,ktilde,vertex_ready,ready_vertices);
       //no possible vertex in which a tent could be pitched was found
@@ -807,6 +808,7 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
       // ---------------------------------------------
       // Main loop: constructs one tent each iteration
       // ---------------------------------------------
+      cout << "Pitching tents..." << endl;
       while (ready_vertices.Size())
         {
           int minlevel, posmin;
@@ -907,17 +909,14 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
     }
   catch (const std::logic_error &error)
     {
+      cout << error.what() << endl;
       cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
 
-      int it = -1;
-      for(int i = 0; i < ma->GetNV(); i++)
-        if(vmap[i] == i)
-          if(complete_vertices[i] == false)
-            {
-              it = i;
-            }
+      int i;
+      for(i = 0; i < ma->GetNV(); i++)
+        if(vmap[i] == i && !complete_vertices[i]) break;
       //get the latest tent erected at the vertex
-      it = latest_tent[it];
+      auto it = latest_tent[i];
       const double diff = dt - tents[it]->ttop;
       cout << "tent "<< it << " diff = " << diff << endl;
       cout << "\t"<<*(tents[it]) << endl;
