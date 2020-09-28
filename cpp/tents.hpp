@@ -116,6 +116,7 @@ public:
   enum PitchingMethod {EVolGrad = 1, EEdgeGrad};
   Array<Tent*> tents;         // tents between two time slices
   double dt;                  // time step between two time slices
+  int nlayers;//number of layers in the time slab
   LocalHeap lh;
   PitchingMethod method;
 
@@ -124,7 +125,7 @@ public:
   shared_ptr<MeshAccess> ma;
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
-    dt(0), ma(ama), lh(heapsize, "Tents heap") { ; };
+    dt(0), ma(ama), nlayers(0), lh(heapsize, "Tents heap") { ; };
   void PitchTents(double dt, double cmax);
   void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax);
   
@@ -133,6 +134,7 @@ public:
   void PitchTentsGradient(double dt, shared_ptr<CoefficientFunction> cmax);
   // Get object features
   int GetNTents() { return tents.Size(); }
+  int GetNLayers() { return nlayers; }
   double GetSlabHeight() { return dt; }
   const Tent & GetTent(int i) { return *tents[i];}
 

@@ -35,6 +35,9 @@ class TentSlab(object):
     def GetNTents(self):
         return self.slab.GetNTents()
 
+    def GetNLayers(self):
+        return self.slab.GetNLayers()
+    
     def GetSlabHeight(self):
         return self.slab.GetSlabHeight()
 

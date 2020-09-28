@@ -236,6 +236,7 @@ TentPitchedSlab <DIM>::PitchTents(double dt,
                 minlevel = vertices_level[ready_vertices[i]];
                 posmin = i;
               }
+          nlayers = max(minlevel,nlayers);
           const int vi = ready_vertices[posmin];
           ready_vertices.DeleteElement(posmin);
           vertex_ready[vi] = false;
@@ -825,6 +826,7 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
           int minlevel, posmin;
           std::tie(minlevel,posmin) =
             slabpitcher->PickNextVertexForPitching(ready_vertices,ktilde,vertices_level);
+          nlayers = max(minlevel,nlayers);
           //vertex index at which the current tent is being pitched
           const int vi = ready_vertices[posmin];
           ready_vertices.DeleteElement(posmin);
@@ -1427,6 +1429,7 @@ void ExportTents(py::module & m) {
 
     .def_readonly("mesh", &TentPitchedSlab<1>::ma)
     .def("GetNTents", &TentPitchedSlab<1>::GetNTents)
+    .def("GetNLayers", &TentPitchedSlab<1>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<1>::GetSlabHeight)
     .def("MaxSlope", &TentPitchedSlab<1>::MaxSlope)
     .def("GetTent", &TentPitchedSlab<1>::GetTent, pybind11::return_value_policy::reference_internal)
@@ -1465,6 +1468,7 @@ void ExportTents(py::module & m) {
 
     .def_readonly("mesh", &TentPitchedSlab<2>::ma)
     .def("GetNTents", &TentPitchedSlab<2>::GetNTents)
+    .def("GetNLayers", &TentPitchedSlab<2>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)
     .def("MaxSlope", &TentPitchedSlab<2>::MaxSlope)
     .def("GetTent", &TentPitchedSlab<2>::GetTent, pybind11::return_value_policy::reference_internal)
@@ -1510,6 +1514,7 @@ void ExportTents(py::module & m) {
 
     .def_readonly("mesh", &TentPitchedSlab<3>::ma)
     .def("GetNTents", &TentPitchedSlab<3>::GetNTents)
+    .def("GetNLayers", &TentPitchedSlab<3>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<3>::GetSlabHeight)
     .def("MaxSlope", &TentPitchedSlab<3>::MaxSlope)
     .def("GetTent", &TentPitchedSlab<3>::GetTent, pybind11::return_value_policy::reference_internal)
