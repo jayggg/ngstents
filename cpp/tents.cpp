@@ -797,7 +797,7 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   //for an advance to be considered good, dt >= factor * refdt
   double adv_factor{0.5};
   //whether to reset the adv_factor to its initial value after populating ready_vertices
-  constexpr bool reset_adv_factor = false;
+  constexpr bool reset_adv_factor = true;
   // array of vertices ready for pitching a tent
   Array<int> ready_vertices;
   // array for checking if a given vertex is ready
@@ -840,18 +840,23 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
             {//not close to the end of the time slab
               tent->ttop = new_ttop;
             }
-          else if(new_ttop >= dt)
+          else
             {//vertex is complete
               tent->ttop = dt;
               complete_vertices[vi] = true;
             }
           //let us ignore this for now
+          // else if(new_ttop >= dt)
+          //   {//vertex is complete
+          //     tent->ttop = dt;
+          //     complete_vertices[vi] = true;
+          //   }
           // else
-          // {//vertex is really close to the end of time slab.
-          //  //in this scenario, we might want to pitch a lower
-          //  //tent to avoid numerical issues with degenerate tents
-          //   tent->ttop = ktilde[vi] * 0.75 + tau[vi];
-          // }
+          //   {//vertex is really close to the end of time slab.
+          //     //in this scenario, we might want to pitch a lower
+          //     //tent to avoid numerical issues with degenerate tents
+          //     tent->ttop = ktilde[vi] * 0.75 + tau[vi];
+          //   }
           
           tent->level = vertices_level[vi]; // 0;
           tau[vi] = tent->ttop;
