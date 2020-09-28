@@ -126,10 +126,8 @@ public:
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
     dt(0), ma(ama), nlayers(0), lh(heapsize, "Tents heap") { ; };
-  void PitchTents(double dt, double cmax);
-  void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax);
   
-  //uses the exact calculation of the gradient for pitching the tent
+  //uses a gradient based method for pitching the tent
   void PitchTentsGradient(double dt, double cmax);
   void PitchTentsGradient(double dt, shared_ptr<CoefficientFunction> cmax);
   // Get object features

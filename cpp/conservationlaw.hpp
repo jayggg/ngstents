@@ -163,7 +163,7 @@ public:
 
   virtual void PitchTents(double adt, shared_ptr<CoefficientFunction> awavespeed)
   {
-    tps->PitchTents(adt, awavespeed);
+    tps->PitchTentsGradient(adt, awavespeed);
   }
 
   virtual double MaxSlope()
