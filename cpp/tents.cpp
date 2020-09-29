@@ -276,8 +276,6 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
             }
     }
 
-  //let us delete it before perhaps catching an exception
-  delete slabpitcher;
   try
     {
       if(!slab_complete) throw std::logic_error("Could not pitch whole slab");
@@ -287,16 +285,24 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
       cout << error.what() << endl;
       cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
 
-      int i;
-      for(i = 0; i < ma->GetNV(); i++)
-        if(vmap[i] == i && !complete_vertices[i]) break;
+      int iv;
+      for(iv = 0; iv < ma->GetNV(); iv++)
+        if(vmap[iv] == iv && !complete_vertices[iv]) break;
       //get the latest tent erected at the vertex
-      auto it = latest_tent[i];
+      auto it = latest_tent[iv];
       const double diff = dt - tents[it]->ttop;
+      cout << "===============================" << endl;
       cout << "tent "<< it << " diff = " << diff << endl;
-      cout << "\t"<<*(tents[it]) << endl;
+      const auto ktilde_iv = ktilde[iv];
+      const auto ref_height = slabpitcher->GetVerticesReferenceHeight()[iv];
+      cout << "ktilde = " << ktilde_iv;
+      cout << " refdt = " << ref_height;
+      cout << "ratio = " << ktilde_iv/ref_height << endl;
+      delete slabpitcher;
+      cout <<*(tents[it]) << endl;
       exit(-1);
     }
+  delete slabpitcher;
   
 
   // set lists of internal facets of each element of each tent
