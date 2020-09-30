@@ -135,7 +135,7 @@ public:
     has_been_pitched(false), lh(heapsize, "Tents heap") { ; };
   
   //uses a gradient based method for pitching the tent
-  void PitchTentsGradient(const double dt);
+  void PitchTents(const double dt);
   
   // Get object features
   int GetNTents() { return tents.Size(); }
