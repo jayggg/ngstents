@@ -61,7 +61,7 @@ constexpr ELEMENT_TYPE EL_TYPE(int DIM)
 }//this assumes that there is only one type of element per mesh
 
 template <int DIM>
-void TentPitchedSlab <DIM>::PitchTents(double dt)
+void TentPitchedSlab <DIM>::PitchTents(double dt, const double global_ct)
 {
   if(has_been_pitched)
     {
@@ -1074,7 +1074,7 @@ void ExportTents(py::module & m) {
     
     .def_readonly("mesh", &TentPitchedSlab<1>::ma)
     .def("SetWavespeed", static_cast<void (TentPitchedSlab<1>::*)(const double)>(&TentPitchedSlab<1>::SetWavespeed))
-    .def("PitchTents", &TentPitchedSlab<1>::PitchTents)
+    .def("PitchTents", &TentPitchedSlab<1>::PitchTents, py::arg("dt"), py::arg("global_ct")= 1.0)
     .def("GetNTents", &TentPitchedSlab<1>::GetNTents)
     .def("GetNLayers", &TentPitchedSlab<1>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<1>::GetSlabHeight)
@@ -1121,7 +1121,7 @@ void ExportTents(py::module & m) {
 
     .def_readonly("mesh", &TentPitchedSlab<2>::ma)
     .def("SetWavespeed", static_cast<void (TentPitchedSlab<2>::*)(const double)>(&TentPitchedSlab<2>::SetWavespeed))
-    .def("PitchTents", &TentPitchedSlab<2>::PitchTents)
+    .def("PitchTents", &TentPitchedSlab<2>::PitchTents, py::arg("dt"), py::arg("global_ct")= 1.0)
     .def("GetNTents", &TentPitchedSlab<2>::GetNTents)
     .def("GetNLayers", &TentPitchedSlab<2>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)
@@ -1175,7 +1175,7 @@ void ExportTents(py::module & m) {
 
     .def_readonly("mesh", &TentPitchedSlab<3>::ma)
     .def("SetWavespeed", static_cast<void (TentPitchedSlab<3>::*)(const double)>(&TentPitchedSlab<3>::SetWavespeed))
-    .def("PitchTents", &TentPitchedSlab<3>::PitchTents)
+    .def("PitchTents", &TentPitchedSlab<3>::PitchTents, py::arg("dt"), py::arg("global_ct")= 1.0)
     .def("GetNTents", &TentPitchedSlab<3>::GetNTents)
     .def("GetNLayers", &TentPitchedSlab<3>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<3>::GetSlabHeight)

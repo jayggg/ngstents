@@ -135,7 +135,10 @@ public:
     has_been_pitched(false), lh(heapsize, "Tents heap") { ; };
   
   //uses a gradient based method for pitching the tent
-  void PitchTents(const double dt);
+  //if global_ct > 0, its value will be used as a global
+  //mesh-dependent constant for scaling the algorithm.
+  //otherwise, a local constant will be calculated.
+  void PitchTents(const double dt, const double global_ct = 1.0);
   
   // Get object features
   int GetNTents() { return tents.Size(); }

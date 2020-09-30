@@ -33,8 +33,11 @@ class TentSlab(object):
     def SetWavespeed(self, c):
         self.slab.SetWavespeed(c)
 
-    def PitchTents(self, dt):
-        self.slab.PitchTents(dt)
+    def PitchTents(self, dt, global_ct=None):
+        if global_ct is None:
+            self.slab.PitchTents(dt)
+        else:
+            self.slab.PitchTents(dt, global_ct)
 
     def GetNTents(self):
         return self.slab.GetNTents()
