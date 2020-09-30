@@ -78,10 +78,10 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   TentSlabPitcher * slabpitcher = [this]() ->TentSlabPitcher* {
     switch (this->method)
       {
-      case EVolGrad :
+      case ngstents::EVolGrad:
         return new VolumeGradientPitcher<DIM>(this->ma);
         break;
-      case EEdgeGrad:
+      case ngstents::EEdgeGrad:
         return new EdgeGradientPitcher<DIM>(this->ma);
       default:
         throw std::logic_error("Trying to pitch tent without setting a pitching method");
@@ -1045,8 +1045,8 @@ void ExportTents(py::module & m) {
 		  {
 		    auto tps = TentPitchedSlab<1>(ma, heapsize);
                     
-                    if(exact) tps.SetPitchingMethod(TentPitchedSlab<1>::PitchingMethod::EVolGrad);
-		    else tps.SetPitchingMethod(TentPitchedSlab<1>::PitchingMethod::EEdgeGrad);
+                    if(exact) tps.SetPitchingMethod(ngstents::PitchingMethod::EVolGrad);
+		    else tps.SetPitchingMethod(ngstents::PitchingMethod::EEdgeGrad);
                     tps.PitchTentsGradient(dt,c);
 		    return tps;
 		  }),
@@ -1084,8 +1084,8 @@ void ExportTents(py::module & m) {
     .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, bool exact, int heapsize)
 		  {
 		    auto tps = TentPitchedSlab<2>(ma, heapsize);
-		    if(exact) tps.SetPitchingMethod(TentPitchedSlab<2>::PitchingMethod::EVolGrad);
-		    else tps.SetPitchingMethod(TentPitchedSlab<2>::PitchingMethod::EEdgeGrad);
+		    if(exact) tps.SetPitchingMethod(ngstents::PitchingMethod::EVolGrad);
+		    else tps.SetPitchingMethod(ngstents::PitchingMethod::EEdgeGrad);
                     tps.PitchTentsGradient(dt,c);
 		    return tps;
 		  }),
@@ -1130,8 +1130,8 @@ void ExportTents(py::module & m) {
     .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, bool exact,  int heapsize)
 		  {
 		    auto tps = TentPitchedSlab<3>(ma, heapsize);
-		    if(exact) tps.SetPitchingMethod(TentPitchedSlab<3>::PitchingMethod::EVolGrad);
-		    else tps.SetPitchingMethod(TentPitchedSlab<3>::PitchingMethod::EEdgeGrad);
+		    if(exact) tps.SetPitchingMethod(ngstents::PitchingMethod::EVolGrad);
+		    else tps.SetPitchingMethod(ngstents::PitchingMethod::EEdgeGrad);
                     tps.PitchTentsGradient(dt,c);
 		    return tps;
 		  }),

@@ -109,16 +109,18 @@ public:
 
 
 ////////////////////////////////////////////////////////////////////////////
+namespace ngstents{
+  enum PitchingMethod {EVolGrad =1, EEdgeGrad};
+}
 
 template <int DIM>
 class TentPitchedSlab {
 public:
-  enum PitchingMethod {EVolGrad = 1, EEdgeGrad};
   Array<Tent*> tents;         // tents between two time slices
   double dt;                  // time step between two time slices
   int nlayers;//number of layers in the time slab
   LocalHeap lh;
-  PitchingMethod method;
+  ngstents::PitchingMethod method;
 
 public:
   // access to base spatial mesh (public for export to Python visualization)
@@ -145,7 +147,7 @@ public:
   void DrawPitchedTentsGL(Array<int> & tentdata,
                           Array<double> & tenttimes, int & nlevels);
 
-  void SetPitchingMethod(PitchingMethod amethod) {this->method = amethod;}
+  void SetPitchingMethod(ngstents::PitchingMethod amethod) {this->method = amethod;}
 
   // Propagate methods need to access this somehow
   Table<int> tent_dependency; // DAG of tent dependencies
