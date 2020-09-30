@@ -94,7 +94,7 @@ void TentPitchedSlab <DIM>::PitchTents(double dt, const double global_ct)
   cout << "Mapped periodic vertices" << endl;
   //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
   BitArray fine_edges(ma->GetNEdges());
-  slabpitcher->InitializeMeshData(lh,fine_edges,cmax);
+  slabpitcher->InitializeMeshData<DIM>(lh,fine_edges,cmax, global_ct);
   cout << "Initialised mesh data" << endl;
   //remove periodic edges
   RemovePeriodicEdges(ma,fine_edges);
@@ -417,7 +417,7 @@ double TentPitchedSlab <DIM>::MaxSlope() const{
 
 
 ///////////////////// Pitching Algo Routines ///////////////////////////////
-TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama) : ma(ama), cmax(ama->GetNE()), vertex_refdt(ama->GetNV()) {
+TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama) : ma(ama), cmax(ama->GetNE()), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()) {
 }
 
 
@@ -512,18 +512,14 @@ void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, co
     } 
 }
 
-template <int DIM> void
-VolumeGradientPitcher<DIM>::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction>wavespeed)
+template<int DIM>
+void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction>wavespeed, const double global_ct)
 {
   HeapReset hr(lh);
   fine_edges.Clear();
   //identify fine edges and evaluate maximum wavespeed for each element
   for (Ngs_Element el : this->ma->Elements(VOL))
-    {
-        
-      //set all edges belonging to the mesh
-      for (int e : el.Edges())	
-        fine_edges.SetBit(e);
+    {       
         
       auto ei = ElementId(el);
       auto eltype = this->ma->GetElType(ei);
@@ -531,6 +527,17 @@ VolumeGradientPitcher<DIM>::InitializeMeshData(LocalHeap &lh, BitArray &fine_edg
       IntegrationRule ir(eltype, 0);
       MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
       this->cmax[el.Nr()] = wavespeed->Evaluate(mip);
+
+            //set all edges belonging to the mesh
+      for (int e : el.Edges())
+        {
+          auto pnts = ma->GetEdgePNums(e);
+          auto v1 = pnts[0], v2 = pnts[1];
+          double len = L2Norm (ma-> template GetPoint<DIM>(v1)
+                               - ma-> template GetPoint<DIM>(v2));
+          edge_len[e] = len;
+          fine_edges.SetBit(e);
+        }
     }
   
 }
@@ -627,50 +634,31 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
  }
 
 template <int DIM>
-void EdgeGradientPitcher<DIM>::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction>wavespeed)
-{
-  HeapReset hr(lh);
-  fine_edges.Clear();
-  edge_refdt = std::numeric_limits<double>::max();
-  //identify fine edges and evaluate maximum wavespeed for each element
-  for (Ngs_Element el : this->ma->Elements(VOL))
-    {       
-        
-      auto ei = ElementId(el);
-      auto eltype = this->ma->GetElType(ei);
-      ElementTransformation & trafo = this->ma->GetTrafo (ei, lh);
-      IntegrationRule ir(eltype, 0);
-      MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
-      this->cmax[el.Nr()] = wavespeed->Evaluate(mip);
-
-            //set all edges belonging to the mesh
-      for (int e : el.Edges())
-        {
-          auto pnts = ma->GetEdgePNums(e);
-          auto v1 = pnts[0], v2 = pnts[1];
-          double len = L2Norm (ma-> template GetPoint<DIM>(v1)
-                               - ma-> template GetPoint<DIM>(v2));
-          edge_refdt[e] = min (edge_refdt[e], len/cmax[el.Nr()]);
-          fine_edges.SetBit(e);
-        }
-    }
-  
-}
-
-template <int DIM>
 double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
   auto &vmap = Tent::vmap;
   double num_tol = std::numeric_limits<double>::epsilon();
   double kt = std::numeric_limits<double>::max();
+
+  // array of all elements containing vertex vi
+  ArrayMem<int,30> els;
+  els.SetSize(0);
+  ma->GetVertexElements(vi,els);
   for (int nb_index : nbv.Range())
     {
       int nb = vmap[nbv[nb_index]];
-      double kt1 = tau[nb]-tau[vi]+edge_refdt[nbe[nb_index]];
-      if (kt1 > 0)
-        {          
-          kt = min (kt, kt1);
+      const double length = edge_len[nbe[nb_index]];
+      for(int el : els)
+        {
+          ElementId ei(VOL,el);
+          const double c_max = cmax[ei.Nr()];
+          const double kt1 = tau[nb]-tau[vi]+length/c_max;
+          if (kt1 > 0)
+            {          
+              kt = min (kt, kt1);
+            }
+          else continue;
         }
-      else continue;
+      
       
     }
   //could not advance

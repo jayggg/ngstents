@@ -175,14 +175,17 @@ protected:
   Array<double> cmax;
   //reference heights for each vertex
   Array<double> vertex_refdt;
+  //array containing the length of each edge
+  Array<double> edge_len;
 public:
   //constructor
   TentSlabPitcher(shared_ptr<MeshAccess> ama);
   //destructor
   virtual ~TentSlabPitcher(){;}
-  //calculates the wavespeed for each element. on the child class it might do something else as well, hence it's virtual
-  virtual void InitializeMeshData(LocalHeap &lh, BitArray &fine_edges,
-                                  shared_ptr<CoefficientFunction> wavespeed ) = 0;
+  //calculates the wavespeed for each element and the edge length
+  template<int DIM>
+  void InitializeMeshData(LocalHeap &lh, BitArray &fine_edges,
+                                  shared_ptr<CoefficientFunction> wavespeed, const double global_ct );
 
   //compute the vertex based max time-differences assumint tau=0
   //corresponding to a non-periodic vertex
@@ -217,8 +220,6 @@ class VolumeGradientPitcher : public TentSlabPitcher{
 public:
   
   VolumeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama){;}
-  
-  void InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction> wavespeed) override;
 
   double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
@@ -226,12 +227,9 @@ public:
 
 template <int DIM>
 class EdgeGradientPitcher : public TentSlabPitcher{
-  Array<double> edge_refdt;
 public:
   
-  EdgeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama), edge_refdt(ama->GetNEdges()) {;}
-
-  void InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction> wavespeed) override;
+  EdgeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama) {;}
 
   double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
