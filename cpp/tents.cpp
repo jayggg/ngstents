@@ -281,23 +281,38 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt)
   catch (const std::logic_error &error)
     {
       cout << error.what() << endl;
-      cout << "dt = " << dt << "adv factor = " << adv_factor << endl;
+      cout << "dt = " << dt << " adv factor = " << adv_factor << endl;
 
       int iv;
       for(iv = 0; iv < ma->GetNV(); iv++)
         if(vmap[iv] == iv && !complete_vertices[iv]) break;
-      //get the latest tent erected at the vertex
-      auto it = latest_tent[iv];
-      const double diff = dt - tents[it]->ttop;
-      cout << "===============================" << endl;
-      cout << "tent "<< it << " diff = " << diff << endl;
-      const auto ktilde_iv = ktilde[iv];
-      const auto ref_height = slabpitcher->GetVerticesReferenceHeight()[iv];
-      cout << "ktilde = " << ktilde_iv;
-      cout << " refdt = " << ref_height;
-      cout << "ratio = " << ktilde_iv/ref_height << endl;
+      if(iv == ma->GetNV())
+        {
+          cout << "Inconsistent data structure. Aborting..." << endl;
+        }
+      else
+        {
+          //get the latest tent erected at the vertex
+          auto it = latest_tent[iv];
+          if(it == -1)
+            {
+              cout << "No tent has been pitched" << endl;
+            }
+          else
+            {
+              const double diff = dt - tents[it]->ttop;
+              cout << "===============================" << endl;
+              cout << "tent "<< it << " diff = " << diff << endl;
+              const auto ktilde_iv = ktilde[iv];
+              const auto ref_height = slabpitcher->GetVerticesReferenceHeight()[iv];
+              cout << "ktilde = " << ktilde_iv;
+              cout << " refdt = " << ref_height;
+              cout << "ratio = " << ktilde_iv/ref_height << endl;
+              cout <<*(tents[it]) << endl;
+            }
+        }
       delete slabpitcher;
-      cout <<*(tents[it]) << endl;
+      tents.DeleteAll();
       exit(-1);
     }
   delete slabpitcher;
