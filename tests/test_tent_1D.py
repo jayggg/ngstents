@@ -19,10 +19,12 @@ def test_tent_properties():
     mesh = ngMesh(nmesh)
     dt = 10
     c = 1
-
+    method = "vol"
     # Tent slab tests
-    tentslab = TentSlab(mesh, dt, c, True,
+    tentslab = TentSlab(mesh, method,
                         5000000)
+    tentslab.SetWavespeed(c)
+    tentslab.PitchTents(dt)
     ntents = tentslab.GetNTents()
     maxslope = tentslab.MaxSlope()
     try:

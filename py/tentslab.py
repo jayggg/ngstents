@@ -4,33 +4,37 @@ from tents import (TentPitchedSlab1, TentPitchedSlab2, TentPitchedSlab3)
 
 
 class TentSlab(object):
-    def __init__(self, mesh, dt, c, exact=None, heapsize=None):
-        if exact is None:
-            exact = False
+    def __init__(self, mesh, method=None, heapsize=None):
+        if method is None:
+            method = "edge"
         self.mesh = mesh
-        self.dt = dt
-        self.c = c
         self.dim = mesh.dim
         if self.dim == 1:
             if heapsize is None:
-                self.slab = TentPitchedSlab1(mesh, dt, c, exact)
+                self.slab = TentPitchedSlab1(mesh, method)
             else:
-                self.slab = TentPitchedSlab1(mesh, dt, c, exact,
+                self.slab = TentPitchedSlab1(mesh, method,
                                              heapsize=heapsize)
         elif self.dim == 2:
             if heapsize is None:
-                self.slab = TentPitchedSlab2(mesh, dt, c, exact)
+                self.slab = TentPitchedSlab2(mesh, method)
             else:
-                self.slab = TentPitchedSlab2(mesh, dt, c, exact,
+                self.slab = TentPitchedSlab2(mesh, method,
                                              heapsize=heapsize)
         elif self.dim == 3:
             if heapsize is None:
-                self.slab = TentPitchedSlab3(mesh, dt, c, exact)
+                self.slab = TentPitchedSlab3(mesh, method)
             else:
-                self.slab = TentPitchedSlab3(mesh, dt, c, exact,
+                self.slab = TentPitchedSlab3(mesh, method,
                                              heapsize=heapsize)
         else:
             raise NotImplementedError("mesh dimension not supported")
+
+    def SetWavespeed(self, c):
+        self.slab.SetWavespeed(c)
+
+    def PitchTents(self, dt):
+        self.slab.PitchTents(dt)
 
     def GetNTents(self):
         return self.slab.GetNTents()

@@ -9,9 +9,12 @@ def test_tent_properties():
     mesh.Refine()
     dt = 0.05
     c = 16
-
+    method = "vol"
+    
     # Tent slab tests
-    tentslab = TentSlab(mesh, dt, c, True, 100000000)
+    tentslab = TentSlab(mesh, method, 100000000)
+    tentslab.SetWavespeed(c)
+    tentslab.PitchTents(dt)
     ntents = tentslab.GetNTents()
     maxslope = tentslab.MaxSlope()
     try:

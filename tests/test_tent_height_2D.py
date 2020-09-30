@@ -19,8 +19,11 @@ def test_tent_height():
     dt = 0.05
     c = 16
     tol = 1e-12
+    method = "vol"
     # Tent slab tests
-    tentslab = TentSlab(mesh, dt, c, True, 10**7)
+    tentslab = TentSlab(mesh, method, 10**7)
+    tentslab.SetWavespeed(c)
+    tentslab.PitchTents(dt)
     ntents = tentslab.GetNTents()
     for itent in range(ntents):
         tent = tentslab.GetTent(itent)

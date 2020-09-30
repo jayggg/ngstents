@@ -118,7 +118,11 @@ class TentPitchedSlab {
 public:
   Array<Tent*> tents;         // tents between two time slices
   double dt;                  // time step between two time slices
+  //wavespeed
+  shared_ptr<CoefficientFunction> cmax;
   int nlayers;//number of layers in the time slab
+  //whether the slab has been already pitched
+  bool has_been_pitched;
   LocalHeap lh;
   ngstents::PitchingMethod method;
 
@@ -127,14 +131,20 @@ public:
   shared_ptr<MeshAccess> ma;
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
-    dt(0), ma(ama), nlayers(0), lh(heapsize, "Tents heap") { ; };
+    dt(0), ma(ama), cmax(nullptr), nlayers(0),
+    has_been_pitched(false), lh(heapsize, "Tents heap") { ; };
   
   //uses a gradient based method for pitching the tent
-  void PitchTentsGradient(double dt, double cmax);
-  void PitchTentsGradient(double dt, shared_ptr<CoefficientFunction> cmax);
+  void PitchTentsGradient(const double dt);
+  
   // Get object features
   int GetNTents() { return tents.Size(); }
   int GetNLayers() { return nlayers; }
+
+
+  void SetWavespeed(const double c){cmax =  make_shared<ConstantCoefficientFunction>(c);}
+  void SetWavespeed(shared_ptr<CoefficientFunction> c){ cmax = c;}
+  
   double GetSlabHeight() { return dt; }
   const Tent & GetTent(int i) { return *tents[i];}
 

@@ -8,11 +8,14 @@ def test_burgers2D():
     dt = 0.025
     c = 16
     tend = dt
+    method = "edge"
 
     geom = SplineGeometry()
     geom.AddRectangle((0, 0), (1, 1), bc=1)
     mesh = Mesh(geom.GenerateMesh(maxh=0.2))
-    ts = TentSlab(mesh, dt, c)
+    ts = TentSlab(mesh, method)
+    ts.SetWavespeed(c)
+    ts.PitchTents(dt)
     cf = CoefficientFunction(exp(-50*((x-0.3)*(x-0.3)+(y-0.3)*(y-0.3))))
 
     burg = Burgers(ts, order=order)

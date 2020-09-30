@@ -60,19 +60,17 @@ constexpr ELEMENT_TYPE EL_TYPE(int DIM)
   return DIM == 1 ? ET_SEGM : DIM == 2 ? ET_TRIG : ET_TET;
 }//this assumes that there is only one type of element per mesh
 
-
-template <int DIM> void
-TentPitchedSlab<DIM>::PitchTentsGradient(double dt, double wavespeed)
-{
-  cout << "Pitching with wavespeed = " << wavespeed << endl;
-  auto cf = make_shared<ConstantCoefficientFunction>(wavespeed);
-  PitchTentsGradient(dt, cf);
-}
-
 template <int DIM>
-void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
-				  shared_ptr<CoefficientFunction> wavespeed)
+void TentPitchedSlab <DIM>::PitchTentsGradient(double dt)
 {
+  if(has_been_pitched)
+    {
+      tents.DeleteAll();
+    }
+  if(cmax == nullptr)
+    {
+      throw std::logic_error("Wavespeed has not been set!");
+    }
   this->dt = dt; // set it so that GetSlabHeight can return it
   auto &vmap = Tent::vmap;
   TentSlabPitcher * slabpitcher = [this]() ->TentSlabPitcher* {
@@ -96,7 +94,7 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
   cout << "Mapped periodic vertices" << endl;
   //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
   BitArray fine_edges(ma->GetNEdges());
-  slabpitcher->InitializeMeshData(lh,fine_edges,wavespeed);
+  slabpitcher->InitializeMeshData(lh,fine_edges,cmax);
   cout << "Initialised mesh data" << endl;
   //remove periodic edges
   RemovePeriodicEdges(ma,fine_edges);
@@ -382,6 +380,7 @@ void TentPitchedSlab <DIM>::PitchTentsGradient(double dt,
 	 tent.gradphi_top[j] = Trans(dshape_nodal) * coef_top;
        }
      });
+  has_been_pitched = true;
 }
 
 
@@ -1040,21 +1039,27 @@ void ExportTents(py::module & m) {
   //
   py::class_<TentPitchedSlab<1>, shared_ptr<TentPitchedSlab<1>>>
     (m, "TentPitchedSlab1", "Tent pitched slab in 1 space + 1 time dimensions")
-    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c,
-                     bool exact, int heapsize)
-		  {
-		    auto tps = TentPitchedSlab<1>(ma, heapsize);
-                    
-                    if(exact) tps.SetPitchingMethod(ngstents::PitchingMethod::EVolGrad);
-		    else tps.SetPitchingMethod(ngstents::PitchingMethod::EEdgeGrad);
-                    tps.PitchTentsGradient(dt,c);
-		    return tps;
-		  }),
-      py::arg("mesh"), py::arg("dt"), py::arg("c"),
-      py::arg("exact") = false, py::arg("heapsize") = 1000000
+    .def(py::init([](shared_ptr<MeshAccess> ma, string method_name, int heapsize)
+      {
+        ngstents::PitchingMethod method = [method_name]{
+          if(method_name == "edge") return ngstents::EEdgeGrad;
+          else if(method_name == "vol") return ngstents::EVolGrad;
+          else//just for static analyzers. the code should not reach this case
+            {
+              cout << "Invalid method! Setting edge algorithm as default..." << endl;
+              return ngstents::EEdgeGrad;
+            }
+        }();
+        auto tps = TentPitchedSlab<1>(ma,  heapsize);
+        tps.SetPitchingMethod(method);
+        return tps;
+      }),
+      py::arg("mesh"), py::arg("method"), py::arg("heapsize") = 1000000
       )
-
+    
     .def_readonly("mesh", &TentPitchedSlab<1>::ma)
+    .def("SetWavespeed", static_cast<void (TentPitchedSlab<1>::*)(const double)>(&TentPitchedSlab<1>::SetWavespeed))
+    .def("PitchTents", &TentPitchedSlab<1>::PitchTentsGradient)
     .def("GetNTents", &TentPitchedSlab<1>::GetNTents)
     .def("GetNLayers", &TentPitchedSlab<1>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<1>::GetSlabHeight)
@@ -1081,19 +1086,27 @@ void ExportTents(py::module & m) {
 
   py::class_<TentPitchedSlab<2>, shared_ptr<TentPitchedSlab<2>>>
     (m, "TentPitchedSlab2", "Tent pitched slab in 2 space + 1 time dimensions")
-    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, bool exact, int heapsize)
-		  {
-		    auto tps = TentPitchedSlab<2>(ma, heapsize);
-		    if(exact) tps.SetPitchingMethod(ngstents::PitchingMethod::EVolGrad);
-		    else tps.SetPitchingMethod(ngstents::PitchingMethod::EEdgeGrad);
-                    tps.PitchTentsGradient(dt,c);
-		    return tps;
-		  }),
-      py::arg("mesh"), py::arg("dt"), py::arg("c"),
-      py::arg("exact") = false, py::arg("heapsize") = 1000000
+    .def(py::init([](shared_ptr<MeshAccess> ma, string method_name, int heapsize)
+      {
+        ngstents::PitchingMethod method = [method_name]{
+          if(method_name == "edge") return ngstents::EEdgeGrad;
+          else if(method_name == "vol") return ngstents::EVolGrad;
+          else//just for static analyzers. the code should not reach this case
+            {
+              cout << "Invalid method! Setting edge algorithm as default..." << endl;
+              return ngstents::EEdgeGrad;
+            }
+        }();
+        auto tps = TentPitchedSlab<2>(ma,  heapsize);
+        tps.SetPitchingMethod(method);
+        return tps;
+      }),
+      py::arg("mesh"), py::arg("method"), py::arg("heapsize") = 1000000
       )
 
     .def_readonly("mesh", &TentPitchedSlab<2>::ma)
+    .def("SetWavespeed", static_cast<void (TentPitchedSlab<2>::*)(const double)>(&TentPitchedSlab<2>::SetWavespeed))
+    .def("PitchTents", &TentPitchedSlab<2>::PitchTentsGradient)
     .def("GetNTents", &TentPitchedSlab<2>::GetNTents)
     .def("GetNLayers", &TentPitchedSlab<2>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)
@@ -1127,19 +1140,27 @@ void ExportTents(py::module & m) {
 
   py::class_<TentPitchedSlab<3>, shared_ptr<TentPitchedSlab<3>>>
     (m, "TentPitchedSlab3", "Tent pitched slab in 3 space + 1 time dimensions")
-    .def(py::init([](shared_ptr<MeshAccess> ma, double dt, double c, bool exact,  int heapsize)
-		  {
-		    auto tps = TentPitchedSlab<3>(ma, heapsize);
-		    if(exact) tps.SetPitchingMethod(ngstents::PitchingMethod::EVolGrad);
-		    else tps.SetPitchingMethod(ngstents::PitchingMethod::EEdgeGrad);
-                    tps.PitchTentsGradient(dt,c);
-		    return tps;
-		  }),
-      py::arg("mesh"), py::arg("dt"), py::arg("c"),
-      py::arg("exact") = false, py::arg("heapsize") = 1000000
+    .def(py::init([](shared_ptr<MeshAccess> ma, string method_name, int heapsize)
+      {
+        ngstents::PitchingMethod method = [method_name]{
+          if(method_name == "edge") return ngstents::EEdgeGrad;
+          else if(method_name == "vol") return ngstents::EVolGrad;
+          else//just for static analyzers. the code should not reach this case
+            {
+              cout << "Invalid method! Setting edge algorithm as default..." << endl;
+              return ngstents::EEdgeGrad;
+            }
+        }();
+        auto tps = TentPitchedSlab<3>(ma,  heapsize);
+        tps.SetPitchingMethod(method);
+        return tps;
+      }),
+      py::arg("mesh"), py::arg("method"), py::arg("heapsize") = 1000000
       )
 
     .def_readonly("mesh", &TentPitchedSlab<3>::ma)
+    .def("SetWavespeed", static_cast<void (TentPitchedSlab<3>::*)(const double)>(&TentPitchedSlab<3>::SetWavespeed))
+    .def("PitchTents", &TentPitchedSlab<3>::PitchTentsGradient)
     .def("GetNTents", &TentPitchedSlab<3>::GetNTents)
     .def("GetNLayers", &TentPitchedSlab<3>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<3>::GetSlabHeight)
