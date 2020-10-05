@@ -24,7 +24,13 @@ def test_tent_properties():
     tentslab = TentSlab(mesh, method,
                         5000000)
     tentslab.SetWavespeed(c)
-    tentslab.PitchTents(dt)
+    success = tentslab.PitchTents(dt)
+    try:
+        assert success is True
+    except AssertionError as e:
+        msg = "Slab could not be pitched"
+        e.args += ("Failed to pitch slab", msg)
+        raise
     ntents = tentslab.GetNTents()
     maxslope = tentslab.MaxSlope()
     try:

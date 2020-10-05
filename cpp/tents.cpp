@@ -61,7 +61,7 @@ constexpr ELEMENT_TYPE EL_TYPE(int DIM)
 }//this assumes that there is only one type of element per mesh
 
 template <int DIM>
-void TentPitchedSlab <DIM>::PitchTents(double dt, const double global_ct)
+bool TentPitchedSlab <DIM>::PitchTents(double dt, const double global_ct)
 {
   if(has_been_pitched)
     {
@@ -82,11 +82,12 @@ void TentPitchedSlab <DIM>::PitchTents(double dt, const double global_ct)
       case ngstents::EEdgeGrad:
         return new EdgeGradientPitcher<DIM>(this->ma);
       default:
-        throw std::logic_error("Trying to pitch tent without setting a pitching method");
+        cout << "Trying to pitch tent without setting a pitching method." << endl;
         return nullptr;
         break;
       }
   }();
+  if(!slabpitcher) return false;
   cout << "Created slab pitcher"<<endl;
   
   //map periodic vertices
@@ -274,46 +275,18 @@ void TentPitchedSlab <DIM>::PitchTents(double dt, const double global_ct)
             }
     }
 
-  try
+ 
+  if(!slab_complete)
     {
-      if(!slab_complete) throw std::logic_error("Could not pitch whole slab");
-    }
-  catch (const std::logic_error &error)
-    {
-      cout << error.what() << endl;
-      cout << "dt = " << dt << " adv factor = " << adv_factor << endl;
-
+      cout << "Error: the algorithm could not pitch the whole slab" << endl;
       int iv;
       for(iv = 0; iv < ma->GetNV(); iv++)
         if(vmap[iv] == iv && !complete_vertices[iv]) break;
-      if(iv == ma->GetNV())
+      if(iv == ma->GetNV())//just as a precaution, let us check that it really didnt pitch.
         {
           cout << "Inconsistent data structure. Aborting..." << endl;
+          exit(-1);
         }
-      else
-        {
-          //get the latest tent erected at the vertex
-          auto it = latest_tent[iv];
-          if(it == -1)
-            {
-              cout << "No tent has been pitched" << endl;
-            }
-          else
-            {
-              const double diff = dt - tents[it]->ttop;
-              cout << "===============================" << endl;
-              cout << "tent "<< it << " diff = " << diff << endl;
-              const auto ktilde_iv = ktilde[iv];
-              const auto ref_height = slabpitcher->GetVerticesReferenceHeight()[iv];
-              cout << "ktilde = " << ktilde_iv;
-              cout << " refdt = " << ref_height;
-              cout << "ratio = " << ktilde_iv/ref_height << endl;
-              cout <<*(tents[it]) << endl;
-            }
-        }
-      delete slabpitcher;
-      tents.DeleteAll();
-      exit(-1);
     }
   delete slabpitcher;
   
@@ -395,7 +368,9 @@ void TentPitchedSlab <DIM>::PitchTents(double dt, const double global_ct)
 	 tent.gradphi_top[j] = Trans(dshape_nodal) * coef_top;
        }
      });
-  has_been_pitched = true;
+  cout << "exit" << endl;
+  has_been_pitched = slab_complete;
+  return has_been_pitched;
 }
 
 

@@ -15,7 +15,13 @@ def test_burgers2D():
     mesh = Mesh(geom.GenerateMesh(maxh=0.2))
     ts = TentSlab(mesh, method)
     ts.SetWavespeed(c)
-    ts.PitchTents(dt)
+    success = ts.PitchTents(dt)
+    try:
+        assert success is True
+    except AssertionError as e:
+        msg = "Slab could not be pitched"
+        e.args += ("Failed to pitch slab", msg)
+        raise
     cf = CoefficientFunction(exp(-50*((x-0.3)*(x-0.3)+(y-0.3)*(y-0.3))))
 
     burg = Burgers(ts, order=order)

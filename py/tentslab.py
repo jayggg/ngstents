@@ -34,17 +34,30 @@ class TentSlab(object):
         self.slab.SetWavespeed(c)
 
     def PitchTents(self, dt, global_ct=None):
+        print("****************\n"
+              "IMPORTANT NOTICE\n"
+              "****************\n"
+              "The return variable of this function will be false\n"
+              "if the slab cold not be pitched. It must ALWAYS be checked.\n"
+              "Pitching slab...")
         if global_ct is None:
-            self.slab.PitchTents(dt)
+            success = self.slab.PitchTents(dt)
         else:
-            self.slab.PitchTents(dt, global_ct)
+            success = self.slab.PitchTents(dt, global_ct)
+        if success is True:
+            print("The slab was successfully pitched!")
+        else:
+            print("The slab could not be pitched.\n"
+                  "If desired, it can still be printed"
+                  " for debugging purposes")
+        return success
 
     def GetNTents(self):
         return self.slab.GetNTents()
 
     def GetNLayers(self):
         return self.slab.GetNLayers()
-    
+
     def GetSlabHeight(self):
         return self.slab.GetSlabHeight()
 

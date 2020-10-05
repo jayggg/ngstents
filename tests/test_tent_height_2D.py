@@ -23,7 +23,13 @@ def test_tent_height():
     # Tent slab tests
     tentslab = TentSlab(mesh, method, 10**7)
     tentslab.SetWavespeed(c)
-    tentslab.PitchTents(dt)
+    success = tentslab.PitchTents(dt)
+    try:
+        assert success is True
+    except AssertionError as e:
+        msg = "Slab could not be pitched"
+        e.args += ("Failed to pitch slab", msg)
+        raise
     ntents = tentslab.GetNTents()
     for itent in range(ntents):
         tent = tentslab.GetTent(itent)

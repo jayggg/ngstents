@@ -138,7 +138,8 @@ public:
   //if global_ct > 0, its value will be used as a global
   //mesh-dependent constant for scaling the algorithm.
   //otherwise, a local constant will be calculated.
-  void PitchTents(const double dt, const double global_ct = 1.0);
+  //its return value will indicate whether the slab was successfully pitched.
+  bool PitchTents(const double dt, const double global_ct = 1.0);
   
   // Get object features
   int GetNTents() { return tents.Size(); }
