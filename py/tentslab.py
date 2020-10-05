@@ -37,8 +37,9 @@ class TentSlab(object):
         print("****************\n"
               "IMPORTANT NOTICE\n"
               "****************\n"
-              "The return variable of this function will be false\n"
-              "if the slab cold not be pitched. It must ALWAYS be checked.\n"
+              "In case the slab can not be pitched"
+              " execution will NOT be aborted.\n"
+              "The return value of this function must ALWAYS be checked.\n"
               "Pitching slab...")
         if global_ct is None:
             success = self.slab.PitchTents(dt)
