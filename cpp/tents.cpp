@@ -506,6 +506,7 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
             //set all edges belonging to the mesh
       for (int e : el.Edges())
         {
+          if(fine_edges[e]) continue;//has already been calculated
           auto pnts = ma->GetEdgePNums(e);
           auto v1 = pnts[0], v2 = pnts[1];
           double len = L2Norm (ma-> template GetPoint<DIM>(v1)
