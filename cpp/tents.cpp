@@ -425,6 +425,8 @@ bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor
     }
   if(reset_adv_factor)
     adv_factor = initial_adv_factor;
+  //the algorithm is most likely stuck
+  else if (adv_factor < 0.05) return false;
   return found;
 }
 
