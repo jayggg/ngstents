@@ -496,21 +496,20 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
   fine_edges.Clear();
 
   const auto n_vol_els = ma->Elements(VOL).Size();
-  //this table will contain the constant sigma_f
-  //sigma_f is the ratio between the distance to the opposite facet
-  //and the smallest edge to the opposite facet, so sigma_f <=1
-  //it is slightly different then the definition on ericksson's for 3D
-  TableCreator<double> create_sigmaf;
-  create_sigmaf.SetSize(n_vol_els);
-  create_sigmaf.SetMode(2);
+  //this table will contain the local mesh-dependent constant
+  //local_ctau is the ratio between the distance to the opposite facet
+  //and the biggest edge to the opposite facet, so local_ctau <1
+  TableCreator<double> create_local_ctau;
+  create_local_ctau.SetSize(n_vol_els);
+  create_local_ctau.SetMode(2);
   ArrayMem<int,n_el_vertices> el_vertices(n_el_vertices);
   //just calculating the size of the table
   for(auto el : IntRange(0,n_vol_els))
     {
       for(auto v : IntRange(0, n_el_vertices))
-        create_sigmaf.Add(el,v);
+        create_local_ctau.Add(el,v);
     }
-  create_sigmaf++;//now it is in insert mode
+  create_local_ctau++;// it is in insert mode
    
   //gradient of basis functions onthe current element  
   Matrix<> gradphi(n_el_vertices, DIM);
@@ -554,7 +553,7 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
         {
           const auto dist_opposite_facet = 1./L2Norm(gradphi.Row(vi_local));
           const auto val = dist_opposite_facet / max_edge[vi_local];
-          create_sigmaf.Add(el_num,val);// - std::numeric_limits<double>::epsilon() * detjac_inv);
+          create_local_ctau.Add(el_num,val);
         }
     }
 
@@ -564,7 +563,7 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
     }
   else
     {
-      local_cts = create_sigmaf.MoveTable();
+      local_cts = create_local_ctau.MoveTable();
       this->ctau = [this](const int el, const int v){return local_cts[el][v];};
     }
   
