@@ -560,7 +560,7 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
         }
     }
 
-  if(calc_local_ct)
+  if(calc_local_ct && DIM > 1)
     {
       local_ctau_table = create_local_ctau.MoveTable();
       this->local_ctau = [this](const int el, const int v){return local_ctau_table[el][v];};
