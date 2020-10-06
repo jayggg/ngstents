@@ -178,6 +178,10 @@ protected:
   Array<double> vertex_refdt;
   //array containing the length of each edge
   Array<double> edge_len;
+  //returns the constant associated with a given vertex of a given element
+  std::function<double(const int, const int)> ctau;
+  //table for storing local geometric constants
+  Table<double> local_cts;
 public:
   //constructor
   TentSlabPitcher(shared_ptr<MeshAccess> ama);

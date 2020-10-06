@@ -368,7 +368,6 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, const double global_ct)
 	 tent.gradphi_top[j] = Trans(dshape_nodal) * coef_top;
        }
      });
-  cout << "exit" << endl;
   has_been_pitched = slab_complete;
   return has_been_pitched;
 }
@@ -392,7 +391,7 @@ double TentPitchedSlab <DIM>::MaxSlope() const{
 
 
 ///////////////////// Pitching Algo Routines ///////////////////////////////
-TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama) : ma(ama), cmax(ama->GetNE()), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()) {
+TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama) : ma(ama), cmax(ama->GetNE()), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()), ctau([](const int, const int){return 1.;}) {
 }
 
 
@@ -490,30 +489,83 @@ void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, co
 template<int DIM>
 void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction>wavespeed, const double global_ct)
 {
+  constexpr auto el_type = EL_TYPE(DIM);//simplex of dimension dim
+  constexpr auto n_el_vertices = DIM + 1;//number of vertices of that simplex
+  
   HeapReset hr(lh);
   fine_edges.Clear();
-  //identify fine edges and evaluate maximum wavespeed for each element
+
+  const auto n_vol_els = ma->Elements(VOL).Size();
+  //this table will contain the constant sigma_f
+  //sigma_f is the ratio between the distance to the opposite facet
+  //and the smallest edge to the opposite facet, so sigma_f <=1
+  //it is slightly different then the definition on ericksson's for 3D
+  TableCreator<double> create_sigmaf;
+  create_sigmaf.SetSize(n_vol_els);
+  create_sigmaf.SetMode(2);
+  ArrayMem<int,n_el_vertices> el_vertices(n_el_vertices);
+  //just calculating the size of the table
+  for(auto el : IntRange(0,n_vol_els))
+    {
+      for(auto v : IntRange(0, n_el_vertices))
+        create_sigmaf.Add(el,v);
+    }
+  create_sigmaf++;//now it is in insert mode
+   
+  //gradient of basis functions onthe current element  
+  Matrix<> gradphi(n_el_vertices, DIM);
+  //used to calculate distance to opposite facet
+  ScalarFE<el_type,1> my_fel;
+  //minimum length of the adjacent edges for each element's vertices
+  ArrayMem<double, n_el_vertices> max_edge(n_el_vertices);
+  //the mesh contains only simplices so only one integration rule is needed
+  IntegrationRule ir(el_type, 0);
   for (Ngs_Element el : this->ma->Elements(VOL))
-    {       
-        
+    {
+      max_edge = -1;
       auto ei = ElementId(el);
-      auto eltype = this->ma->GetElType(ei);
       ElementTransformation & trafo = this->ma->GetTrafo (ei, lh);
-      IntegrationRule ir(eltype, 0);
       MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
       this->cmax[el.Nr()] = wavespeed->Evaluate(mip);
 
-            //set all edges belonging to the mesh
+
+      auto v_indices = ma->GetElVertices(ei);
+      //set all edges belonging to the mesh
       for (int e : el.Edges())
         {
-          if(fine_edges[e]) continue;//has already been calculated
           auto pnts = ma->GetEdgePNums(e);
           auto v1 = pnts[0], v2 = pnts[1];
-          double len = L2Norm (ma-> template GetPoint<DIM>(v1)
+          if(!fine_edges[e])
+            {
+              fine_edges.SetBit(e);
+              double len = L2Norm (ma-> template GetPoint<DIM>(v1)
                                - ma-> template GetPoint<DIM>(v2));
-          edge_len[e] = len;
-          fine_edges.SetBit(e);
+              edge_len[e] = len;
+            }
+          const auto v1_local = v_indices.Pos(v1);
+          const auto v2_local = v_indices.Pos(v2);
+          max_edge[v1_local] = max(max_edge[v1_local],edge_len[e]);
+          max_edge[v2_local] = max(max_edge[v2_local],edge_len[e]);
         }
+      my_fel.CalcMappedDShape(mip,gradphi);
+      const auto el_num = ei.Nr();
+      const auto detjac_inv = 1./mip.GetJacobiDet();
+      for(int vi_local = 0; vi_local < v_indices.Size(); vi_local++) 
+        {
+          const auto dist_opposite_facet = 1./L2Norm(gradphi.Row(vi_local));
+          const auto val = dist_opposite_facet / max_edge[vi_local];
+          create_sigmaf.Add(el_num,val);// - std::numeric_limits<double>::epsilon() * detjac_inv);
+        }
+    }
+
+  if(global_ct > 0)
+    {
+      this->ctau = [global_ct](const int el, const int v){return global_ct;};
+    }
+  else
+    {
+      local_cts = create_sigmaf.MoveTable();
+      this->ctau = [this](const int el, const int v){return local_cts[el][v];};
     }
   
 }
@@ -626,8 +678,11 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double>
       for(int el : els)
         {
           ElementId ei(VOL,el);
-          const double c_max = cmax[ei.Nr()];
-          const double kt1 = tau[nb]-tau[vi]+length/c_max;
+          const auto el_num = ei.Nr();
+          const auto vi_local = ma->GetElVertices(ei).Pos(vi);
+          const double c_max = cmax[el_num];
+          const double local_c_tau = this->ctau(el_num,vi_local);
+          const double kt1 = tau[nb]-tau[vi]+ local_c_tau * length/c_max;
           if (kt1 > 0)
             {          
               kt = min (kt, kt1);
