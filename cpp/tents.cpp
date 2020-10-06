@@ -650,16 +650,20 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
           }
         return init_pole_height;//negative delta
       }();
-      pole_height = min(pole_height,this->global_ctau * sol);
+      //the return value is actually the ADVANCE in the current vi
+      auto kbar = sol - tau[vi];
+      const auto local_ct = local_ctau(ei.Nr(),local_vi);
+      kbar *= local_ct * global_ctau;
+      pole_height = min(pole_height,kbar);
     }
 
   //scaling of numerical tolerance
   num_tol *= det_jac_inv;
   //check if a real solution to the quadratic equation was found
-  if(fabs(pole_height - init_pole_height) < num_tol) return 0.0;
-  //the return value is actually the ADVANCE in the current vi
-  pole_height -= tau[vi];
-  if( pole_height < num_tol ) return 0.0;
+  //or if the solution is negligible
+  //TODO: this checking if a solution was found is quite ugly. how to improve it?
+  if( pole_height > 0.75 * init_pole_height ||
+      pole_height < num_tol ) return 0.0;
   return pole_height - num_tol;//just to enforce causality
  }
 
