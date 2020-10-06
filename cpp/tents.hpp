@@ -135,11 +135,11 @@ public:
     has_been_pitched(false), lh(heapsize, "Tents heap") { ; };
   
   //uses a gradient based method for pitching the tent
-  //if global_ct > 0, its value will be used as a global
-  //mesh-dependent constant for scaling the algorithm.
-  //otherwise, a local constant will be calculated.
+  //calc_local_ct will indicate wether to use a local mesh-dependent
+  //constant for the algorithm
+  //global_ct is a globalwise constant that can be independently used
   //its return value will indicate whether the slab was successfully pitched.
-  bool PitchTents(const double dt, const double global_ct = 1.0);
+  bool PitchTents(const double dt, const bool calc_local_ct, const double global_ct = 1.0);
   
   // Get object features
   int GetNTents() { return tents.Size(); }
@@ -179,9 +179,11 @@ protected:
   //array containing the length of each edge
   Array<double> edge_len;
   //returns the constant associated with a given vertex of a given element
-  std::function<double(const int, const int)> ctau;
+  std::function<double(const int, const int)> local_ctau;
   //table for storing local geometric constants
-  Table<double> local_cts;
+  Table<double> local_ctau_table;
+  //global constant (defaulted to 1)
+  double global_ctau;
 public:
   //constructor
   TentSlabPitcher(shared_ptr<MeshAccess> ama);
@@ -190,7 +192,7 @@ public:
   //calculates the wavespeed for each element and the edge length
   template<int DIM>
   void InitializeMeshData(LocalHeap &lh, BitArray &fine_edges,
-                                  shared_ptr<CoefficientFunction> wavespeed, const double global_ct );
+                          shared_ptr<CoefficientFunction> wavespeed, bool calc_local_ctau, const double global_ct );
 
   //compute the vertex based max time-differences assumint tau=0
   //corresponding to a non-periodic vertex

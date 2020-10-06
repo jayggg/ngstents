@@ -33,7 +33,7 @@ class TentSlab(object):
     def SetWavespeed(self, c):
         self.slab.SetWavespeed(c)
 
-    def PitchTents(self, dt, global_ct=None):
+    def PitchTents(self, dt, local_ct=None, global_ct=None):
         print("****************\n"
               "IMPORTANT NOTICE\n"
               "****************\n"
@@ -41,10 +41,12 @@ class TentSlab(object):
               " execution will NOT be aborted.\n"
               "The return value of this function must ALWAYS be checked.\n"
               "Pitching slab...")
+        if local_ct is None:
+            local_ct = False
         if global_ct is None:
-            success = self.slab.PitchTents(dt)
+            success = self.slab.PitchTents(dt, local_ct)
         else:
-            success = self.slab.PitchTents(dt, global_ct)
+            success = self.slab.PitchTents(dt, local_ct, global_ct)
         if success is True:
             print("The slab was successfully pitched!")
         else:

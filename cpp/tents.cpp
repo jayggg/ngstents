@@ -61,7 +61,7 @@ constexpr ELEMENT_TYPE EL_TYPE(int DIM)
 }//this assumes that there is only one type of element per mesh
 
 template <int DIM>
-bool TentPitchedSlab <DIM>::PitchTents(double dt, const double global_ct)
+bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const double global_ct)
 {
   if(has_been_pitched)
     {
@@ -95,7 +95,7 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, const double global_ct)
   cout << "Mapped periodic vertices" << endl;
   //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
   BitArray fine_edges(ma->GetNEdges());
-  slabpitcher->InitializeMeshData<DIM>(lh,fine_edges,cmax, global_ct);
+  slabpitcher->InitializeMeshData<DIM>(lh,fine_edges,cmax, calc_local_ct, global_ct);
   cout << "Initialised mesh data" << endl;
   //remove periodic edges
   RemovePeriodicEdges(ma,fine_edges);
@@ -391,7 +391,7 @@ double TentPitchedSlab <DIM>::MaxSlope() const{
 
 
 ///////////////////// Pitching Algo Routines ///////////////////////////////
-TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama) : ma(ama), cmax(ama->GetNE()), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()), ctau([](const int, const int){return 1.;}) {
+TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama) : ma(ama), cmax(ama->GetNE()), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()), local_ctau([](const int, const int){return 1.;}) {
 }
 
 
@@ -487,11 +487,12 @@ void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, co
 }
 
 template<int DIM>
-void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction>wavespeed, const double global_ct)
+void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction>wavespeed, bool calc_local_ct, const double global_ct)
 {
   constexpr auto el_type = EL_TYPE(DIM);//simplex of dimension dim
   constexpr auto n_el_vertices = DIM + 1;//number of vertices of that simplex
-  
+  //sets global constant
+  this->global_ctau = global_ct;
   HeapReset hr(lh);
   fine_edges.Clear();
 
@@ -557,14 +558,14 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
         }
     }
 
-  if(global_ct > 0)
+  if(calc_local_ct)
     {
-      this->ctau = [global_ct](const int el, const int v){return global_ct;};
+      local_ctau_table = create_local_ctau.MoveTable();
+      this->local_ctau = [this](const int el, const int v){return local_ctau_table[el][v];};
     }
   else
     {
-      local_cts = create_local_ctau.MoveTable();
-      this->ctau = [this](const int el, const int v){return local_cts[el][v];};
+      this->local_ctau = [](const int el, const int v){return 1;};
     }
   
 }
@@ -647,7 +648,7 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
           }
         return init_pole_height;//negative delta
       }();
-      pole_height = min(pole_height,sol);
+      pole_height = min(pole_height,this->global_ctau * sol);
     }
 
   //scaling of numerical tolerance
@@ -680,8 +681,8 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double>
           const auto el_num = ei.Nr();
           const auto vi_local = ma->GetElVertices(ei).Pos(vi);
           const double c_max = cmax[el_num];
-          const double local_c_tau = this->ctau(el_num,vi_local);
-          const double kt1 = tau[nb]-tau[vi]+ local_c_tau * length/c_max;
+          const double local_ct = this->local_ctau(el_num,vi_local);
+          const double kt1 = tau[nb]-tau[vi]+ global_ctau * local_ct * length/c_max;
           if (kt1 > 0)
             {          
               kt = min (kt, kt1);
@@ -1092,7 +1093,7 @@ void ExportTents(py::module & m) {
     
     .def_readonly("mesh", &TentPitchedSlab<1>::ma)
     .def("SetWavespeed", static_cast<void (TentPitchedSlab<1>::*)(const double)>(&TentPitchedSlab<1>::SetWavespeed))
-    .def("PitchTents", &TentPitchedSlab<1>::PitchTents, py::arg("dt"), py::arg("global_ct")= 1.0)
+    .def("PitchTents", &TentPitchedSlab<1>::PitchTents, py::arg("dt"), py::arg("local_ct"), py::arg("global_ct")= 1.0)
     .def("GetNTents", &TentPitchedSlab<1>::GetNTents)
     .def("GetNLayers", &TentPitchedSlab<1>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<1>::GetSlabHeight)
@@ -1139,7 +1140,7 @@ void ExportTents(py::module & m) {
 
     .def_readonly("mesh", &TentPitchedSlab<2>::ma)
     .def("SetWavespeed", static_cast<void (TentPitchedSlab<2>::*)(const double)>(&TentPitchedSlab<2>::SetWavespeed))
-    .def("PitchTents", &TentPitchedSlab<2>::PitchTents, py::arg("dt"), py::arg("global_ct")= 1.0)
+    .def("PitchTents", &TentPitchedSlab<2>::PitchTents, py::arg("dt"), py::arg("local_ct"), py::arg("global_ct")= 1.0)
     .def("GetNTents", &TentPitchedSlab<2>::GetNTents)
     .def("GetNLayers", &TentPitchedSlab<2>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)
@@ -1193,7 +1194,7 @@ void ExportTents(py::module & m) {
 
     .def_readonly("mesh", &TentPitchedSlab<3>::ma)
     .def("SetWavespeed", static_cast<void (TentPitchedSlab<3>::*)(const double)>(&TentPitchedSlab<3>::SetWavespeed))
-    .def("PitchTents", &TentPitchedSlab<3>::PitchTents, py::arg("dt"), py::arg("global_ct")= 1.0)
+    .def("PitchTents", &TentPitchedSlab<3>::PitchTents, py::arg("dt"), py::arg("local_ct"), py::arg("global_ct")= 1.0)
     .def("GetNTents", &TentPitchedSlab<3>::GetNTents)
     .def("GetNLayers", &TentPitchedSlab<3>::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab<3>::GetSlabHeight)
