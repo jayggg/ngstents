@@ -287,6 +287,14 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
           cout << "Inconsistent data structure. Aborting..." << endl;
           exit(-1);
         }
+      for(iv = 0; iv < ma->GetNV(); iv++)
+        {
+          if(vmap[iv] == iv && !complete_vertices[iv])
+            {
+              const auto ttop = tents[latest_tent[iv]]->ttop;
+              cout << "v "<<iv<<" tau "<<ttop<<" kt "<<ktilde[iv]<<endl;
+            }
+        }
     }
   delete slabpitcher;
   
