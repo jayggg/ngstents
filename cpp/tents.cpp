@@ -445,7 +445,7 @@ void TentSlabPitcher::ComputeVerticesReferenceHeight(const Table<int> &v2v, cons
   for (auto i = 0; i < this->ma->GetNV(); i++)
     if(vmap[i]==i) // non-periodic
       {
-        this->vertex_refdt[i] = this->GetPoleHeight(i, tau, this->cmax, v2v[i],v2e[i],lh);
+        this->vertex_refdt[i] = this->GetPoleHeight(i, tau, v2v[i],v2e[i],lh);
       }
   
 }
@@ -474,7 +474,7 @@ void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, co
     {
       nb = vmap[nb]; // map periodic vertices
       if (complete_vertices[nb]) continue;
-      const double kt = GetPoleHeight(nb, tau, cmax, v2v[nb], v2e[nb],lh);
+      const double kt = GetPoleHeight(nb, tau, v2v[nb], v2e[nb],lh);
       ktilde[nb] = kt;
       if (kt > adv_factor * vertex_refdt[nb])
         {
@@ -580,7 +580,7 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
   
 }
 
-template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
+template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau,  FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
   HeapReset hr(lh);
   constexpr auto el_type = EL_TYPE(DIM);
   //number of vertices of the current element (always the simplex associated to DIM)
@@ -676,7 +676,7 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
  }
 
 template <int DIM>
-double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
+double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
   auto &vmap = Tent::vmap;
   double num_tol = std::numeric_limits<double>::epsilon();
   double kt = std::numeric_limits<double>::max();
@@ -698,7 +698,7 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double>
           const double c_max = cmax[el_num];
           const double local_ct = this->local_ctau(el_num,vi_local);
           const double kt1 = tau[nb]-tau[vi]+ global_ctau * local_ct * length/c_max;
-          if (kt1 > 0)
+          if (kt1 > num_tol)
             {          
               kt = min (kt, kt1);
             }

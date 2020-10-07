@@ -216,7 +216,7 @@ public:
   //Given the current advancing (time) front, calculates the
   //maximum advance on a tent centered on vi that will still
   //guarantee causality
-  virtual double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const = 0;
+  virtual double GetPoleHeight(const int vi, const Array<double> & tau,  FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const = 0;
 
   //Returns the position in ready_vertices containing the vertex in which a tent will be pitched (and its level)
   [[nodiscard]] std::tuple<int,int> PickNextVertexForPitching(const Array<int> &ready_vertices, const Array<double> &ktilde, const Array<int> &vertices_level);
@@ -228,7 +228,7 @@ public:
   
   VolumeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama){;}
 
-  double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv,
+  double GetPoleHeight(const int vi, const Array<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
 };
 
@@ -238,7 +238,7 @@ public:
   
   EdgeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama) {;}
 
-  double GetPoleHeight(const int vi, const Array<double> & tau, const Array<double> & cmax, FlatArray<int> nbv,
+  double GetPoleHeight(const int vi, const Array<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
 };
 #endif
