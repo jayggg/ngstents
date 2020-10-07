@@ -675,12 +675,13 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double>
 
   // array of all elements containing vertex vi
   ArrayMem<int,30> els;
-  els.SetSize(0);
-  ma->GetVertexElements(vi,els);
   for (int nb_index : nbv.Range())
     {
-      int nb = vmap[nbv[nb_index]];
-      const double length = edge_len[nbe[nb_index]];
+      const int nb = vmap[nbv[nb_index]];
+      const int edge = nbe[nb_index];
+      const double length = edge_len[edge];
+      els.SetSize(0);
+      ma->GetEdgeElements(edge, els);
       for(int el : els)
         {
           ElementId ei(VOL,el);
