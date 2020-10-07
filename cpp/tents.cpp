@@ -698,7 +698,7 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double>
           const double c_max = cmax[el_num];
           const double local_ct = this->local_ctau(el_num,vi_local);
           const double kt1 = tau[nb]-tau[vi]+ global_ctau * local_ct * length/c_max;
-          if (kt1 > num_tol)
+          if (kt1 > 0)//TODO: why kt1 > num_tol results in a significative change?
             {          
               kt = min (kt, kt1);
             }
