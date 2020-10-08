@@ -679,7 +679,8 @@ template <int DIM>
 double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
   const auto &vmap = Tent::vmap;
   double kt = std::numeric_limits<double>::max();
-
+  //used for adjusting the numerical tolerance;
+  double min_edge = kt;
   // array of all elements containing vertex vi
   ArrayMem<int,30> els;
   for (int nb_index : nbv.Range())
@@ -687,6 +688,7 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<dou
       const int nb = vmap[nbv[nb_index]];
       const int edge = nbe[nb_index];
       const double length = edge_len[edge];
+      min_edge = min(length,min_edge);
       els.SetSize(0);
       ma->GetEdgeElements(edge, els);
       for(int el : els)
@@ -697,17 +699,10 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<dou
           const double c_max = cmax[el_num];
           const double local_ct = this->local_ctau(el_num,vi_local);
           const double kt1 = tau[nb]-tau[vi]+ global_ctau * local_ct * length/c_max;
-          if (kt1 > 0)//TODO: why kt1 > num_tol results in a significative change?
-            {          
-              kt = min (kt, kt1);
-            }
-          else continue;
+          kt = min(kt,kt1);
         }
-      
-      
     }
-  //could not advance
-  if (fabs(kt-std::numeric_limits<double>::max()) < 1) return 0.0;
+  const double num_tol = std::numeric_limits<double>::epsilon() * min_edge;
   //ensuring causality (inequality)
   kt -= num_tol;
   if(kt > num_tol) return kt;
