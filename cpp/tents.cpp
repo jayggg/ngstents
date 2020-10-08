@@ -404,7 +404,7 @@ TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama) : ma(ama), cmax(ama
 
 
 bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor,
-                                       const Array<double> &ktilde, const Array<bool> &complete_vertices,
+                                       const FlatArray<double> &ktilde, const FlatArray<bool> &complete_vertices,
                                        Array<bool> &vertex_ready, Array<int> &ready_vertices){
   auto &vmap = Tent::vmap;
   bool found{false};
@@ -438,7 +438,7 @@ bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor
   return found;
 }
 
-void TentSlabPitcher::ComputeVerticesReferenceHeight(const Table<int> &v2v, const Table<int> &v2e, const Array<double> &tau, LocalHeap &lh)
+void TentSlabPitcher::ComputeVerticesReferenceHeight(const Table<int> &v2v, const Table<int> &v2e, const FlatArray<double> &tau, LocalHeap &lh)
 {
   auto &vmap = Tent::vmap;
   this->vertex_refdt = std::numeric_limits<double>::max();
@@ -450,9 +450,9 @@ void TentSlabPitcher::ComputeVerticesReferenceHeight(const Table<int> &v2v, cons
   
 }
 
-std::tuple<int,int> TentSlabPitcher::PickNextVertexForPitching(const Array<int> &ready_vertices,
-                                                               const Array<double> &ktilde,
-                                                               const Array<int> &vertices_level){  
+std::tuple<int,int> TentSlabPitcher::PickNextVertexForPitching(const FlatArray<int> &ready_vertices,
+                                                               const FlatArray<double> &ktilde,
+                                                               const FlatArray<int> &vertices_level){  
   int minlevel = std::numeric_limits<int>::max();
   int posmin = -1;
   for(auto i = 0; i < ready_vertices.Size(); i++)
@@ -465,8 +465,8 @@ std::tuple<int,int> TentSlabPitcher::PickNextVertexForPitching(const Array<int> 
 }
 
 void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, const Table<int> &v2v,
-                                       const Table<int> &v2e, const Array<double> &tau,
-                                       const Array<bool> &complete_vertices, Array<double> &ktilde,
+                                       const Table<int> &v2e, const FlatArray<double> &tau,
+                                       const FlatArray<bool> &complete_vertices, Array<double> &ktilde,
                                        Array<bool> &vertex_ready, Array<int> &ready_vertices,
                                        LocalHeap &lh){
   auto &vmap = Tent::vmap;
@@ -580,7 +580,7 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
   
 }
 
-template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau,  FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
+template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<double> & tau,  FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
   HeapReset hr(lh);
   constexpr auto el_type = EL_TYPE(DIM);
   //number of vertices of the current element (always the simplex associated to DIM)
@@ -676,9 +676,8 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
  }
 
 template <int DIM>
-double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const Array<double> & tau, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
-  auto &vmap = Tent::vmap;
-  double num_tol = std::numeric_limits<double>::epsilon();
+double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
+  const auto &vmap = Tent::vmap;
   double kt = std::numeric_limits<double>::max();
 
   // array of all elements containing vertex vi
