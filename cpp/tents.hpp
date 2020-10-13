@@ -184,6 +184,10 @@ protected:
   Table<double> local_ctau_table;
   //global constant (defaulted to 1)
   double global_ctau;
+
+  //Calculates the local c_tau used for ensuring causality (edge algo)/preventing locks (vol algo)
+  virtual Table<double> CalcLocalCTau(LocalHeap& lh) = 0;
+  
 public:
   //constructor
   TentSlabPitcher(shared_ptr<MeshAccess> ama);
@@ -230,6 +234,8 @@ public:
 
   double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
+  //Calculates the local c_tau used for ensuring causality (edge algo)/preventing locks (vol algo)
+  Table<double> CalcLocalCTau(LocalHeap& lh) override;
 };
 
 template <int DIM>
@@ -240,5 +246,9 @@ public:
 
   double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
+
+  //Calculates the local c_tau used for ensuring causality (edge algo)/preventing locks (vol algo)
+  Table<double> CalcLocalCTau(LocalHeap& lh) override;
+  
 };
 #endif
