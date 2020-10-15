@@ -507,7 +507,6 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
   constexpr auto n_el_vertices = DIM + 1;//number of vertices of that simplex
   //sets global constant
   this->global_ctau = global_ct;
-  HeapReset hr(lh);
   fine_edges.Clear();
 
   //minimum length of the adjacent edges for each element's vertices
@@ -516,6 +515,7 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
   IntegrationRule ir(el_type, 0);
   for (Ngs_Element el : this->ma->Elements(VOL))
     {
+      HeapReset hr(lh);
       max_edge = -1;
       auto ei = ElementId(el);
       ElementTransformation & trafo = this->ma->GetTrafo (ei, lh);
