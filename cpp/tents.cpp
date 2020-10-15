@@ -339,7 +339,7 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
        int nels = tent.els.Size();
        tent.gradphi_bot.SetSize(nels);
        tent.gradphi_top.SetSize(nels);
-
+       HeapReset hr(lh);
        for (int j : Range(nels)) { //  loop over elements in a tent
 
 	 ElementId ej (VOL, tent.els[j]);
