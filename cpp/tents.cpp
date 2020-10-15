@@ -651,7 +651,6 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh){
   constexpr auto el_type = EL_TYPE(DIM);//simplex of dimension dim
   constexpr auto n_el_vertices = DIM + 1;//number of vertices of that simplex
 
-  HeapReset hr(lh);
   const auto n_vol_els = ma->Elements(VOL).Size();
   
   //this table will contain the local mesh-dependent constant
@@ -672,6 +671,7 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh){
   //therefore it must be ensured that ctau <=1
   for (Ngs_Element el : this->ma->Elements(VOL))
     {
+      HeapReset hr(lh);
       auto ei = ElementId(el);
       const auto el_num = el.Nr();
       for(auto vi : el.Points())
@@ -749,7 +749,6 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh)
 {
   constexpr auto el_type = EL_TYPE(DIM);//simplex of dimension dim
   constexpr auto n_el_vertices = DIM + 1;//number of vertices of that simplex
-  HeapReset hr(lh);
   
   const auto n_vol_els = ma->Elements(VOL).Size();
   //this table will contain the local mesh-dependent constant
@@ -781,6 +780,7 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh)
 
     for (Ngs_Element el : this->ma->Elements(VOL))
     {
+      HeapReset hr(lh);
       max_edge = -1;
       auto ei = ElementId(el);
       auto v_indices = ma->GetElVertices(ei);
