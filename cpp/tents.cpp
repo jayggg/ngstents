@@ -278,6 +278,7 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
  
   if(!slab_complete)
     {
+      const auto &vrefdt = slabpitcher->GetVerticesReferenceHeight();
       cout << "Error: the algorithm could not pitch the whole slab" << endl;
       int iv;
       for(iv = 0; iv < ma->GetNV(); iv++)
@@ -291,8 +292,11 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
         {
           if(vmap[iv] == iv && !complete_vertices[iv])
             {
+              const auto relkt = ktilde[iv] / vrefdt[iv];
+              if(relkt < 1e-10) {continue;}
               const auto ttop = tents[latest_tent[iv]]->ttop;
-              cout << "v "<<iv<<" tau "<<ttop<<" kt "<<ktilde[iv]<<endl;
+              cout << "v "<<iv<<" tau "<<ttop<<" kt "<<ktilde[iv];
+              cout << " rel kt = "<< relkt <<endl;
             }
         }
     }
