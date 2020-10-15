@@ -570,9 +570,8 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
   //gradient of basis functions onthe current element
   Matrix<double> gradphi(n_vertices,DIM);
   //numerical tolerance (NOT YET SCALED)
-  double num_tol = std::numeric_limits<double>::epsilon();
-
-  double det_jac_inv = -1; 
+  constexpr double num_tol = std::numeric_limits<double>::epsilon();
+  
   for (int el : els)
     {
       ElementId ei(VOL,el);
@@ -588,7 +587,6 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
       IntegrationRule ir(el_type,1);
       //integration point on deformed element
       MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
-      det_jac_inv = max (det_jac_inv, 1/mip.GetJacobiDet());
       my_fel.CalcMappedDShape(mip,gradphi);
 
       //sets the coefficient vec
@@ -635,15 +633,11 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
       kbar *= local_ct * global_ctau;
       pole_height = min(pole_height,kbar);
     }
-
-  //scaling of numerical tolerance
-  num_tol *= det_jac_inv;
   //check if a real solution to the quadratic equation was found
   //or if the solution is negligible
   //TODO: this checking if a solution was found is quite ugly. how to improve it?
-  if( pole_height > 0.75 * init_pole_height ||
-      pole_height < num_tol ) return 0.0;
-  return pole_height - num_tol;//just to enforce causality
+  if( pole_height > 0.75 * init_pole_height) return 0.0;
+  else return pole_height * (1 - num_tol);//just to enforce causality
  }
 
 template <int DIM>
@@ -714,8 +708,6 @@ template <int DIM>
 double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
   const auto &vmap = Tent::vmap;
   double kt = std::numeric_limits<double>::max();
-  //used for adjusting the numerical tolerance;
-  double min_edge = kt;
   // array of all elements containing vertex vi
   ArrayMem<int,30> els;
   for (int nb_index : nbv.Range())
@@ -723,7 +715,6 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<dou
       const int nb = vmap[nbv[nb_index]];
       const int edge = nbe[nb_index];
       const double length = edge_len[edge];
-      min_edge = min(length,min_edge);
       els.SetSize(0);
       ma->GetEdgeElements(edge, els);
       for(int el : els)
@@ -737,10 +728,9 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<dou
           kt = min(kt,kt1);
         }
     }
-  const double num_tol = std::numeric_limits<double>::epsilon() * min_edge;
+  constexpr double num_tol = std::numeric_limits<double>::epsilon();
   //ensuring causality (inequality)
-  kt -= num_tol;
-  if(kt > num_tol) return kt;
+  if(kt > num_tol) return kt * (1 - num_tol);
   else return 0.0;
 }
 
