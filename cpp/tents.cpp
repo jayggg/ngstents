@@ -94,32 +94,10 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
   MapPeriodicVertices(ma);
   cout << "Mapped periodic vertices" << endl;
   //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
-  BitArray fine_edges(ma->GetNEdges());
-  slabpitcher->InitializeMeshData<DIM>(lh,fine_edges,cmax, calc_local_ct, global_ct);
+  Table<int> v2v, v2e,slave_verts;
+  std::tie(v2v,v2e,slave_verts) = slabpitcher->InitializeMeshData<DIM>(lh,cmax, calc_local_ct, global_ct);
   cout << "Initialised mesh data" << endl;
-  //remove periodic edges
-  RemovePeriodicEdges(ma,fine_edges);
   
-  //compute neighbouring data
-  TableCreator<int> create_v2e, create_v2v;
-  for ( ; !create_v2e.Done(); create_v2e++, create_v2v++)
-    {
-      for (int e : IntRange (0, ma->GetNEdges()))
-        if(fine_edges.Test(e))
-          {
-            auto vts = ma->GetEdgePNums (e);
-            int v1 = vts[0], v2 = vts[1];
-            //if v1 (or v2) is not periodic, vmap[v1] == v1
-            create_v2v.Add (vmap[v1], v2);
-            create_v2e.Add (vmap[v1], e);
-            create_v2v.Add (vmap[v2], v1);
-            create_v2e.Add (vmap[v2], e);
-          }
-    }
-  auto v2v = create_v2v.MoveTable();
-  auto v2e = create_v2e.MoveTable();
-
-  cout << "Computed neighbouring data" << endl;
   Array<double> tau(ma->GetNV());  // advancing front values at vertices
   tau = 0.0;
 
@@ -130,16 +108,6 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
   //at the beginning the advancing front is at a constant t=0
   //so ktilde can be set as vertex_refdt
   Array<double> ktilde = slabpitcher->GetVerticesReferenceHeight();
-  
-  // added for periodic tents
-  TableCreator<int> create_slave_verts(ma->GetNV());
-  for ( ; !create_slave_verts.Done(); create_slave_verts++)
-    {
-      for(auto i : Range(vmap))
-        if(vmap[i]!=i)
-          create_slave_verts.Add(vmap[i],i);
-    }
-  Table<int> slave_verts = create_slave_verts.MoveTable();
 
   //array containing the latest tent in which the vertex was included
   Array<int> latest_tent(ma->GetNV());
@@ -502,12 +470,13 @@ void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, co
 }
 
 template<int DIM>
-void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, shared_ptr<CoefficientFunction>wavespeed, bool calc_local_ct, const double global_ct)
+std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap &lh, shared_ptr<CoefficientFunction>wavespeed, bool calc_local_ct, const double global_ct)
 {
   constexpr auto el_type = EL_TYPE(DIM);//simplex of dimension dim
   constexpr auto n_el_vertices = DIM + 1;//number of vertices of that simplex
   //sets global constant
   this->global_ctau = global_ct;
+  BitArray fine_edges(ma->GetNEdges());
   fine_edges.Clear();
 
   //minimum length of the adjacent edges for each element's vertices
@@ -540,7 +509,38 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
             }
         }
     }
+  const auto &vmap = Tent::vmap;
+  //compute neighbouring data
+  TableCreator<int> create_v2e, create_v2v;
+  for ( ; !create_v2e.Done(); create_v2e++, create_v2v++)
+    {
+      for (int e : IntRange (0, ma->GetNEdges()))
+        if(fine_edges.Test(e))
+          {
+            auto vts = ma->GetEdgePNums (e);
+            int v1 = vts[0], v2 = vts[1];
+            //if v1 (or v2) is not periodic, vmap[v1] == v1
+            create_v2v.Add (vmap[v1], v2);
+            create_v2e.Add (vmap[v1], e);
+            create_v2v.Add (vmap[v2], v1);
+            create_v2e.Add (vmap[v2], e);
+          }
+    }
+ 
 
+  RemovePeriodicEdges(ma, fine_edges);
+
+  TableCreator<int> create_slave_verts(ma->GetNV());
+  for ( ; !create_slave_verts.Done(); create_slave_verts++)
+    {
+      for(auto i : Range(vmap))
+        if(vmap[i]!=i)
+          create_slave_verts.Add(vmap[i],i);
+    }
+
+  auto v2v = create_v2v.MoveTable();
+  auto v2e = create_v2e.MoveTable();
+  auto slave_verts = create_slave_verts.MoveTable();
   if(calc_local_ct && DIM > 1)
     {
       local_ctau_table = this->CalcLocalCTau(lh);
@@ -550,7 +550,7 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
     {
       this->local_ctau = [](const int el, const int v){return 1;};
     }
-  
+  return std::make_tuple(v2v, v2e, slave_verts);
 }
 
 template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<double> & tau,  FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{

@@ -195,8 +195,9 @@ public:
   virtual ~TentSlabPitcher(){;}
   //calculates the wavespeed for each element and the edge length
   template<int DIM>
-  void InitializeMeshData(LocalHeap &lh, BitArray &fine_edges,
-                          shared_ptr<CoefficientFunction> wavespeed, bool calc_local_ctau, const double global_ct );
+  std::tuple<Table<int>,Table<int>,Table<int>> InitializeMeshData(LocalHeap &lh,
+                                                      shared_ptr<CoefficientFunction> wavespeed,
+                                                      bool calc_local_ctau, const double global_ct );
 
   //compute the vertex based max time-differences assumint tau=0
   //corresponding to a non-periodic vertex
