@@ -343,34 +343,35 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
        int nels = tent.els.Size();
        tent.gradphi_bot.SetSize(nels);
        tent.gradphi_top.SetSize(nels);
+
+       constexpr auto el_type = EL_TYPE(DIM);
+       IntegrationRule ir(el_type, 0);
        HeapReset hr(lh);
        for (int j : Range(nels)) { //  loop over elements in a tent
 
 	 ElementId ej (VOL, tent.els[j]);
-	 ELEMENT_TYPE eltype = ma->GetElType(ej);
-         constexpr auto el_type = EL_TYPE(DIM);
          //number of vertices of the current element (always the simplex associated to DIM)
          constexpr int n_vertices = DIM+1;
          //finite element created for calculating the barycentric coordinates
          ScalarFE<el_type,1> fe;
-	 Vector<> shape_nodal(n_vertices);
-	 Matrix<> dshape_nodal(n_vertices, DIM);
-	 Vector<> coef_bot, coef_top; // coefficient of tau (top & bot)
-	 coef_bot.SetSize(n_vertices);
-	 coef_top.SetSize(n_vertices);
-	 auto vnums = ma->GetElVertices (ej);
-	 for (size_t k = 0; k < vnums.Size(); k++) {
-	   if (vnums[k] == tent.vertex)  { // central vertex
-	     coef_bot(k) = tent.tbot;
-	     coef_top(k) = tent.ttop;
-	   }
-	   else
-	     for (size_t l = 0; l < tent.nbv.Size(); l++)
-	       if (tent.nbv[l] == vnums[k])
-		 coef_bot(k) = coef_top(k) = tent.nbtime[l];
-	 }
-
-	 IntegrationRule ir(eltype, 0);
+	 FlatMatrixFixWidth<DIM,double> dshape_nodal(n_vertices, lh);
+	 Vec<n_vertices> coef_bot(0), coef_top(0); // coefficient of tau (top & bot)
+	 const auto vnums = ma->GetElVertices (ej);
+         const auto nneighbours = tent.nbv.Size();
+	 for (size_t k = 0; k < n_vertices; k++)
+           {
+             if (vnums[k] != tent.vertex)
+               {
+                 for (size_t l = 0; l < nneighbours; l++)
+                   {if (tent.nbv[l] == vnums[k]) coef_bot(k) = coef_top(k) = tent.nbtime[l];}
+               }
+             else
+               {//central vertex
+                 coef_bot(k) = tent.tbot;
+                 coef_top(k) = tent.ttop;
+               }
+           }
+         
 	 ElementTransformation & trafo = ma->GetTrafo (ej, lh);
 	 MappedIntegrationPoint<DIM, DIM> mip(ir[0], trafo);
 	 tent.gradphi_bot[j].SetSize(DIM);
@@ -566,9 +567,9 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
   constexpr double init_pole_height = std::numeric_limits<double>::max();
   double pole_height = init_pole_height;
   //vector containing the advancing front time for each vertex (except vi)
-  Vector<double> coeff_vec(n_vertices);
+  Vec<n_vertices> coeff_vec(0);
   //gradient of basis functions onthe current element
-  Matrix<double> gradphi(n_vertices,DIM);
+  FlatMatrixFixWidth<DIM,double> gradphi(n_vertices,lh);
   //numerical tolerance (NOT YET SCALED)
   constexpr double num_tol = std::numeric_limits<double>::epsilon();
   
@@ -753,9 +754,7 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh)
         create_local_ctau.Add(el,v);
     }
   create_local_ctau++;// it is in insert mode
-   
-  //gradient of basis functions onthe current element  
-  Matrix<> gradphi(n_el_vertices, DIM);
+  
   //used to calculate distance to opposite facet
   ScalarFE<el_type,1> my_fel;
   //minimum length of the adjacent edges for each element's vertices
@@ -771,6 +770,8 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh)
     for (Ngs_Element el : this->ma->Elements(VOL))
     {
       HeapReset hr(lh);
+      //gradient of basis functions onthe current element  
+      FlatMatrixFixWidth<DIM,double> gradphi(n_el_vertices,lh);
       max_edge = -1;
       auto ei = ElementId(el);
       auto v_indices = ma->GetElVertices(ei);
