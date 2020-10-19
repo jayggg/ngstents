@@ -512,6 +512,7 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
 
   //minimum length of the adjacent edges for each element's vertices
   ArrayMem<double, n_el_vertices> max_edge(n_el_vertices);
+  ArrayMem<int,n_el_vertices> v_indices(n_el_vertices);
   //the mesh contains only simplices so only one integration rule is needed
   IntegrationRule ir(el_type, 0);
   for (Ngs_Element el : this->ma->Elements(VOL))
@@ -524,7 +525,7 @@ void TentSlabPitcher::InitializeMeshData(LocalHeap &lh, BitArray &fine_edges, sh
       this->cmax[el.Nr()] = wavespeed->Evaluate(mip);
 
 
-      auto v_indices = ma->GetElVertices(ei);
+      v_indices = ma->GetElVertices(ei);
       //set all edges belonging to the mesh
       for (int e : el.Edges())
         {
@@ -570,6 +571,8 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
   Vec<n_vertices> coeff_vec(0);
   //gradient of basis functions onthe current element
   FlatMatrixFixWidth<DIM,double> gradphi(n_vertices,lh);
+  //indices of el's vertices
+  ArrayMem<int,n_vertices> v_indices(n_vertices);
   //numerical tolerance (NOT YET SCALED)
   constexpr double num_tol = std::numeric_limits<double>::epsilon();
   
@@ -581,7 +584,7 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
       //mapping of the current el
       ElementTransformation &trafo = this->ma->GetTrafo(ei, lh);
       //vertices of current el
-      auto v_indices = this->ma->GetElVertices(ei);
+      v_indices = this->ma->GetElVertices(ei);
       //vi position in current el
       const auto local_vi = v_indices.Pos(vi);
       //integration rule for reference el
@@ -652,7 +655,6 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh){
   TableCreator<double> create_local_ctau;
   create_local_ctau.SetSize(n_vol_els);
   create_local_ctau.SetMode(2);
-  ArrayMem<int,n_el_vertices> el_vertices(n_el_vertices);
   //just calculating the size of the table
   for(auto el : IntRange(0,n_vol_els))
     {
@@ -746,7 +748,7 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh)
   TableCreator<double> create_local_ctau;
   create_local_ctau.SetSize(n_vol_els);
   create_local_ctau.SetMode(2);
-  ArrayMem<int,n_el_vertices> el_vertices(n_el_vertices);
+  ArrayMem<int,n_el_vertices> v_indices(n_el_vertices);
   //just calculating the size of the table
   for(auto el : IntRange(0,n_vol_els))
     {
@@ -774,8 +776,8 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh)
       FlatMatrixFixWidth<DIM,double> gradphi(n_el_vertices,lh);
       max_edge = -1;
       auto ei = ElementId(el);
-      auto v_indices = ma->GetElVertices(ei);
-
+      v_indices = ma->GetElVertices(ei);
+      
       for (int e : el.Edges())
         {
           auto pnts = ma->GetEdgePNums(e);
@@ -791,7 +793,7 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh)
       my_fel.CalcMappedDShape(mip,gradphi);
       
       const auto el_num = ei.Nr(); 
-      for(int vi_local = 0; vi_local < v_indices.Size(); vi_local++) 
+      for(int vi_local = 0; vi_local < n_el_vertices; vi_local++) 
         {
           const auto dist_opposite_facet = 1./L2Norm(gradphi.Row(vi_local));
           const auto val = dist_opposite_facet / max_edge[vi_local];
