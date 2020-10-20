@@ -188,9 +188,10 @@ protected:
   //Calculates the local c_tau used for ensuring causality (edge algo)/preventing locks (vol algo)
   virtual Table<double> CalcLocalCTau(LocalHeap& lh) = 0;
   
+  const ngstents::PitchingMethod method;
 public:
   //constructor
-  TentSlabPitcher(shared_ptr<MeshAccess> ama);
+  TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m);
   //destructor
   virtual ~TentSlabPitcher(){;}
   //This method precomputes mesh-dependent data. It includes the wavespeed (per element) and
@@ -233,7 +234,7 @@ template <int DIM>
 class VolumeGradientPitcher : public TentSlabPitcher{
 public:
   
-  VolumeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama){;}
+  VolumeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama, ngstents::PitchingMethod::EVolGrad){;}
 
   double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
@@ -245,7 +246,7 @@ template <int DIM>
 class EdgeGradientPitcher : public TentSlabPitcher{
 public:
   
-  EdgeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama) {;}
+  EdgeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama, ngstents::PitchingMethod::EEdgeGrad) {;}
 
   double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;

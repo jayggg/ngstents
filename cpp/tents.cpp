@@ -372,7 +372,7 @@ double TentPitchedSlab <DIM>::MaxSlope() const{
 
 
 ///////////////////// Pitching Algo Routines ///////////////////////////////
-TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama) : ma(ama), cmax(ama->GetNE()), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()), local_ctau([](const int, const int){return 1.;}) {
+TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m) : ma(ama), cmax(ama->GetNE()), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()), local_ctau([](const int, const int){return 1.;}), method(m) {
 }
 
 
