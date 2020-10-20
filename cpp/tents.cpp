@@ -372,7 +372,10 @@ double TentPitchedSlab <DIM>::MaxSlope() const{
 
 
 ///////////////////// Pitching Algo Routines ///////////////////////////////
-TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m) : ma(ama), cmax(ama->GetNE()), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()), local_ctau([](const int, const int){return 1.;}), method(m) {
+TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m) : ma(ama), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()), local_ctau([](const int, const int){return 1.;}), method(m) {
+  if(method == ngstents::PitchingMethod::EEdgeGrad){ cmax.SetSize(ma->GetNEdges());}
+  else {cmax.SetSize(ma->GetNE());}
+  cmax = -1;
 }
 
 
@@ -491,7 +494,9 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
       auto ei = ElementId(el);
       ElementTransformation & trafo = this->ma->GetTrafo (ei, lh);
       MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
-      this->cmax[el.Nr()] = wavespeed->Evaluate(mip);
+      const auto wvspd = wavespeed->Evaluate(mip);
+      if(method == ngstents::PitchingMethod::EVolGrad)
+        {this->cmax[el.Nr()] = wvspd;}
 
 
       v_indices = ma->GetElVertices(ei);
@@ -506,6 +511,10 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
               double len = L2Norm (ma-> template GetPoint<DIM>(v1)
                                - ma-> template GetPoint<DIM>(v2));
               edge_len[e] = len;
+            }
+          if(method == ngstents::PitchingMethod::EEdgeGrad)
+            {
+              this->cmax[e] = max(this->cmax[e],wvspd);
             }
         }
     }
@@ -718,6 +727,7 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<dou
       const int nb = vmap[nbv[nb_index]];
       const int edge = nbe[nb_index];
       const double length = edge_len[edge];
+      const double c_max = cmax[edge];
       els.SetSize(0);
       ma->GetEdgeElements(edge, els);
       for(int el : els)
@@ -725,7 +735,6 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<dou
           ElementId ei(VOL,el);
           const auto el_num = ei.Nr();
           const auto vi_local = ma->GetElVertices(ei).Pos(vi);
-          const double c_max = cmax[el_num];
           const double local_ct = this->local_ctau(el_num,vi_local);
           const double kt1 = tau[nb]-tau[vi]+ global_ctau * local_ct * length/c_max;
           kt = min(kt,kt1);

@@ -172,7 +172,7 @@ class TentSlabPitcher{
 protected:
   //access to base spatial mesh
   shared_ptr<MeshAccess> ma;
-  //element-wise maximal wave-speeds
+  //element-wise (vol grad algo) or edge-wise (edge grad algo)  maximal wave-speeds
   Array<double> cmax;
   //reference heights for each vertex
   Array<double> vertex_refdt;
