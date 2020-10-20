@@ -178,7 +178,8 @@ protected:
   Array<double> vertex_refdt;
   //array containing the length of each edge
   Array<double> edge_len;
-  //returns the constant associated with a given vertex of a given element
+  //returns the mesh dependent local constants. the first parameter is the vertex,
+  //and the second parameter is the edge (edge algo) or element (vol algo)
   std::function<double(const int, const int)> local_ctau;
   //table for storing local geometric constants
   Table<double> local_ctau_table;
@@ -186,8 +187,7 @@ protected:
   double global_ctau;
 
   //Calculates the local c_tau used for ensuring causality (edge algo)/preventing locks (vol algo)
-  virtual Table<double> CalcLocalCTau(LocalHeap& lh) = 0;
-  
+  virtual Table<double> CalcLocalCTau(LocalHeap& lh, const Table<int> &v2e) = 0;
   const ngstents::PitchingMethod method;
 public:
   //constructor
@@ -239,7 +239,7 @@ public:
   double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
   //Calculates the local c_tau used for ensuring causality (edge algo)/preventing locks (vol algo)
-  Table<double> CalcLocalCTau(LocalHeap& lh) override;
+  Table<double> CalcLocalCTau(LocalHeap& lh, const Table<int> &v2e) override;
 };
 
 template <int DIM>
@@ -252,7 +252,7 @@ public:
                        FlatArray<int> nbe, LocalHeap & lh) const override;
 
   //Calculates the local c_tau used for ensuring causality (edge algo)/preventing locks (vol algo)
-  Table<double> CalcLocalCTau(LocalHeap& lh) override;
+  Table<double> CalcLocalCTau(LocalHeap& lh, const Table<int> &v2e) override;
   
 };
 #endif

@@ -552,7 +552,7 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
   auto slave_verts = create_slave_verts.MoveTable();
   if(calc_local_ct && DIM > 1)
     {
-      local_ctau_table = this->CalcLocalCTau(lh);
+      local_ctau_table = this->CalcLocalCTau(lh, v2e);
       this->local_ctau = [this](const int el, const int v){return local_ctau_table[el][v];};
     }
   else
@@ -584,9 +584,10 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
   ArrayMem<int,n_vertices> v_indices(n_vertices);
   //numerical tolerance (NOT YET SCALED)
   constexpr double num_tol = std::numeric_limits<double>::epsilon();
-  
-  for (int el : els)
+  const auto nels = els.Size();
+  for (int iel = 0; iel < nels; iel++)
     {
+      const auto el = els[iel];
       ElementId ei(VOL,el);
       //c_max^2
       const double c_max_sq = cmax[ei.Nr()] * cmax[ei.Nr()]; 
@@ -642,7 +643,7 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
       }();
       //the return value is actually the ADVANCE in the current vi
       auto kbar = sol - tau[vi];
-      const auto local_ct = local_ctau(ei.Nr(),local_vi);
+      const auto local_ct = local_ctau(vi,iel);
       kbar *= local_ct * global_ctau;
       pole_height = min(pole_height,kbar);
     }
@@ -654,34 +655,41 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
  }
 
 template <int DIM>
-Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh){
+Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table<int> &v2e){
   constexpr auto el_type = EL_TYPE(DIM);//simplex of dimension dim
   constexpr auto n_el_vertices = DIM + 1;//number of vertices of that simplex
-
-  const auto n_vol_els = ma->Elements(VOL).Size();
   
+  const auto n_mesh_vertices = ma->GetNV();
   //this table will contain the local mesh-dependent constant
   TableCreator<double> create_local_ctau;
-  create_local_ctau.SetSize(n_vol_els);
+  create_local_ctau.SetSize(n_mesh_vertices);
   create_local_ctau.SetMode(2);
   //just calculating the size of the table
-  for(auto el : IntRange(0,n_vol_els))
+  const auto &vmap = Tent::vmap;
+  for(auto vi : IntRange(0, n_mesh_vertices))
     {
-      for(auto v : IntRange(0, n_el_vertices))
-        create_local_ctau.Add(el,v);
+      if(vi != vmap[vi]) {continue;}
+      const auto n_vert_els = ma->GetVertexElements(vi).Size();
+      for(auto el : IntRange(0, n_vert_els))
+        {create_local_ctau.Add(vi,0);}
     }
   create_local_ctau++;// it is in insert mode
+
+  ArrayMem<int, 30> vertex_els(0);
   //for a given vertex V in an element E with faces F the constant is calculated as
   //the minimum (over the faces F) ratio between the length of the opposite
   //edge and the biggest edge adjacent to V in F
   //therefore it must be ensured that ctau <=1
-  for (Ngs_Element el : this->ma->Elements(VOL))
+  for(auto vi : IntRange(0,n_mesh_vertices))
     {
-      HeapReset hr(lh);
-      auto ei = ElementId(el);
-      const auto el_num = el.Nr();
-      for(auto vi : el.Points())
+      if(vi != vmap[vi]){continue;}
+      
+      vertex_els = ma->GetVertexElements(vi);
+      for(auto iel : IntRange(0,vertex_els.Size()))
         {
+          HeapReset hr(lh);
+          const auto el_num = vertex_els[iel];
+          const ElementId ei(VOL,el_num);
           auto faces = ma->GetElFaces(ei);
           double val = 1.0;
           for(auto face : faces)
@@ -709,7 +717,7 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh){
             }
           //val must be <=1
           val = min(val,1.0);
-          create_local_ctau.Add(el_num,val);
+          create_local_ctau.Add(vi,val);
         }
     }
 
@@ -720,25 +728,15 @@ template <int DIM>
 double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
   const auto &vmap = Tent::vmap;
   double kt = std::numeric_limits<double>::max();
-  // array of all elements containing vertex vi
-  ArrayMem<int,30> els;
   for (int nb_index : nbv.Range())
     {
       const int nb = vmap[nbv[nb_index]];
       const int edge = nbe[nb_index];
       const double length = edge_len[edge];
       const double c_max = cmax[edge];
-      els.SetSize(0);
-      ma->GetEdgeElements(edge, els);
-      for(int el : els)
-        {
-          ElementId ei(VOL,el);
-          const auto el_num = ei.Nr();
-          const auto vi_local = ma->GetElVertices(ei).Pos(vi);
-          const double local_ct = this->local_ctau(el_num,vi_local);
-          const double kt1 = tau[nb]-tau[vi]+ global_ctau * local_ct * length/c_max;
-          kt = min(kt,kt1);
-        }
+      const double local_ct = this->local_ctau(vi,nb_index);
+      const double kt1 = tau[nb]-tau[vi]+ global_ctau * local_ct * length/c_max;
+      kt = min(kt,kt1);
     }
   constexpr double num_tol = std::numeric_limits<double>::epsilon();
   //ensuring causality (inequality)
@@ -747,66 +745,75 @@ double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<dou
 }
 
 template <int DIM>
-Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh)
+Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table<int> &v2e)
 {
   constexpr auto el_type = EL_TYPE(DIM);//simplex of dimension dim
   constexpr auto n_el_vertices = DIM + 1;//number of vertices of that simplex
   
-  const auto n_vol_els = ma->Elements(VOL).Size();
+  const auto n_mesh_vertices = ma->GetNV();
   //this table will contain the local mesh-dependent constant
   TableCreator<double> create_local_ctau;
-  create_local_ctau.SetSize(n_vol_els);
+  create_local_ctau.SetSize(n_mesh_vertices);
   create_local_ctau.SetMode(2);
-  ArrayMem<int,n_el_vertices> v_indices(n_el_vertices);
   //just calculating the size of the table
-  for(auto el : IntRange(0,n_vol_els))
+  const auto &vmap = Tent::vmap;
+  for(auto vi : IntRange(0, n_mesh_vertices))
     {
-      for(auto v : IntRange(0, n_el_vertices))
-        create_local_ctau.Add(el,v);
+      if(vi != vmap[vi]) {continue;}
+      const auto n_edges_vert = v2e[vi].Size();
+      for(auto el : IntRange(0, n_edges_vert))
+        {create_local_ctau.Add(vi,0);}
     }
   create_local_ctau++;// it is in insert mode
   
   //used to calculate distance to opposite facet
   ScalarFE<el_type,1> my_fel;
-  //minimum length of the adjacent edges for each element's vertices
-  ArrayMem<double, n_el_vertices> max_edge(n_el_vertices);
+  ArrayMem<int, 30> edge_els(0);
   //the mesh contains only simplices so only one integration rule is needed
   IntegrationRule ir(el_type, 0);
 
-  //for a given vertex V in an element E the constant is calculated as
-  //the ratio between the distance to the (edge/plane) containing the
-  //opposite facet and the biggest edge adjacent to V in E
+  //for a given vertex E adjacent to a vertex V the constant is calculated as
+  //the  ratio between the minimum distance to the (edge/plane) containing the
+  //opposite facets connected by E and the length of E
   //therefore ctau <=1
-
-    for (Ngs_Element el : this->ma->Elements(VOL))
+  for(auto vi : IntRange(0, n_mesh_vertices))
     {
-      HeapReset hr(lh);
-      //gradient of basis functions onthe current element  
-      FlatMatrixFixWidth<DIM,double> gradphi(n_el_vertices,lh);
-      max_edge = -1;
-      auto ei = ElementId(el);
-      v_indices = ma->GetElVertices(ei);
-      
-      for (int e : el.Edges())
+      if(vi != vmap[vi]){continue;}
+      for(auto edge : v2e[vi])
         {
-          auto pnts = ma->GetEdgePNums(e);
-          auto v1 = pnts[0], v2 = pnts[1];
-          const auto v1_local = v_indices.Pos(v1);
-          const auto v2_local = v_indices.Pos(v2);
-          max_edge[v1_local] = max(max_edge[v1_local],edge_len[e]);
-          max_edge[v2_local] = max(max_edge[v2_local],edge_len[e]);
-        }
+          edge_els.SetSize(0);
+          ma->GetEdgeElements(edge, edge_els);
+          double val = std::numeric_limits<double>::max();
+          for (auto  iel : edge_els)
+            {
+              HeapReset hr(lh);
+              //gradient of basis functions onthe current element  
+              FlatMatrixFixWidth<DIM,double> gradphi(n_el_vertices,lh);
+              const auto ei = ElementId(iel);
+              const auto el = ma->GetElement(ei);
+              const double max_edge = [&]()
+                     {
+                       double m_edge = -1;
+                       for (int e : ma->GetElEdges(ei))
+                         {
+                           auto pnts = ma->GetEdgePNums(e);
+                           auto v1 = pnts[0], v2 = pnts[1];
+                           if(v1 != vi && v2 != vi) {continue;}
+                           m_edge = max(m_edge, edge_len[e]);
+                         }
+                       return m_edge;
+                     }();
+             
 
-      ElementTransformation &trafo = this->ma->GetTrafo(ei, lh);
-      MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
-      my_fel.CalcMappedDShape(mip,gradphi);
-      
-      const auto el_num = ei.Nr(); 
-      for(int vi_local = 0; vi_local < n_el_vertices; vi_local++) 
-        {
-          const auto dist_opposite_facet = 1./L2Norm(gradphi.Row(vi_local));
-          const auto val = dist_opposite_facet / max_edge[vi_local];
-          create_local_ctau.Add(el_num,val);
+              ElementTransformation &trafo = this->ma->GetTrafo(ei, lh);
+              MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
+              my_fel.CalcMappedDShape(mip,gradphi);
+              const auto vi_local = el.Points().Pos(vi);
+              const auto dist_opposite_facet = 1./L2Norm(gradphi.Row(vi_local));
+              const auto val_bar = dist_opposite_facet / max_edge;      
+              val = min(val,val_bar);
+            }
+          create_local_ctau.Add(vi,val);
         }
     }
   return create_local_ctau.MoveTable();
