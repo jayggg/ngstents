@@ -193,7 +193,9 @@ public:
   TentSlabPitcher(shared_ptr<MeshAccess> ama);
   //destructor
   virtual ~TentSlabPitcher(){;}
-  //calculates the wavespeed for each element and the edge length
+  //This method precomputes mesh-dependent data. It includes the wavespeed (per element) and
+  //neighbouring data. It returns the table v2v (neighbouring vertices), v2e(edges adjacent to a given
+  //vertex) and slave_verts (used for periodicity).
   template<int DIM>
   std::tuple<Table<int>,Table<int>,Table<int>> InitializeMeshData(LocalHeap &lh,
                                                       shared_ptr<CoefficientFunction> wavespeed,
