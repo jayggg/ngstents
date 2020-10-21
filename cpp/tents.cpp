@@ -124,12 +124,12 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
   // array of vertices ready for pitching a tent
   Array<int> ready_vertices;
   // array for checking if a given vertex is ready
-  Array<bool> vertex_ready(ma->GetNV());
-  vertex_ready = false;
+  BitArray vertex_ready(ma->GetNV());
+  vertex_ready.Clear();
   bool slab_complete{false};
   //array for checking if a given vertex is complete (tau[vi] = dt)
-  Array<bool> complete_vertices(ma->GetNV());
-  complete_vertices = false;
+  BitArray complete_vertices(ma->GetNV());
+  complete_vertices.Clear();
   //numerical tolerance
   const double num_tol = std::numeric_limits<double>::epsilon() * dt;
   while ( !slab_complete )
@@ -152,7 +152,7 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
           //vertex index at which the current tent is being pitched
           const int vi = ready_vertices[posmin];
           ready_vertices.DeleteElement(posmin);
-          vertex_ready[vi] = false;
+          vertex_ready.Clear(vi);
 
           //current tent
           Tent * tent = new Tent;
@@ -167,7 +167,7 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
           else
             {//vertex is complete
               tent->ttop = dt;
-              complete_vertices[vi] = true;
+              complete_vertices.SetBit(vi);
             }
           //let us ignore this for now
           // else if(new_ttop >= dt)
@@ -380,8 +380,8 @@ TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingM
 
 
 bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor,
-                                       const FlatArray<double> &ktilde, const FlatArray<bool> &complete_vertices,
-                                       Array<bool> &vertex_ready, Array<int> &ready_vertices){
+                                       const FlatArray<double> &ktilde, const BitArray &complete_vertices,
+                                       BitArray &vertex_ready, Array<int> &ready_vertices){
   auto &vmap = Tent::vmap;
   bool found{false};
   //how many times the adv_factor will be relaxed looking for new vertices
@@ -391,13 +391,13 @@ bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor
   for(auto ia = 0; ia < n_attempts; ia++)
     {
       for (auto iv = 0; iv < ma->GetNV(); iv++)
-        if(vmap[iv] == iv && !complete_vertices[iv] )
+        if(vmap[iv] == iv && !complete_vertices[iv])
           {
             if (ktilde[iv] > adv_factor * vertex_refdt[iv])
               if (!vertex_ready[iv])
                 {
                   ready_vertices.Append (iv);
-                  vertex_ready[iv] = true;
+                  vertex_ready.SetBit(iv);
                 }
           }
       if(ready_vertices.Size())
@@ -442,8 +442,8 @@ std::tuple<int,int> TentSlabPitcher::PickNextVertexForPitching(const FlatArray<i
 
 void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, const Table<int> &v2v,
                                        const Table<int> &v2e, const FlatArray<double> &tau,
-                                       const FlatArray<bool> &complete_vertices, Array<double> &ktilde,
-                                       Array<bool> &vertex_ready, Array<int> &ready_vertices,
+                                       const BitArray &complete_vertices, Array<double> &ktilde,
+                                       BitArray &vertex_ready, Array<int> &ready_vertices,
                                        LocalHeap &lh){
   auto &vmap = Tent::vmap;
   for (int nb : v2v[vi])
@@ -457,12 +457,12 @@ void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, co
           if (!vertex_ready[nb])
             {
               ready_vertices.Append (nb);
-              vertex_ready[nb] = true;
+              vertex_ready.SetBit(nb);
             }
         }
       else
         {
-          vertex_ready[nb] = false;
+          vertex_ready.Clear(nb);
           const auto pos_nb = ready_vertices.Pos(nb);
           if(pos_nb != ready_vertices.ILLEGAL_POSITION)
             {

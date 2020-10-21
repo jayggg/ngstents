@@ -208,8 +208,8 @@ public:
                                       LocalHeap &lh);
 
   void UpdateNeighbours(const int vi, const double adv_factor, const Table<int> &v2v,const Table<int> &v2e,
-                        const FlatArray<double> &tau, const FlatArray<bool> &complete_vertices,
-                        Array<double> &ktilde, Array<bool> &vertex_ready,
+                        const FlatArray<double> &tau, const BitArray &complete_vertices,
+                        Array<double> &ktilde, BitArray &vertex_ready,
                         Array<int> &ready_vertices, LocalHeap &lh);
   
   //it does NOT compute, only returns a copy of vertex_refdt
@@ -218,8 +218,8 @@ public:
   //Populate the set of ready vertices with vertices satisfying ktilde > adv_factor * refdt. returns false if
   //no such vertex was found
   [[nodiscard]] bool GetReadyVertices(double &adv_factor, bool reset_adv_factor,
-                                      const FlatArray<double> &ktilde, const FlatArray<bool> &complete_vertices,
-                                      Array<bool> &vertex_ready, Array<int> &ready_vertices);
+                                      const FlatArray<double> &ktilde, const BitArray &complete_vertices,
+                                      BitArray &vertex_ready, Array<int> &ready_vertices);
 
   //Given the current advancing (time) front, calculates the
   //maximum advance on a tent centered on vi that will still
