@@ -784,34 +784,26 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
           edge_els.SetSize(0);
           ma->GetEdgeElements(edge, edge_els);
           double val = std::numeric_limits<double>::max();
+          //gets the edge vector
+          auto pnts = ma->GetEdgePNums(edge);
+          auto v1 = pnts[0], v2 = pnts[1];
+          const auto edgevec =  ma-> template GetPoint<DIM>(v1)
+            - ma-> template GetPoint<DIM>(v2);
           for (auto  iel : edge_els)
             {
               HeapReset hr(lh);
               //gradient of basis functions onthe current element  
               FlatMatrixFixWidth<DIM,double> gradphi(n_el_vertices,lh);
               const auto ei = ElementId(iel);
-              const auto el = ma->GetElement(ei);
-              const double max_edge = [&]()
-                     {
-                       double m_edge = -1;
-                       for (int e : ma->GetElEdges(ei))
-                         {
-                           auto pnts = ma->GetEdgePNums(e);
-                           auto v1 = pnts[0], v2 = pnts[1];
-                           if(v1 != vi && v2 != vi) {continue;}
-                           m_edge = max(m_edge, edge_len[e]);
-                         }
-                       return m_edge;
-                     }();
-             
+              const auto el = ma->GetElement(ei);             
 
               ElementTransformation &trafo = this->ma->GetTrafo(ei, lh);
               MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
               my_fel.CalcMappedDShape(mip,gradphi);
               const auto vi_local = el.Points().Pos(vi);
-              const auto dist_opposite_facet = 1./L2Norm(gradphi.Row(vi_local));
-              const auto val_bar = dist_opposite_facet / max_edge;      
-              val = min(val,val_bar);
+              auto projectedGrad = fabs(InnerProduct(gradphi.Row(vi_local),edgevec));
+              projectedGrad /= (edge_len[edge] * L2Norm(gradphi.Row(vi_local)));
+              val = min(val,projectedGrad);
             }
           create_local_ctau.Add(vi,val);
         }
