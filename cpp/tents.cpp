@@ -772,10 +772,11 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
   //the mesh contains only simplices so only one integration rule is needed
   IntegrationRule ir(el_type, 0);
 
-  //for a given vertex E adjacent to a vertex V the constant is calculated as
-  //the  ratio between the minimum distance to the (edge/plane) containing the
-  //opposite facets connected by E and the length of E
-  //therefore ctau <=1
+
+  //NOT TESTED IN 3D
+  //the constant is calculated as the minimum of the projections
+  //of the gradient over an edge when the basis functions associated with
+  //its vertices are equal to one
   for(auto vi : IntRange(0, n_mesh_vertices))
     {
       if(vi != vmap[vi]){continue;}
@@ -792,7 +793,7 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
           for (auto  iel : edge_els)
             {
               HeapReset hr(lh);
-              //gradient of basis functions onthe current element  
+              //gradient of basis functions on the current element  
               FlatMatrixFixWidth<DIM,double> gradphi(n_el_vertices,lh);
               const auto ei = ElementId(iel);
               const auto el = ma->GetElement(ei);             
@@ -800,10 +801,13 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
               ElementTransformation &trafo = this->ma->GetTrafo(ei, lh);
               MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
               my_fel.CalcMappedDShape(mip,gradphi);
-              const auto vi_local = el.Points().Pos(vi);
-              auto projectedGrad = fabs(InnerProduct(gradphi.Row(vi_local),edgevec));
-              projectedGrad /= (edge_len[edge] * L2Norm(gradphi.Row(vi_local)));
-              val = min(val,projectedGrad);
+              /*the inner products gradphi.edgevec are identically equal to one so
+                there is no need to calculate them*/
+              const auto v1_local = el.Points().Pos(v1);
+              const auto v2_local = el.Points().Pos(v2);
+              const auto max_grad = max(L2Norm(gradphi.Row(v1_local)),L2Norm(gradphi.Row(v2_local)));
+              const auto projGrad = 1.0/(edge_len[edge] * max_grad);
+              val = min(val,projGrad);
             }
           create_local_ctau.Add(vi,val);
         }
