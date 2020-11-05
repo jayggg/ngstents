@@ -1174,6 +1174,45 @@ template class TentPitchedSlab<3>;
 
 ///////////// For python export ////////////////////////////////////////////
 
+template<int D>
+auto ExportTimeSlab(py::module &m)
+{
+  auto pyname = "TentPitchedSlab"+ToString(D);
+  auto pydocu = "Tent pitched slab in "+ToString(D)+" space + 1 time dimensions";
+  auto pyslab = py::class_<TentPitchedSlab<D>, shared_ptr<TentPitchedSlab<D>>>
+    (m, pyname.c_str(), pydocu.c_str())
+    .def(py::init([](shared_ptr<MeshAccess> ma, string method_name, int heapsize)
+    {
+      ngstents::PitchingMethod method = [method_name]{
+	if(method_name == "edge") return ngstents::EEdgeGrad;
+	else if(method_name == "vol") return ngstents::EVolGrad;
+	else//just for static analyzers. the code should not reach this case
+	  {
+	    cout << "Invalid method! Setting edge algorithm as default..." << endl;
+	    return ngstents::EEdgeGrad;
+	  }
+      }();
+      auto tps = TentPitchedSlab<D>(ma,  heapsize);
+      tps.SetPitchingMethod(method);
+      return tps;
+    }),
+	 py::arg("mesh"), py::arg("method"), py::arg("heapsize") = 1000000
+	 )
+    ;
+
+  pyslab
+    .def_readonly("mesh", &TentPitchedSlab<D>::ma)
+    .def("SetWavespeed", static_cast<void (TentPitchedSlab<D>::*)(const double)>(&TentPitchedSlab<D>::SetWavespeed))
+    .def("PitchTents", &TentPitchedSlab<D>::PitchTents, py::arg("dt"), py::arg("local_ct"), py::arg("global_ct")= 1.0)
+    .def("GetNTents", &TentPitchedSlab<D>::GetNTents)
+    .def("GetNLayers", &TentPitchedSlab<D>::GetNLayers)
+    .def("GetSlabHeight", &TentPitchedSlab<D>::GetSlabHeight)
+    .def("MaxSlope", &TentPitchedSlab<D>::MaxSlope)
+    .def("GetTent", &TentPitchedSlab<D>::GetTent, pybind11::return_value_policy::reference_internal)    ;
+  return pyslab;
+}
+
+
 void ExportTents(py::module & m) {
 
   py::class_<Tent, shared_ptr<Tent>>(m, "Tent", "Tent structure")
@@ -1186,153 +1225,64 @@ void ExportTents(py::module & m) {
     .def_readonly("internal_facets", &Tent::internal_facets)
     .def("MaxSlope", &Tent::MaxSlope);
 
-  //
-  // 1D spatial mesh
-  //
-  py::class_<TentPitchedSlab<1>, shared_ptr<TentPitchedSlab<1>>>
-    (m, "TentPitchedSlab1", "Tent pitched slab in 1 space + 1 time dimensions")
-    .def(py::init([](shared_ptr<MeshAccess> ma, string method_name, int heapsize)
-      {
-        ngstents::PitchingMethod method = [method_name]{
-          if(method_name == "edge") return ngstents::EEdgeGrad;
-          else if(method_name == "vol") return ngstents::EVolGrad;
-          else//just for static analyzers. the code should not reach this case
-            {
-              cout << "Invalid method! Setting edge algorithm as default..." << endl;
-              return ngstents::EEdgeGrad;
-            }
-        }();
-        auto tps = TentPitchedSlab<1>(ma,  heapsize);
-        tps.SetPitchingMethod(method);
-        return tps;
-      }),
-      py::arg("mesh"), py::arg("method"), py::arg("heapsize") = 1000000
-      )
-    
-    .def_readonly("mesh", &TentPitchedSlab<1>::ma)
-    .def("SetWavespeed", static_cast<void (TentPitchedSlab<1>::*)(const double)>(&TentPitchedSlab<1>::SetWavespeed))
-    .def("PitchTents", &TentPitchedSlab<1>::PitchTents, py::arg("dt"), py::arg("local_ct"), py::arg("global_ct")= 1.0)
-    .def("GetNTents", &TentPitchedSlab<1>::GetNTents)
-    .def("GetNLayers", &TentPitchedSlab<1>::GetNLayers)
-    .def("GetSlabHeight", &TentPitchedSlab<1>::GetSlabHeight)
-    .def("MaxSlope", &TentPitchedSlab<1>::MaxSlope)
-    .def("GetTent", &TentPitchedSlab<1>::GetTent, pybind11::return_value_policy::reference_internal)
+  ExportTimeSlab<1>(m)
     .def("DrawPitchedTentsPlt",[](shared_ptr<TentPitchedSlab<1>> self)
-     {
-       py::list ret;
-       for(int i = 0; i < self->GetNTents(); i++)
-         {
-           const Tent & tent = self->GetTent(i);
-           py::list reti;
-           reti.append(py::make_tuple(tent.vertex, tent.ttop,
-                                      tent.tbot, tent.level));
-           for(int j = 0; j< tent.nbv.Size(); j++)
-             reti.append(py::make_tuple(tent.nbv[j],tent.nbtime[j]));
-           ret.append(reti);
-         }
-       return ret;
-     })
-
-
-     ; // please leave me on my own line
-
-  py::class_<TentPitchedSlab<2>, shared_ptr<TentPitchedSlab<2>>>
-    (m, "TentPitchedSlab2", "Tent pitched slab in 2 space + 1 time dimensions")
-    .def(py::init([](shared_ptr<MeshAccess> ma, string method_name, int heapsize)
-      {
-        ngstents::PitchingMethod method = [method_name]{
-          if(method_name == "edge") return ngstents::EEdgeGrad;
-          else if(method_name == "vol") return ngstents::EVolGrad;
-          else//just for static analyzers. the code should not reach this case
-            {
-              cout << "Invalid method! Setting edge algorithm as default..." << endl;
-              return ngstents::EEdgeGrad;
-            }
-        }();
-        auto tps = TentPitchedSlab<2>(ma,  heapsize);
-        tps.SetPitchingMethod(method);
-        return tps;
-      }),
-      py::arg("mesh"), py::arg("method"), py::arg("heapsize") = 1000000
-      )
-
-    .def_readonly("mesh", &TentPitchedSlab<2>::ma)
-    .def("SetWavespeed", static_cast<void (TentPitchedSlab<2>::*)(const double)>(&TentPitchedSlab<2>::SetWavespeed))
-    .def("PitchTents", &TentPitchedSlab<2>::PitchTents, py::arg("dt"), py::arg("local_ct"), py::arg("global_ct")= 1.0)
-    .def("GetNTents", &TentPitchedSlab<2>::GetNTents)
-    .def("GetNLayers", &TentPitchedSlab<2>::GetNLayers)
-    .def("GetSlabHeight", &TentPitchedSlab<2>::GetSlabHeight)
-    .def("MaxSlope", &TentPitchedSlab<2>::MaxSlope)
-    .def("GetTent", &TentPitchedSlab<2>::GetTent, pybind11::return_value_policy::reference_internal)
+	 {
+	   py::list ret;
+	   for(int i = 0; i < self->GetNTents(); i++)
+	     {
+	       const Tent & tent = self->GetTent(i);
+	       py::list reti;
+	       reti.append(py::make_tuple(tent.vertex, tent.ttop,
+					  tent.tbot, tent.level));
+	       for(int j = 0; j< tent.nbv.Size(); j++)
+		 reti.append(py::make_tuple(tent.nbv[j],tent.nbtime[j]));
+	       ret.append(reti);
+	     }
+	   return ret;
+	 })
+    ;
+  
+  ExportTimeSlab<2>(m)
     .def("DrawPitchedTentsVTK",
-         [](shared_ptr<TentPitchedSlab<2>> self, string vtkfilename)
-         {
-           self->DrawPitchedTentsVTK(vtkfilename);
-         }, py::arg("vtkfilename")="output")
+	 [](shared_ptr<TentPitchedSlab<2>> self, string vtkfilename)
+	 {
+	   self->DrawPitchedTentsVTK(vtkfilename);
+	 }, py::arg("vtkfilename")="output")
     .def("DrawPitchedTentsGL",
-         [](shared_ptr<TentPitchedSlab<2>> self)
-         {
-           int nlevels;
-           Array<int> tentdata;
-           Array<double> tenttimes;
-           self->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
-           py::list data, times;
-           for(auto i : Range(tentdata))
-             {
-               data.append(tentdata[i]);
-               // note: time values make sense only in 2D case.
-               // They are not used in 3D case, i.e. they are
-               // ignored by tents_visualization (ngsgui) and webgui.
-               times.append(tenttimes[i]);
-             }
-           return py::make_tuple(data,times,self->GetNTents(),nlevels);
-         })
+	 [](shared_ptr<TentPitchedSlab<2>> self)
+	 {
+	   int nlevels;
+	   Array<int> tentdata;
+	   Array<double> tenttimes;
+	   self->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
+	   py::list data, times;
+	   for(auto i : Range(tentdata))
+	     {
+	       data.append(tentdata[i]);
+	       // note: time values make sense only in 2D case.
+	       // They are not used in 3D case, i.e. they are
+	       // ignored by tents_visualization (ngsgui) and webgui.
+	       times.append(tenttimes[i]);
+	     }
+	   return py::make_tuple(data,times,self->GetNTents(),nlevels);
+	 })
+    ;
 
-     ; // please leave me on my own line
-
-  py::class_<TentPitchedSlab<3>, shared_ptr<TentPitchedSlab<3>>>
-    (m, "TentPitchedSlab3", "Tent pitched slab in 3 space + 1 time dimensions")
-    .def(py::init([](shared_ptr<MeshAccess> ma, string method_name, int heapsize)
-      {
-        ngstents::PitchingMethod method = [method_name]{
-          if(method_name == "edge") return ngstents::EEdgeGrad;
-          else if(method_name == "vol") return ngstents::EVolGrad;
-          else//just for static analyzers. the code should not reach this case
-            {
-              cout << "Invalid method! Setting edge algorithm as default..." << endl;
-              return ngstents::EEdgeGrad;
-            }
-        }();
-        auto tps = TentPitchedSlab<3>(ma,  heapsize);
-        tps.SetPitchingMethod(method);
-        return tps;
-      }),
-      py::arg("mesh"), py::arg("method"), py::arg("heapsize") = 1000000
-      )
-
-    .def_readonly("mesh", &TentPitchedSlab<3>::ma)
-    .def("SetWavespeed", static_cast<void (TentPitchedSlab<3>::*)(const double)>(&TentPitchedSlab<3>::SetWavespeed))
-    .def("PitchTents", &TentPitchedSlab<3>::PitchTents, py::arg("dt"), py::arg("local_ct"), py::arg("global_ct")= 1.0)
-    .def("GetNTents", &TentPitchedSlab<3>::GetNTents)
-    .def("GetNLayers", &TentPitchedSlab<3>::GetNLayers)
-    .def("GetSlabHeight", &TentPitchedSlab<3>::GetSlabHeight)
-    .def("MaxSlope", &TentPitchedSlab<3>::MaxSlope)
-    .def("GetTent", &TentPitchedSlab<3>::GetTent, pybind11::return_value_policy::reference_internal)
+  ExportTimeSlab<3>(m)
     .def("DrawPitchedTentsGL",
-         [](shared_ptr<TentPitchedSlab<3>> self)
-         {
-           int nlevels;
-           Array<int> tentdata;
-           Array<double> tenttimes;
-           self->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
-           py::list data;
-           for(auto i : Range(tentdata))
-             {
-               data.append(tentdata[i]);
-             }
-           return py::make_tuple(data, self->GetNTents(), nlevels);
-         })
-
-     ; // please leave me on my own line
-
+	 [](shared_ptr<TentPitchedSlab<3>> self)
+	 {
+	   int nlevels;
+	   Array<int> tentdata;
+	   Array<double> tenttimes;
+	   self->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
+	   py::list data;
+	   for(auto i : Range(tentdata))
+	     {
+	       data.append(tentdata[i]);
+	     }
+	   return py::make_tuple(data, self->GetNTents(), nlevels);
+	 })
+    ;
 }

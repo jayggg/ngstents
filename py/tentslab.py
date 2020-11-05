@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from tents import (TentPitchedSlab1, TentPitchedSlab2, TentPitchedSlab3)
+from .tents import (TentPitchedSlab1, TentPitchedSlab2, TentPitchedSlab3)
 
 
 class TentSlab(object):
