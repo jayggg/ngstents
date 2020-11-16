@@ -24,8 +24,10 @@ else:
 
 heapsize = 10*1000*1000
 dt = 0.05
-c = 16
-ts = TentSlab(mesh, dt, c, heapsize)
+c = 6
+ts = TentSlab(mesh, heapsize=heapsize)
+ts.SetWavespeed(c)
+ts.PitchTents(dt)
 print("max slope", ts.MaxSlope())
 
 order = 4
@@ -39,7 +41,7 @@ burg.SetInitial(cf)
 
 Draw(sol)  # ,sd=5,autoscale=False)
 
-tend = 3*dt
+tend = 10*dt
 t = 0
 cnt = 0
 if ngs_gui:
