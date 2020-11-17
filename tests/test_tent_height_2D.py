@@ -7,16 +7,29 @@ import numpy as np
 def test_tent_height():
     """Partial test for tents' height
 
+
     Check if the tents' height are not bigger than any of the neighbouring
     edges. Passing this test does NOT imply the fulfillment of causality
     conditions."""
 
     mesh = Mesh(unit_square.GenerateMesh(maxh=.2))
+    nref = 2
+    for i in range(nref):
+        mesh.Refine()
     dt = 0.05
     c = 16
     tol = 1e-12
+    method = "vol"
     # Tent slab tests
-    tentslab = TentSlab(mesh, dt, c)
+    tentslab = TentSlab(mesh, method, 10**7)
+    tentslab.SetWavespeed(c)
+    success = tentslab.PitchTents(dt)
+    try:
+        assert success is True
+    except AssertionError as e:
+        msg = "Slab could not be pitched"
+        e.args += ("Failed to pitch slab", msg)
+        raise
     ntents = tentslab.GetNTents()
     for itent in range(ntents):
         tent = tentslab.GetTent(itent)
@@ -61,8 +74,19 @@ def test_tent_height():
                 for iv in range(len(tent.nbtime)):
                     msg += " vertex = " + \
                         str(tent.nbv[iv]) + " time = " + str(tent.nbtime[iv])
-                e.args += ("ERROR: tent has slope bigger than velocity!", msg)
+                e.args += ("ERROR: tent has slope bigger than velocity" +
+                           " along edge!", msg)
                 raise
+        try:
+
+            assert (1.0/c >= tent.MaxSlope())
+
+        except AssertionError as e:
+            msg = "tent id = " + str(itent)+" tent_v = " + str(tent_v)
+            msg += "max slope = " + str(tent.MaxSlope())
+            msg += "1/c = " + str(1.0/c)
+            e.args += ("ERROR: tent has slope bigger than velocity!", msg)
+            raise
 
 
 if __name__ == "__main__":

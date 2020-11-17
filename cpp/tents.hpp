@@ -46,6 +46,7 @@ public:
   int level;                   // parallel layer number
   Array<int> dependent_tents;  // these tents depend on me
 
+  double MaxSlope() const;
 };
 
 ostream & operator<< (ostream & ost, const Tent & tent);
@@ -108,31 +109,51 @@ public:
 
 
 ////////////////////////////////////////////////////////////////////////////
+namespace ngstents{
+  enum PitchingMethod {EVolGrad =1, EEdgeGrad};
+}
 
 template <int DIM>
 class TentPitchedSlab {
-
+public:
   Array<Tent*> tents;         // tents between two time slices
   double dt;                  // time step between two time slices
+  //wavespeed
+  shared_ptr<CoefficientFunction> cmax;
+  int nlayers;//number of layers in the time slab
+  //whether the slab has been already pitched
+  bool has_been_pitched;
   LocalHeap lh;
+  ngstents::PitchingMethod method;
 
 public:
   // access to base spatial mesh (public for export to Python visualization)
   shared_ptr<MeshAccess> ma;
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
-    dt(0), ma(ama), lh(heapsize, "Tents heap") { ; };
-  void PitchTents(double dt, double cmax);
-  void PitchTents(double dt, shared_ptr<CoefficientFunction> cmax);
-  void PitchTents_New(double dt, shared_ptr<CoefficientFunction> cmax);
-
+    dt(0), ma(ama), cmax(nullptr), nlayers(0),
+    has_been_pitched(false), lh(heapsize, "Tents heap") { ; };
+  
+  //uses a gradient based method for pitching the tent
+  //calc_local_ct will indicate wether to use a local mesh-dependent
+  //constant for the algorithm
+  //global_ct is a globalwise constant that can be independently used
+  //its return value will indicate whether the slab was successfully pitched.
+  bool PitchTents(const double dt, const bool calc_local_ct, const double global_ct = 1.0);
+  
   // Get object features
   int GetNTents() { return tents.Size(); }
+  int GetNLayers() { return nlayers; }
+
+
+  void SetWavespeed(const double c){cmax =  make_shared<ConstantCoefficientFunction>(c);}
+  void SetWavespeed(shared_ptr<CoefficientFunction> c){ cmax = c;}
+  
   double GetSlabHeight() { return dt; }
   const Tent & GetTent(int i) { return *tents[i];}
 
   // Return  max(|| gradphi_top||, ||gradphi_bot||)
-  double MaxSlope();
+  double MaxSlope() const;
 
   // Drawing
   void DrawPitchedTents(int level=1) ;
@@ -140,10 +161,98 @@ public:
   void DrawPitchedTentsGL(Array<int> & tentdata,
                           Array<double> & tenttimes, int & nlevels);
 
+  void SetPitchingMethod(ngstents::PitchingMethod amethod) {this->method = amethod;}
 
   // Propagate methods need to access this somehow
   Table<int> tent_dependency; // DAG of tent dependencies
 };
 
+//Abstract class with the interface of methods used for pitching a tent
+class TentSlabPitcher{
+protected:
+  //access to base spatial mesh
+  shared_ptr<MeshAccess> ma;
+  //element-wise (vol grad algo) or edge-wise (edge grad algo)  maximal wave-speeds
+  Array<double> cmax;
+  //reference heights for each vertex
+  Array<double> vertex_refdt;
+  //array containing the length of each edge
+  Array<double> edge_len;
+  //returns the mesh dependent local constants. the first parameter is the vertex,
+  //and the second parameter is the edge (edge algo) or element (vol algo)
+  std::function<double(const int, const int)> local_ctau;
+  //table for storing local geometric constants
+  Table<double> local_ctau_table;
+  //global constant (defaulted to 1)
+  double global_ctau;
 
+  //Calculates the local c_tau used for ensuring causality (edge algo)/preventing locks (vol algo)
+  virtual Table<double> CalcLocalCTau(LocalHeap& lh, const Table<int> &v2e) = 0;
+  const ngstents::PitchingMethod method;
+public:
+  //constructor
+  TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m);
+  //destructor
+  virtual ~TentSlabPitcher(){;}
+  //This method precomputes mesh-dependent data. It includes the wavespeed (per element) and
+  //neighbouring data. It returns the table v2v (neighbouring vertices), v2e(edges adjacent to a given
+  //vertex) and slave_verts (used for periodicity).
+  template<int DIM>
+  std::tuple<Table<int>,Table<int>,Table<int>> InitializeMeshData(LocalHeap &lh,
+                                                      shared_ptr<CoefficientFunction> wavespeed,
+                                                      bool calc_local_ctau, const double global_ct );
+
+  //compute the vertex based max time-differences assumint tau=0
+  //corresponding to a non-periodic vertex
+  void ComputeVerticesReferenceHeight(const Table<int> &v2v, const Table<int> &v2e, const FlatArray<double> &tau,
+                                      LocalHeap &lh);
+
+  void UpdateNeighbours(const int vi, const double adv_factor, const Table<int> &v2v,const Table<int> &v2e,
+                        const FlatArray<double> &tau, const BitArray &complete_vertices,
+                        Array<double> &ktilde, BitArray &vertex_ready,
+                        Array<int> &ready_vertices, LocalHeap &lh);
+  
+  //it does NOT compute, only returns a copy of vertex_refdt
+  Array<double> GetVerticesReferenceHeight(){ return Array<double>(vertex_refdt);}
+
+  //Populate the set of ready vertices with vertices satisfying ktilde > adv_factor * refdt. returns false if
+  //no such vertex was found
+  [[nodiscard]] bool GetReadyVertices(double &adv_factor, bool reset_adv_factor,
+                                      const FlatArray<double> &ktilde, const BitArray &complete_vertices,
+                                      BitArray &vertex_ready, Array<int> &ready_vertices);
+
+  //Given the current advancing (time) front, calculates the
+  //maximum advance on a tent centered on vi that will still
+  //guarantee causality
+  virtual double GetPoleHeight(const int vi, const FlatArray<double> & tau,  FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const = 0;
+
+  //Returns the position in ready_vertices containing the vertex in which a tent will be pitched (and its level)
+  [[nodiscard]] std::tuple<int,int> PickNextVertexForPitching(const FlatArray<int> &ready_vertices, const FlatArray<double> &ktilde, const FlatArray<int> &vertices_level);
+};
+
+template <int DIM>
+class VolumeGradientPitcher : public TentSlabPitcher{
+public:
+  
+  VolumeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama, ngstents::PitchingMethod::EVolGrad){;}
+
+  double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
+                       FlatArray<int> nbe, LocalHeap & lh) const override;
+  //Calculates the local c_tau used for ensuring causality (edge algo)/preventing locks (vol algo)
+  Table<double> CalcLocalCTau(LocalHeap& lh, const Table<int> &v2e) override;
+};
+
+template <int DIM>
+class EdgeGradientPitcher : public TentSlabPitcher{
+public:
+  
+  EdgeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama, ngstents::PitchingMethod::EEdgeGrad) {;}
+
+  double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
+                       FlatArray<int> nbe, LocalHeap & lh) const override;
+
+  //Calculates the local c_tau used for ensuring causality (edge algo)/preventing locks (vol algo)
+  Table<double> CalcLocalCTau(LocalHeap& lh, const Table<int> &v2e) override;
+  
+};
 #endif

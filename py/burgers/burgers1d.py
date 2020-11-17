@@ -28,7 +28,9 @@ else:
     mesh = Make1DMesh([[0, 1]], [20], bc=[1, 3])
 mesh = Mesh(mesh)
 
-ts = TentSlab(mesh, dt, c)
+ts = TentSlab(mesh)
+ts.SetWavespeed(c)
+ts.PitchTents(dt)
 print("Max Slope: ", ts.MaxSlope())
 
 if draw_tents:

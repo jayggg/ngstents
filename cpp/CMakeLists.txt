@@ -22,4 +22,10 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
 message("With 'make install' the python package will be installed to: ${CMAKE_INSTALL_PREFIX}")
-install(TARGETS tents DESTINATION .)
+install(TARGETS tents DESTINATION ngstents)
+install(FILES
+  ../py/__init__.py
+  ../py/mesh1d.py
+  ../py/tentslab.py
+  ../py/burgers.py
+  DESTINATION ngstents)
