@@ -782,14 +782,14 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
       if(vi != vmap[vi]){continue;}
       for(auto edge : v2e[vi])
         {
+          //gets the elements that have this edge as a side
           edge_els.SetSize(0);
           ma->GetEdgeElements(edge, edge_els);
           double val = std::numeric_limits<double>::max();
-          //gets the edge vector
+          //gets the vertices belonging to the edge
           auto pnts = ma->GetEdgePNums(edge);
           auto v1 = pnts[0], v2 = pnts[1];
-          const auto edgevec =  ma-> template GetPoint<DIM>(v1)
-            - ma-> template GetPoint<DIM>(v2);
+          //iterate through the elements containing the edge
           for (auto  iel : edge_els)
             {
               HeapReset hr(lh);
