@@ -1,4 +1,4 @@
-from .tents import (Burgers1, Burgers2)
+from .conslaw import (Burgers1, Burgers2)
 
 
 class Burgers(object):

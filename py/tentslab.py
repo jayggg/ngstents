@@ -4,7 +4,6 @@ import numpy as np
 
 from .tents import (TentPitchedSlab1, TentPitchedSlab2, TentPitchedSlab3)
 
-
 class TentSlab(object):
     def __init__(self, mesh, method=None, heapsize=None):
         if method is None:

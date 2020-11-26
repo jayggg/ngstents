@@ -1,7 +1,6 @@
 #include <solve.hpp>
 using namespace ngsolve;
 
-#include "conservationlaw.hpp"
 #include "tconservationlaw_tp_impl.hpp"
 #include <python_ngstd.hpp>
 
@@ -198,7 +197,7 @@ typedef GridFunction GF;
 typedef Burgers<1> B1;
 typedef Burgers<2> B2;
 
-void ExportConsLaw(py::module & m)
+void ExportBurgers(py::module & m)
 {
   py::class_<B1, shared_ptr<B1>>
     (m,"Burgers1", "Burgers equation in 1 spatial dimension")
