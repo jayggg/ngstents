@@ -553,11 +553,11 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
   if(calc_local_ct && DIM > 1)
     {
       local_ctau_table = this->CalcLocalCTau(lh, v2e);
-      this->local_ctau = [this](const int el, const int v){return local_ctau_table[el][v];};
+      this->local_ctau = [this](const int v, const int el_or_edge){return local_ctau_table[v][el_or_edge];};
     }
   else
     {
-      this->local_ctau = [](const int el, const int v){return 1;};
+      this->local_ctau = [](const int v, const int el_or_edge){return 1;};
     }
   return std::make_tuple(v2v, v2e, slave_verts);
 }
