@@ -4,7 +4,8 @@ Burgers equation in 2-D
 from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, CoefficientFunction, x, y, exp, Draw, Redraw
 from ngsolve import TaskManager, SetNumThreads
-from ngstents import TentSlab, Burgers
+from ngstents import TentSlab
+from ngstents.conslaw import Burgers
 
 # options
 saved_mesh = False

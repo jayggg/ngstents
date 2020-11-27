@@ -1,6 +1,7 @@
 from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, CoefficientFunction, exp, x, y, TaskManager
-from ngstents import Burgers, TentSlab
+from ngstents import TentSlab
+from ngstents.conslaw import Burgers
 
 
 def test_burgers2D():

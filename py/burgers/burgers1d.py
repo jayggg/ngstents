@@ -5,7 +5,9 @@ Notes:
 1. zoom in Netgen to see solution for cfnum = 2
 2. boundary condition numbers 1 = inflow, 3 = outflow
 """
-from ngstents import TentSlab, Burgers, Make1DMesh, Make1DMeshSpecified
+from ngstents import TentSlab
+from ngstents.utils import Make1DMesh, Make1DMeshSpecified
+from ngstents.conslaw import Burgers
 from ngsolve import Mesh, CoefficientFunction, x, exp, Draw, Redraw
 from ngsolve import TaskManager, SetNumThreads
 from ngsolve.internal import viewoptions
