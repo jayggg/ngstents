@@ -769,14 +769,17 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
   //used to calculate distance to opposite facet
   ScalarFE<el_type,1> my_fel;
   ArrayMem<int, 30> edge_els(0);
+  ArrayMem<int, 30> edge_faces(0);
   //the mesh contains only simplices so only one integration rule is needed
   IntegrationRule ir(el_type, 0);
 
 
-  //NOT TESTED IN 3D
   //the constant is calculated as the minimum of the projections
   //of the gradient over an edge when the basis functions associated with
   //its vertices are equal to one
+  //this constant was developed with the 2D scenario in mind.
+  //in 3D, it is thus necessary to scale this projection w.r.t. the
+  //projection of the gradient over the respective face
   for(auto vi : IntRange(0, n_mesh_vertices))
     {
       if(vi != vmap[vi]){continue;}
@@ -805,8 +808,76 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
                 there is no need to calculate them*/
               const auto v1_local = el.Points().Pos(v1);
               const auto v2_local = el.Points().Pos(v2);
-              const auto max_grad = max(L2Norm(gradphi.Row(v1_local)),L2Norm(gradphi.Row(v2_local)));
-              const auto projGrad = 1.0/(edge_len[edge] * max_grad);
+
+              /*
+                splitting 2d and 3d code. there is no need to generate that much
+                code for 2d
+              */
+              const auto one_over_max_grad =
+                [&]()
+                {
+                  /*
+                    for 2d the projection of the gradient over the (only) face is 
+                    always equal to one
+                   */
+                  if constexpr ( DIM == 2 )
+                    {
+                      return
+                        1.0 / max(L2Norm(gradphi.Row(v1_local)),
+                            L2Norm(gradphi.Row(v2_local)));
+                    }
+                  /*
+                   for 3d this is no longer the case
+                  */
+                  else if constexpr ( DIM == 3 )
+                    {
+                      edge_faces.SetSize(0);
+                      //get all the faces adjacent to the edge
+                      ma->GetEdgeFaces(edge, edge_faces);
+                      //normal vectors in the REFERENCE element, needed for 3D
+                      const auto all_normals = 
+                        ElementTopology::GetNormals<DIM>(el_type);
+                      Mat<DIM,DIM> inv_jac =  mip.GetJacobianInverse();
+                      const double det = fabs(mip.GetJacobiDet());
+                      double val = 1;
+                      for (auto face : edge_faces)
+                        {
+                          //local face id
+                          const auto face_local = el.Faces().Pos(face);
+                          //maybe the current element does not contain this face
+                          if(face_local == el.Faces().ILLEGAL_POSITION){continue;}
+                          Vec<DIM> normal_ref = all_normals[face_local];
+                          //normal vector in the deformed element
+                          Vec<DIM> normal = det * Trans(inv_jac) * normal_ref;
+                          //the norm of the vector is not unitary
+                          const double len_normal = L2Norm(normal);
+                          normal /= len_normal;
+                          /*
+                           this lambda calculates the ratio between
+                          the norm of the projection of grad over a face
+                          and the norm of grad
+                          */
+                          auto calc_grad_proj =
+                            [&](const int vertex)
+                            {
+                              Vec<DIM> max_grad_vec = gradphi.Row(vertex);
+                              const double norm_grad = L2Norm(gradphi.Row(vertex));
+                              max_grad_vec /= norm_grad;
+                              const auto tg_grad =
+                                L2Norm(Cross(normal, max_grad_vec));
+                              return tg_grad / norm_grad;
+                            };
+                          const double val_face =
+                            min(calc_grad_proj(v1_local),
+                                calc_grad_proj(v2_local));
+                          val = min(val,val_face);
+                        }
+                      return val;
+                    }
+                  else//this will never be called by DIM == 1, but anyway
+                    {return 1.0;}
+                }();
+              const auto projGrad = one_over_max_grad /edge_len[edge];
               val = min(val,projGrad);
             }
           create_local_ctau.Add(vi,val);
