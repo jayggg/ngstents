@@ -23,7 +23,7 @@ protected:
 
   // collection of tents in timeslab
   size_t tentslab_heapsize = 10*1000000;
-  shared_ptr<TentPitchedSlab<DIM>> tps;
+  shared_ptr<TentPitchedSlab> tps;
   
   Table<int> & tent_dependency = tps->tent_dependency;
   double wavespeed;
@@ -48,7 +48,7 @@ public:
   // advancing front (used for time-dependent bc)
   shared_ptr<GridFunction> gftau = nullptr;
 
-  T_ConservationLaw (shared_ptr<TentPitchedSlab<DIM>> & atps, int order,
+  T_ConservationLaw (shared_ptr<TentPitchedSlab> & atps, int order,
                      const Flags & flags) : tps(atps)
   {
     ma = tps->ma;
@@ -93,8 +93,6 @@ public:
 	gfnu = CreateGridFunction(fes_lo,"nu",Flags());
 	gfnu->Update();
       }
-    gfuorig = CreateGridFunction(fes,"uorig",Flags());
-    gfuorig->Update();
 
     // first order H1 space for the advancing front
     shared_ptr<FESpace> fesh1 = CreateFESpace("h1ho", ma,
@@ -164,7 +162,7 @@ public:
   virtual void PitchTents(double adt, shared_ptr<CoefficientFunction> awavespeed)
   {
     tps->SetWavespeed(awavespeed);
-    tps->PitchTents(adt,false);
+    // tps->PitchTents(adt,false);
   }
 
   virtual double MaxSlope()

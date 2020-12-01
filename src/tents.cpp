@@ -61,7 +61,7 @@ constexpr ELEMENT_TYPE EL_TYPE(int DIM)
 }//this assumes that there is only one type of element per mesh
 
 template <int DIM>
-bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const double global_ct)
+bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, const double global_ct)
 {
   if(has_been_pitched)
     {
@@ -353,9 +353,12 @@ bool TentPitchedSlab <DIM>::PitchTents(double dt, bool calc_local_ct, const doub
   return has_been_pitched;
 }
 
+template bool TentPitchedSlab::PitchTents<1>(const double, const bool, const double);
+template bool TentPitchedSlab::PitchTents<2>(const double, const bool, const double);
+template bool TentPitchedSlab::PitchTents<3>(const double, const bool, const double);
 
-template <int DIM>
-double TentPitchedSlab <DIM>::MaxSlope() const{
+
+double TentPitchedSlab::MaxSlope() const{
 
   // Return  max(|| gradphi_top||, ||gradphi_bot||)
 
@@ -822,8 +825,7 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
 
 ///////////////////// Output routines //////////////////////////////////////
 
-template <int DIM> void
-TentPitchedSlab <DIM>::DrawPitchedTentsVTK(string filename)
+void TentPitchedSlab::DrawPitchedTentsVTK(string filename)
 {
   ofstream out(filename+".vtk");
   Array<Vec<3>> points;
@@ -903,9 +905,8 @@ TentPitchedSlab <DIM>::DrawPitchedTentsVTK(string filename)
 
 
 // Used with OpenGL (ngsgui/tents_visualization) and WebGL (webgui).
-template <int DIM> void
-TentPitchedSlab <DIM>::DrawPitchedTentsGL(
-    Array<int> & tentdata, Array<double> & tenttimes, int & nlevels)
+void TentPitchedSlab::
+DrawPitchedTentsGL(Array<int> & tentdata, Array<double> & tenttimes, int & nlevels)
 {
   nlevels = 0;
   tentdata.SetAllocSize(4*tents.Size());
@@ -923,7 +924,7 @@ TentPitchedSlab <DIM>::DrawPitchedTentsGL(
           if(tent.level > nlevels)
             nlevels = tent.level;
 
-          if constexpr (DIM == 2)
+          if(ma->GetDimension() == 2)
           {
             auto verts = ma->GetElVertices(ElementId(VOL,tent.els[el]));
             for(auto v : verts)
@@ -1165,8 +1166,3 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
 }
 
 
-///////////// Instantiate in expected dimensions ///////////////////////////
-
-template class TentPitchedSlab<1>;
-template class TentPitchedSlab<2>;
-template class TentPitchedSlab<3>;

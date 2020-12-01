@@ -746,9 +746,7 @@ void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
 PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh)
 {
   shared_ptr<BaseVector> hres = (ECOMP > 0) ? gfres->GetVectorPtr() : nullptr;
-  shared_ptr<BaseVector> huorig =
-    (gfuorig != NULL) ? gfuorig->GetVectorPtr() : hu.CreateVector();
-
+  
   RunParallelDependency
     (tent_dependency, [&] (int i)
      {

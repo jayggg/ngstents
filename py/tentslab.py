@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import ngsolve as ng
 import numpy as np
 
-from .tents import (TentPitchedSlab1, TentPitchedSlab2, TentPitchedSlab3)
+from .tents import TentPitchedSlab
 
 class TentSlab(object):
     def __init__(self, mesh, method=None, heapsize=None):
@@ -12,21 +12,21 @@ class TentSlab(object):
         self.dim = mesh.dim
         if self.dim == 1:
             if heapsize is None:
-                self.slab = TentPitchedSlab1(mesh, method)
+                self.slab = TentPitchedSlab(mesh, method)
             else:
-                self.slab = TentPitchedSlab1(mesh, method,
+                self.slab = TentPitchedSlab(mesh, method,
                                              heapsize=heapsize)
         elif self.dim == 2:
             if heapsize is None:
-                self.slab = TentPitchedSlab2(mesh, method)
+                self.slab = TentPitchedSlab(mesh, method)
             else:
-                self.slab = TentPitchedSlab2(mesh, method,
+                self.slab = TentPitchedSlab(mesh, method,
                                              heapsize=heapsize)
         elif self.dim == 3:
             if heapsize is None:
-                self.slab = TentPitchedSlab3(mesh, method)
+                self.slab = TentPitchedSlab(mesh, method)
             else:
-                self.slab = TentPitchedSlab3(mesh, method,
+                self.slab = TentPitchedSlab(mesh, method,
                                              heapsize=heapsize)
         else:
             raise NotImplementedError("mesh dimension not supported")

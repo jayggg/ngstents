@@ -11,7 +11,7 @@ class Burgers : public T_ConservationLaw<Burgers<D>,D,1,1,false>
   typedef T_ConservationLaw<Burgers<D>,D,1,1,false> BASE;
 
 public:
-  Burgers (shared_ptr<TentPitchedSlab<D>> & atps, int order, const Flags & flags)
+  Burgers (shared_ptr<TentPitchedSlab> & atps, int order, const Flags & flags)
     : BASE (atps, order, flags) { ; }
 
   // these two were private
@@ -201,7 +201,7 @@ void ExportBurgers(py::module & m)
 {
   py::class_<B1, shared_ptr<B1>>
     (m,"Burgers1", "Burgers equation in 1 spatial dimension")
-    .def(py::init([](shared_ptr<TentPitchedSlab<1>> & tps,
+    .def(py::init([](shared_ptr<TentPitchedSlab> & tps,
                      int order, py::dict pyflags)
                   {
                     const Flags flags = py::extract<Flags> (pyflags)();
@@ -239,7 +239,7 @@ void ExportBurgers(py::module & m)
 
   py::class_<B2, shared_ptr<B2>>
     (m,"Burgers2", "Burgers equation in 2 spatial dimensions")
-    .def(py::init([](shared_ptr<TentPitchedSlab<2>> & tps,
+    .def(py::init([](shared_ptr<TentPitchedSlab> & tps,
                      int order, py::dict pyflags)
                   {
                     const Flags flags = py::extract<Flags> (pyflags)();
