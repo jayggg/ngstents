@@ -6,9 +6,40 @@
 #endif
 #include "tents.hpp"
 #include <atomic>
+class ConservationLaw
+{
+public:
+  shared_ptr<MeshAccess> ma = nullptr;
+  shared_ptr<TentPitchedSlab> tps = nullptr;
+
+  const int order = {};
+  const string equation = {};
+  shared_ptr<L2HighOrderFESpace> fes = nullptr;
+  shared_ptr<GridFunction> gfu = nullptr;
+  shared_ptr<GridFunction> gfres = nullptr;
+  shared_ptr<GridFunction> gfuorig = nullptr;
+  shared_ptr<GridFunction> gfnu = nullptr;
+
+  shared_ptr<LocalHeap> pylh = nullptr;
+  shared_ptr<BaseVector> u = nullptr;     // u(n)
+  shared_ptr<BaseVector> uinit = nullptr; // initial data, also used for bc
+public:
+  ConservationLaw (const shared_ptr<TentPitchedSlab> & atps,
+		   const string & eqn, int aorder)
+    : tps {atps}, ma {atps->ma}, order {aorder}, equation {eqn}
+  { };
+  
+  virtual ~ConservationLaw() { ; }
+  
+  virtual void SetBC() = 0;
+  
+  virtual void PropagatePicard(int steps, BaseVector & hu,
+			       BaseVector & hu_init, LocalHeap & lh) = 0;
+  
+};
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEPENDENT>
-class T_ConservationLaw
+class T_ConservationLaw : public ConservationLaw
 {
 protected:
   FlatVector<> nu;  // viscosity coefficient
@@ -23,7 +54,6 @@ protected:
 
   // collection of tents in timeslab
   size_t tentslab_heapsize = 10*1000000;
-  shared_ptr<TentPitchedSlab> tps;
   
   Table<int> & tent_dependency = tps->tent_dependency;
   double wavespeed;
@@ -33,30 +63,17 @@ protected:
   const EQUATION & Cast() const {return static_cast<const EQUATION&> (*this);}
 
 public:
-  shared_ptr<MeshAccess> ma = nullptr;
-  shared_ptr<L2HighOrderFESpace> fes = nullptr;
-  shared_ptr<GridFunction> gfu = nullptr;
-  shared_ptr<GridFunction> gfres = nullptr;
-  shared_ptr<GridFunction> gfuorig = nullptr;
-  shared_ptr<GridFunction> gfnu = nullptr;
-  shared_ptr<LocalHeap> pylh = nullptr;
-
-  shared_ptr<BaseVector> u;     // u(n)
-  shared_ptr<BaseVector> uinit; // initial data, also used for bc
-  shared_ptr<BaseVector> flux;
 
   // advancing front (used for time-dependent bc)
   shared_ptr<GridFunction> gftau = nullptr;
 
-  T_ConservationLaw (shared_ptr<TentPitchedSlab> & atps, int order,
-                     const Flags & flags) : tps(atps)
+  T_ConservationLaw (const shared_ptr<TentPitchedSlab> & tps,
+		     const string & eqn, int order)
+    : ConservationLaw(tps, eqn, order)
   {
-    ma = tps->ma;
-
     size_t heapsize = 10*1000000;
     pylh = make_shared<LocalHeap>(heapsize,"ConsLaw - py main heap",true);
 
-    Init(flags);
     // store boundary condition numbers
     bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
@@ -127,7 +144,6 @@ public:
   {
     u = gfu->GetVectorPtr();
     uinit = u->CreateVector();
-    flux = u->CreateVector();
     if(gfnu != NULL)
       {
 	gfnu->Update();
@@ -146,7 +162,7 @@ public:
   // Set the boundary condition numbers from the mesh boundary elements indices
   // These indices are 0-based here and 1-based in Python. 
   //  0: outflow, 1: wall, 2: inflow, 3: transparent 
-  virtual void SetBC()
+  void SetBC()
   {
     if(!def_bcnr)
       for(int i : Range(ma->GetNSE()))

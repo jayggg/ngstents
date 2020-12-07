@@ -11,8 +11,8 @@ class Burgers : public T_ConservationLaw<Burgers<D>,D,1,1,false>
   typedef T_ConservationLaw<Burgers<D>,D,1,1,false> BASE;
 
 public:
-  Burgers (shared_ptr<TentPitchedSlab> & atps, int order, const Flags & flags)
-    : BASE (atps, order, flags) { ; }
+  Burgers (const shared_ptr<TentPitchedSlab> & tps, const int & order)
+    : BASE (tps, "burgers", order) { ; }
 
   // these two were private
   using BASE::gfnu;
@@ -191,88 +191,16 @@ public:
 
 /////////////////////////////////////////////////////////////////////////
 //                 EXPORT TO PYTHON
+/////////////////////////////////////////////////////////////////////////
 
-typedef CoefficientFunction CF;
-typedef GridFunction GF;
-typedef Burgers<1> B1;
-typedef Burgers<2> B2;
-
-void ExportBurgers(py::module & m)
+shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<TentPitchedSlab> & tps, const int & order)
 {
-  py::class_<B1, shared_ptr<B1>>
-    (m,"Burgers1", "Burgers equation in 1 spatial dimension")
-    .def(py::init([](shared_ptr<TentPitchedSlab> & tps,
-                     int order, py::dict pyflags)
-                  {
-                    const Flags flags = py::extract<Flags> (pyflags)();
-                    auto cl = make_shared<B1>(tps, order, flags);
-                    cl->SetBC(); //use old style bc numbers for now
-                    return cl;
-                  }),
-         py::arg("tentslab"),
-         py::arg("order"),
-         py::arg("flags")=py::dict())
-    .def_property_readonly("sol", [](shared_ptr<B1> self) { return self->gfu; })
-    .def_property_readonly("res", [](shared_ptr<B1> self) { return self->gfres; })
-    .def_property_readonly("nu", [](shared_ptr<B1> self) { return self->gfnu; })
-    .def_property_readonly("space",
-                           [](shared_ptr<B1> self) -> shared_ptr<FESpace>
-                           { return self->fes; })
-
-    // Set the initial data
-    .def("SetInitial",
-         [](shared_ptr<B1> self, shared_ptr<CF> cf)
-         {
-           SetValues(cf,*(self->gfu),VOL,0,*(self->pylh));
-           self->uinit = self->u; // set data used for b.c.
-         })
-    .def("PropagatePicard",
-         [](shared_ptr<B1> self, shared_ptr<BaseVector> vecu, int steps)
-         {
-           if(steps==-1)
-             steps = 1;
-           self->PropagatePicard(steps,*vecu,*(self->uinit),*(self->pylh));
-         }, py::arg("vec"),py::arg("steps")=-1)
-    .def("Tau",[](shared_ptr<B1> self) { return self->gftau; })
-
-    ; // please keep me on my own line
-
-  py::class_<B2, shared_ptr<B2>>
-    (m,"Burgers2", "Burgers equation in 2 spatial dimensions")
-    .def(py::init([](shared_ptr<TentPitchedSlab> & tps,
-                     int order, py::dict pyflags)
-                  {
-                    const Flags flags = py::extract<Flags> (pyflags)();
-                    auto cl = make_shared<B2>(tps, order, flags);
-                    cl->SetBC(); //use old style bc numbers for now
-                    return cl;
-                  }),
-         py::arg("tentslab"),
-         py::arg("order"),
-         py::arg("flags")=py::dict())
-    .def_property_readonly("sol", [](shared_ptr<B2> self) { return self->gfu; })
-    .def_property_readonly("res", [](shared_ptr<B2> self) { return self->gfres; })
-    .def_property_readonly("nu", [](shared_ptr<B2> self) { return self->gfnu; })
-    .def_property_readonly("space",
-                           [](shared_ptr<B2> self) -> shared_ptr<FESpace>
-                           { return self->fes; })
-
-    // Set the initial data
-    .def("SetInitial",
-         [](shared_ptr<B2> self, shared_ptr<CF> cf)
-         {
-           SetValues(cf,*(self->gfu),VOL,0,*(self->pylh));
-           self->uinit = self->u; // set data used for b.c.
-         })
-    .def("PropagatePicard",
-         [](shared_ptr<B2> self, shared_ptr<BaseVector> vecu, int steps)
-         {
-           if(steps==-1)
-             steps = 1;
-           self->PropagatePicard(steps,*vecu,*(self->uinit),*(self->pylh));
-         }, py::arg("vec"),py::arg("steps")=-1)
-    .def("Tau",[](shared_ptr<B2> self) { return self->gftau; })
-
-    ; // please keep me on my own line
-
+  int dim = tps->ma->GetDimension();
+  switch(dim){
+  case 1:
+    return make_shared<Burgers<1>>(tps,order);
+  case 2:
+    return make_shared<Burgers<2>>(tps,order);
+  }
+  throw Exception ("Burgers only available for 1D and 2D");
 }

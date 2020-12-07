@@ -40,5 +40,4 @@ install(FILES
 
 install(FILES
   ../py/conslaw/__init__.py
-  ../py/conslaw/burgers.py
   DESTINATION ngstents/conslaw)

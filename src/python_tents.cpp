@@ -7,7 +7,7 @@ typedef CoefficientFunction CF;
 auto ExportTimeSlab(py::module &m)
 {
   auto pyname = "TentSlab";
-  auto pydocu = "Tent pitched slab in  space + 1 time dimensions";
+  auto pydocu = "Tent pitched slab in D + 1 time dimensions";
   py::class_<TentPitchedSlab, shared_ptr<TentPitchedSlab>>
     (m, pyname, pydocu)
     .def(py::init([](shared_ptr<MeshAccess> ma, string method_name, int heapsize)
@@ -28,7 +28,6 @@ auto ExportTimeSlab(py::module &m)
 	 py::arg("mesh"), py::arg("method") = "edge", py::arg("heapsize") = 1000000
 	 )
     .def_readonly("mesh", &TentPitchedSlab::ma)
-    .def("SetWavespeed", static_cast<void (TentPitchedSlab::*)(const double)>(&TentPitchedSlab::SetWavespeed))
     .def("SetWavespeed", [](shared_ptr<TentPitchedSlab> self, py::object wavespeed)
 	 {
 	   if (auto ws = py::extract<double> (wavespeed); ws.check())

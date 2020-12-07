@@ -58,7 +58,7 @@ viewoptions.drawcolorbar = 0
 input('start')
 with TaskManager():
     while t < tend:
-        burg.PropagatePicard(sol.vec, steps=order*order)
+        burg.PropagateSARK(sol.vec, steps=order*order)
         t += dt
         cnt += 1
         if cnt % 5 == 0:
