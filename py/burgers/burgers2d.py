@@ -54,7 +54,7 @@ if vtk_tents:
 input('start')
 with TaskManager():
     while t < tend - dt/2:
-        burg.PropagateSARK(sol.vec, steps=order*order)
+        burg.PropagateSARK(sol.vec, substeps=order*order)
         t += dt
         cnt += 1
         if cnt % 1 == 0:

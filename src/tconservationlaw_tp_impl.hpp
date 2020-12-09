@@ -743,7 +743,7 @@ Tent2Cyl (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
 void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
-PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh)
+PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh)
 {
   shared_ptr<BaseVector> hres = (ECOMP > 0) ? gfres->GetVectorPtr() : nullptr;
   
@@ -756,7 +756,7 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
        tent.fedata = new (slh) TentDataFE(tent, *fes, *ma, slh);
 
        int ndof = (tent.fedata)->nd;
-       double taustar = 1.0/steps;
+       double taustar = 1.0/substeps;
 
        // tent.fedata = new (slh) TentDataFE(tent, *fes, *ma, slh);
        // tent->InitTent(gftau);
@@ -811,7 +811,8 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
 
        double norm_bot = InnerProduct(AsFV(local_u0),AsFV(local_help));
 
-       for (int j = 0; j < steps; j++)
+       //TODO: implement SARK for different number to stages
+       for (int j = 0; j < substeps; j++)
 	 {
            // third order
            U0 = local_Gu0;
@@ -852,7 +853,7 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
                                                              j*taustar, slh);
 
                local_nu = nu_tent;
-	       double steps_visc = (40*tau_tent*nu_tent/tau_visc1)/steps;
+	       double steps_visc = (40*tau_tent*nu_tent/tau_visc1)/substeps;
                if (steps_visc > 0.2)
                  {
                    steps_visc = max(1.0,ceil(steps_visc));

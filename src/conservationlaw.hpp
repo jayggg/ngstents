@@ -33,8 +33,9 @@ public:
   
   virtual void SetBC() = 0;
   
-  virtual void PropagatePicard(int steps, BaseVector & hu,
-			       BaseVector & hu_init, LocalHeap & lh) = 0;
+  virtual void PropagateSARK(int stages, int substeps,
+			     BaseVector & hu, BaseVector & hu_init,
+			     LocalHeap & lh) = 0;
   
 };
 
@@ -408,8 +409,9 @@ public:
     throw Exception ("TransformBack for FlatMatrix<SIMD> not available");
   }
 
-  void PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init,
-                       LocalHeap & lh);
+  void PropagateSARK(int stages, int substeps,
+		     BaseVector & hu, BaseVector & hu_init,
+		     LocalHeap & lh);
 
 };
 

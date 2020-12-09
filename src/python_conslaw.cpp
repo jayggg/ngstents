@@ -59,12 +59,10 @@ void ExportConsLaw(py::module & m)
            self->uinit = self->u; // set data used for b.c.
          })
     .def("PropagateSARK",
-         [](shared_ptr<CL> self, shared_ptr<BaseVector> vecu, int steps)
+         [](shared_ptr<CL> self, shared_ptr<BaseVector> vecu, int stages, int substeps)
          {
-           // if(!steps)
-           //   steps = 1;
-           self->PropagatePicard(steps,*vecu,*(self->uinit),*(self->pylh));
-         }, py::arg("vec"),py::arg("steps") = 1)
+           self->PropagateSARK(stages, substeps,*vecu,*(self->uinit),*(self->pylh));
+         }, py::arg("vec"), py::arg("stages") = 2, py::arg("substeps") = 1)
     ;
 }
 
