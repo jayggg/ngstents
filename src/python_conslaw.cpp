@@ -10,12 +10,12 @@ typedef ConservationLaw CL;
 shared_ptr<CL> CreateConsLaw(const shared_ptr<TentPitchedSlab> & tps,
 			     const string & eqn, const int & order)
 {
-  int dim = tps->ma->GetDimension();
   shared_ptr<CL> cl = nullptr;
   if (eqn=="burgers")
     cl = CreateBurgers(tps,order);
   else if(eqn=="wave")
     cl = CreateWave(tps,order);
+  else
     throw Exception(string("unknown equation '"+eqn+"'"));
   return cl;
 }
