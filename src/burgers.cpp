@@ -104,7 +104,7 @@ public:
 
   void u_reflect(FlatMatrix<SIMD<double>> u,
                  FlatMatrix<SIMD<double>> normals,
-                 FlatMatrix<SIMD<double>> u_refl) const
+                 FlatMatrix<SIMD<double>> u_refl) const override
   {
     cout << "no reflecting B.C. for Burgers Equation" << endl;
   }
