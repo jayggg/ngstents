@@ -60,17 +60,8 @@ protected:
   int maxbcnr = 4;
   Array<int> bcnr; // array of boundary condition numbers
 
-  // dt=timeslab height for tentpitching, timestep for other methods
-  double dt;
-  double tend;      // tend=final time
-
   // collection of tents in timeslab
-  size_t tentslab_heapsize = 10*1000000;
-  
   Table<int> & tent_dependency = tps->tent_dependency;
-  double wavespeed;
-
-  Array<IntegrationRule*> glrules;
 
   const EQUATION & Cast() const {return static_cast<const EQUATION&> (*this);}
 
@@ -135,23 +126,6 @@ public:
     AllocateVectors();
   }
 
-  void Init(const Flags & flags) {
-    dt = flags.GetNumFlag ("dt", 1e-3);
-    tend = flags.GetNumFlag ("tend", 1.0);
-
-    wavespeed = flags.GetNumFlag ("wavespeed", 100.0);
-
-    Array<double> xn, wn;
-    for(int n = 2; 2*n-3 <= 10; n++)
-      {
-        ComputeGaussLobattoRule(n,xn,wn);
-        IntegrationRule * intrule = new IntegrationRule;
-        for(int i : Range(xn.Size()))
-          intrule->Append(IntegrationPoint(xn[i], 0.0, 0.0, wn[i]));
-        glrules.Append(intrule);
-      }
-  }
-
   void AllocateVectors()
   {
     u = gfu->GetVectorPtr();
@@ -165,11 +139,7 @@ public:
       }
   }
 
-  virtual ~T_ConservationLaw()
-  {
-    for(auto intrule : glrules)
-      delete intrule;
-  }
+  virtual ~T_ConservationLaw() { ; }
   
   // Set the boundary condition numbers from the mesh boundary elements indices
   // These indices are 0-based here and 1-based in Python. 
@@ -183,30 +153,6 @@ public:
           auto fnums = ma->GetElFacets(sel);
           bcnr[fnums[0]] = ma->GetElIndex(sel);
         }
-  }
-
-  int GetNTents() { return tps->GetNTents(); }
-
-  virtual void PitchTents(double adt, shared_ptr<CoefficientFunction> awavespeed)
-  {
-    tps->SetWavespeed(awavespeed);
-    // tps->PitchTents(adt,false);
-  }
-
-  virtual double MaxSlope()
-  {
-    return tps->MaxSlope();
-  }
-
-  void DrawPitchedTentsVTK(string vtkfilename)
-  {
-    tps->DrawPitchedTentsVTK(vtkfilename);
-  }
-
-  void DrawPitchedTentsGL(Array<int> & tentdata,
-                          Array<double> & tenttimes, int & nlevels)
-  {
-    tps->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
   }
 
   template <int W>
