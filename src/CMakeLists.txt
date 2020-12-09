@@ -17,6 +17,7 @@ add_ngsolve_python_module(conslaw
   python_conslaw.cpp
   symbolicDG.cpp
   burgers.cpp
+  wave.cpp
   )
 target_link_libraries(conslaw PRIVATE tents)
 

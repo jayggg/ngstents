@@ -3,6 +3,8 @@
 
 shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<TentPitchedSlab> & tps, const int & order);
 
+shared_ptr<ConservationLaw> CreateWave(const shared_ptr<TentPitchedSlab> & tps, const int & order);
+
 typedef ConservationLaw CL;
 
 shared_ptr<CL> CreateConsLaw(const shared_ptr<TentPitchedSlab> & tps,
@@ -12,7 +14,8 @@ shared_ptr<CL> CreateConsLaw(const shared_ptr<TentPitchedSlab> & tps,
   shared_ptr<CL> cl = nullptr;
   if (eqn=="burgers")
     cl = CreateBurgers(tps,order);
-  else
+  else if(eqn=="wave")
+    cl = CreateWave(tps,order);
     throw Exception(string("unknown equation '"+eqn+"'"));
   return cl;
 }
