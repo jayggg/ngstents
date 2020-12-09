@@ -39,6 +39,17 @@ public:
   
 };
 
+
+/*Template for conservation law classes.
+Any conservation law to be used in the MTP scheme should derive
+from this class.
+The template parameters are as follows:
+EQUATION: the class representing the equation
+DIM: spatial dimension in which the conservation law is prescribed upon
+COMP: number of state variables/equations
+ECOMP: number of state variables/equations for entropy residual (non-linear eqs)
+XDEPENDENT: whether the flux depends on the spatial coordinates
+*/
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEPENDENT>
 class T_ConservationLaw : public ConservationLaw
 {
