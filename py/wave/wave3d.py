@@ -1,61 +1,72 @@
-from netgen.csg import *
+from netgen.csg import CSGeometry, OrthoBrick, Pnt
+from ngsolve import Mesh, Draw, Redraw
+from ngsolve import CoefficientFunction, sqrt, sin, cos, x, y, z
+from ngsolve import TaskManager
+from ngsolve.internal import visoptions, viewoptions
+from ngstents import TentSlab
+from ngstents.conslaw import Wave
 from math import pi
+import time
+
 
 geom = CSGeometry()
-brick=OrthoBrick(Pnt(0,0,0),Pnt(pi,pi,pi)).bc(2)
+brick = OrthoBrick(Pnt(0, 0, 0), Pnt(pi, pi, pi)).bc(2)
 geom.Add(brick)
 mesh = geom.GenerateMesh(maxh=0.25)
-
-from ngsolve import *
-from ngsolve.internal import visoptions, viewoptions
-
-from conslaw import *
-
 mesh = Mesh(mesh)
 
-cl = ConsLaw(mesh,"wave",2)
-cl.SetupDG()
+
+# setting the problem
+period = sqrt(3)*pi
+n_periods = 3
+t_end = period*n_periods
+heapsize = 10*1000*1000
+wavespeed = 1.0
+
+# using causality constant
+local_ctau = True
+# the local ctau in this branch is not updated. so we are using a global one too
+global_ctau = 1/1.5
+ts = TentSlab(mesh, method="edge", heapsize=heapsize)
+ts.SetWavespeed(wavespeed)
+ts.PitchTents(dt=t_end, local_ct=local_ctau, global_ct=global_ctau)
+print("max slope", ts.MaxSlope())
+
+# setting the approximation space order
+order = 2
+wave = Wave(ts, order)
 
 p = CoefficientFunction(sin(x)*sin(y)*sin(z))
-u = CoefficientFunction((0,0,0))
-
-cf = CoefficientFunction((u,p))
-cl.SetInitial(cf)
-
-sol = cl.sol
-Draw(sol,sd=5)
+u = CoefficientFunction((0, 0, 0))
+cf = CoefficientFunction((u, p))
+wave.SetInitial(cf)
+sol = wave.sol
+Draw(sol, sd=5)
 visoptions.scalfunction = "u:4"
 viewoptions.clipping.enable = 1
 visoptions.clipsolution = 'scal'
 
-period = sqrt(3)*pi
-redraw = 1
-nperiods = 1
-tend = period*nperiods
-dt = period/10
 
 t = 0
 cnt = 0
-cl.CreateTents(dt,10.0)
+dt = t_end/10
 # cl.DrawTents()
 
-import time
-input("press enter to start")
+input('start')
 t1 = time.time()
 with TaskManager():
-    while t < tend-dt/2:
-        cl.PropagateRK(sol.vec)
+    print("starting...")
+    while t < t_end - dt/2:
+        wave.PropagateSARK(sol.vec, substeps=order*order)
         t += dt
         cnt += 1
-        if cnt%redraw == 0:
-            print("{:5f}".format(t))
-            cl.UpdateVisual(sol.vec)
-        Redraw(True)
-print("total time = ",time.time()-t1)
-
+        if cnt % 1 == 0:
+            print("{:.3f}".format(t))
+            Redraw(True)
+print("total time = {}".format(time.time()-t1))
 # exact solution
-exsol = CoefficientFunction((-cos(x)*sin(y)*sin(z)*sin(sqrt(3)*tend)/sqrt(3),
-                             -sin(x)*cos(y)*sin(z)*sin(sqrt(3)*tend)/sqrt(3),
-                             -sin(x)*cos(y)*cos(z)*sin(sqrt(3)*tend)/sqrt(3),
-                             sin(x)*sin(y)*sin(z)*cos(sqrt(3)*tend)))
-Draw(exsol,mesh,'exact')
+exsol = CoefficientFunction((-cos(x)*sin(y)*sin(z)*sin(sqrt(3)*t_end)/sqrt(3),
+                             -sin(x)*cos(y)*sin(z)*sin(sqrt(3)*t_end)/sqrt(3),
+                             -sin(x)*cos(y)*cos(z)*sin(sqrt(3)*t_end)/sqrt(3),
+                             sin(x)*sin(y)*sin(z)*cos(sqrt(3)*t_end)))
+Draw(exsol, mesh, 'exact')

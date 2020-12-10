@@ -16,11 +16,11 @@ class Wave : public T_ConservationLaw<Wave<D>,D,D+1,0,false>
   typedef T_ConservationLaw<Wave<D>,D,D+1,0,false> BASE;
   
 public:
-  Wave (const shared_ptr<TentPitchedSlab> & tps, const int & order)
-    : BASE (tps, "wave", order)
+  Wave (const shared_ptr<TentPitchedSlab> &atps, const int & order)
+    : BASE (atps, "wave", order)
   {
     shared_ptr<FESpace> fesvel =
-      CreateFESpace("l2ho",tps->ma, Flags().SetFlag("order",order).SetFlag("dim",D).SetFlag("all_dofs_together"));
+      CreateFESpace("l2ho",this->tps->ma, Flags().SetFlag("order",order).SetFlag("dim",D).SetFlag("all_dofs_together"));
     fesvel->Update();
     fesvel->FinalizeUpdate();
     gfU = CreateGridFunction(fesvel,"U",Flags());
