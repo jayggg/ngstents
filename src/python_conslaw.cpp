@@ -61,6 +61,11 @@ void ExportConsLaw(py::module & m)
            SetValues(cf,*(self->gfu),VOL,0,*(self->pylh));
            self->uinit = self->u; // set data used for b.c.
          })
+    .def("PropagateSAT",
+         [](shared_ptr<CL> self, shared_ptr<BaseVector> vecu, int stages, int substeps)
+         {
+           self->PropagateSAT(stages, substeps,*vecu,*(self->uinit),*(self->pylh));
+         }, py::arg("vec"), py::arg("stages") = 2, py::arg("substeps") = 1)
     .def("PropagateSARK",
          [](shared_ptr<CL> self, shared_ptr<BaseVector> vecu, int stages, int substeps)
          {

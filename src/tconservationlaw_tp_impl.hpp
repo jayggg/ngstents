@@ -743,6 +743,61 @@ Tent2Cyl (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
 void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
+PropagateSAT(int stages, int substeps,
+	     BaseVector & hu, BaseVector & hu0,
+	     LocalHeap & lh)
+{
+  static Timer tRK ("PropagateSAT", 2); RegionTimer reg(tRK);
+  static Timer tRKtent ("PropagateSAT - tent", 2); 
+
+  RunParallelDependency 
+    (tent_dependency, [&] (int i)
+     {
+       RegionTimer reg(tRKtent);
+       RegionTracer reg1(TaskManager::GetThreadId(), tRKtent, i);
+
+       LocalHeap slh = lh.Split();  // split to threads
+
+       const Tent & tent = tps->GetTent(i);
+       tent.fedata = new (slh) TentDataFE(tent, *fes, *ma, slh);
+
+       int ndof = tent.fedata->nd;
+       FlatMatrixFixWidth<COMP> local_uhat(ndof,slh);
+       FlatMatrixFixWidth<COMP> local_u0(ndof,slh);
+       hu.GetIndirect(tent.fedata->dofs, AsFV(local_uhat));
+       hu0.GetIndirect(tent.fedata->dofs, AsFV(local_u0));
+
+       FlatMatrixFixWidth<COMP> local_uhat1(ndof,slh);
+       FlatMatrixFixWidth<COMP> local_u(ndof,slh);
+       FlatMatrixFixWidth<COMP> local_help(ndof,slh);
+
+       double taustar = 1.0/substeps;
+       for (int j = 0; j < substeps; j++)
+	 {
+	   local_uhat1 = local_uhat;
+	   double fac = 1.0;
+	   for(int k : Range(1,stages+1))
+	     {
+	       Cyl2Tent(i, local_uhat1, local_u, j*taustar, slh);
+	       CalcFluxTent(i, local_u, local_u0, local_uhat1, j*taustar, slh);
+               local_uhat1 *= 1.0/k;
+	       fac *= taustar;
+	       local_uhat += fac*local_uhat1;           
+
+	       if(k < stages)
+	   	 {
+		   ApplyM1(i, j*taustar, local_u, local_help, slh);
+	   	   local_uhat1 += local_help;
+	   	 }
+	     }
+         }
+       hu.SetIndirect(tent.fedata->dofs, AsFV(local_uhat));
+       tent.fedata = nullptr;
+     });
+}
+
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
+void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
 PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh)
 {
   shared_ptr<BaseVector> hres = (ECOMP > 0) ? gfres->GetVectorPtr() : nullptr;
