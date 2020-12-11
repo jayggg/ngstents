@@ -18,19 +18,20 @@ mesh = Mesh(mesh)
 
 # setting the problem
 period = sqrt(3)*pi
-n_periods = 3
+n_periods = 1
 t_end = period*n_periods
+dt = t_end/10
 heapsize = 10*1000*1000
-wavespeed = 1.0
+wavespeed = 1
 
 # using causality constant
 local_ctau = True
-# the local ctau in this branch is not updated. so we are using a global one too
-global_ctau = 1/1.5
+global_ctau = 1/1.2
 ts = TentSlab(mesh, method="edge", heapsize=heapsize)
 ts.SetWavespeed(wavespeed)
-ts.PitchTents(dt=t_end, local_ct=local_ctau, global_ct=global_ctau)
+ts.PitchTents(dt=dt, local_ct=local_ctau, global_ct=global_ctau)
 print("max slope", ts.MaxSlope())
+print("n tents", ts.GetNTents())
 
 # setting the approximation space order
 order = 2
@@ -49,18 +50,18 @@ visoptions.clipsolution = 'scal'
 
 t = 0
 cnt = 0
-dt = t_end/10
 # cl.DrawTents()
 
+redraw = 1
 input('start')
 t1 = time.time()
 with TaskManager():
     print("starting...")
     while t < t_end - dt/2:
-        wave.PropagateSARK(sol.vec, substeps=order*order)
+        wave.PropagateSARK(sol.vec, substeps=order*order*2)
         t += dt
         cnt += 1
-        if cnt % 1 == 0:
+        if cnt % redraw == 0:
             print("{:.3f}".format(t))
             Redraw(True)
 print("total time = {}".format(time.time()-t1))
