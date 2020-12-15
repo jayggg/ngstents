@@ -164,7 +164,7 @@ public:
   
   void u_reflect(FlatMatrix<SIMD<double>> u,
                  FlatMatrix<SIMD<double>> normals,
-                 FlatMatrix<SIMD<double>> u_refl) const override
+                 FlatMatrix<SIMD<double>> u_refl) const
   {
     /////////////////// standing wave ///////////////////////
     // u_refl.Rows(0,D) = u.Rows(0,D);
@@ -187,7 +187,7 @@ public:
 
   void u_transparent(SIMD_BaseMappedIntegrationRule & mir,
                      FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
-                     FlatMatrix<SIMD<double>> u_transp) const override
+                     FlatMatrix<SIMD<double>> u_transp) const
   {
     Matrix<SIMD<double>> mu(1, mir.Size());
     Matrix<SIMD<double>> eps(1, mir.Size());

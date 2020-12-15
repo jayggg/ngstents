@@ -288,13 +288,13 @@ public:
     throw Exception ("flux not implemented for boundary");
   }
 
-  virtual void u_reflect(FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
+  void u_reflect(FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
                  FlatMatrix<SIMD<double>> u_refl) const
   {
     Cast().u_reflect(u,normals,u_refl);
   }
 
-  virtual void u_transparent(SIMD_BaseMappedIntegrationRule & mir,
+  void u_transparent(SIMD_BaseMappedIntegrationRule & mir,
                      FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
                      FlatMatrix<SIMD<double>> u_transp) const
   {
