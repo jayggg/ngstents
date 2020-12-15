@@ -7,7 +7,6 @@ using namespace ngsolve;
 template <int D>
 class Burgers : public T_ConservationLaw<Burgers<D>,D,1,1,false>
 {
-  Vec<D> b;
   typedef T_ConservationLaw<Burgers<D>,D,1,1,false> BASE;
 
 public:
@@ -29,28 +28,16 @@ public:
   //
   // in this case, û = 2 Û / [ 1 + √(1 - 2 Û ⋅∇̂ φ(x̂, t̂)) ]
   //
-  template <typename MIP=BaseMappedIntegrationPoint, typename SCAL=double>
-  void TransformBack(const MIP & mip,
-                     const Vec<D,SCAL > & grad,
-                     const FlatVec<1,SCAL > u) const
-  {
-    SCAL sum = SCAL(0.0);
-    for(size_t i : Range(D))
-      sum += grad(i);
-    u(0) = 2 * u(0) / (1.0 + sqrt(1.0 - 2.0*sum*u(0)) );
-  }
-
-  // solve for û at all points in an integration rule
   template <typename T>
   void TransformBackIR(const SIMD_BaseMappedIntegrationRule & mir,
                        FlatMatrix<T> grad, FlatMatrix<T> u) const
   {
     for (int i : Range(grad.Width()))
       {
-	Vec<1,T> ui(u(0,i));
-        Vec<D,T> gradi = grad.Col(i);
-        TransformBack<SIMD<BaseMappedIntegrationPoint>, T>(mir[i],gradi,ui);
-        u(0,i) = ui(0);
+	auto sum = T(0.0);
+	for(size_t j : Range(D))
+	  sum += grad(j,i);
+	u(0,i) = 2 * u(0,i) / (1.0 + sqrt(1.0 - 2.0*sum*u(0,i)) );
       }
   }
 
@@ -60,26 +47,6 @@ public:
   {
     for(size_t i : Range(mir))
       flux.Col(i) = 0.5 * u(0,i)*u(0,i);
-  }
-
-  // Helper for Flux on element (compute a column)
-  template<typename SCAL=double>
-  Vec<1,SCAL> Flux (const FlatVec<1,SCAL> & ul, const FlatVec<1,SCAL> & ur,
-                    const Vec<D,SCAL> & nv) const
-  {
-    SCAL sumn = SCAL(0.0);
-    for(size_t i : Range(D))
-      sumn += nv(i);
-    // solution from inside, in case of a boundary facet
-    SCAL fln = ul(0)*ul(0)/2.0 * sumn;
-    SCAL frn = ur(0)*ur(0)/2.0 * sumn;
-    SCAL um = 0.5*(ul(0)+ur(0));
-
-    SCAL fprimen = um * sumn; // derivative of f with respect to u
-
-    SCAL fluxn = IfPos(fprimen, fln, frn);
-
-    return Vec<1,SCAL>(fluxn);
   }
 
   // Numerical Flux on a facet.  ul and ur are the values at integration points
