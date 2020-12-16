@@ -32,5 +32,5 @@ def test_burgers2D():
     t = 0
     with TaskManager():
         while t < tend - dt/2:
-            burg.PropagatePicard(sol.vec, steps=order*order)
+            burg.PropagateSARK(sol.vec, substeps=order*order)
             t += dt
