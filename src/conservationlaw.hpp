@@ -366,13 +366,9 @@ public:
   void ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
                 FlatMatrixFixWidth<COMP> res, LocalHeap & lh);
 
-  void ApplyM (int tentnr, double tstar,
-               FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> res,
-               LocalHeap & lh);
-
-  void Tent2Cyl (int tentnr, FlatMatrixFixWidth<COMP> u,
-                 FlatMatrixFixWidth<COMP> uhat,
-                 double tstar, LocalHeap & lh);
+  void Tent2Cyl (int tentnr, double tstar,
+		 FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
+                 bool solvemass, LocalHeap & lh);
   
   ////////////////////////////////////////////////////////////////
   // time stepping methods 
