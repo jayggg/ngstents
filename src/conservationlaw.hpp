@@ -318,10 +318,6 @@ public:
                      FlatMatrixFixWidth<COMP> u0, FlatMatrixFixWidth<COMP> flux,
                      double tstar, LocalHeap & lh);
 
-  void Cyl2Tent (int tentnr, FlatMatrixFixWidth<COMP> uhat,
-                          FlatMatrixFixWidth<COMP> u, double tstar,
-                          LocalHeap & lh);
-
   void CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                           FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
                           FlatMatrixFixWidth<COMP> visc, LocalHeap & lh);
@@ -352,6 +348,21 @@ public:
     cout << "no overload for CalcViscCoeffEl with FlatMatrix<SIMD>" << endl;
   }
 
+  ////////////////////////////////////////////////////////////////
+  // maps 
+  ////////////////////////////////////////////////////////////////
+
+  template <typename T = SIMD<double>>
+  void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
+		  FlatMatrix<T> grad, FlatMatrix<T> u) const
+  {
+    throw Exception ("TransformBack for FlatMatrix<SIMD> not available");
+  }
+
+  void Cyl2Tent (int tentnr, double tstar,
+		 FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
+		 LocalHeap & lh);
+
   void ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
                 FlatMatrixFixWidth<COMP> res, LocalHeap & lh);
 
@@ -362,14 +373,11 @@ public:
   void Tent2Cyl (int tentnr, FlatMatrixFixWidth<COMP> u,
                  FlatMatrixFixWidth<COMP> uhat,
                  double tstar, LocalHeap & lh);
-
-  template <typename T = SIMD<double>>
-  void TransformBackIR(const SIMD_BaseMappedIntegrationRule & mir,
-                       FlatMatrix<T> grad, FlatMatrix<T> u) const
-  {
-    throw Exception ("TransformBack for FlatMatrix<SIMD> not available");
-  }
-
+  
+  ////////////////////////////////////////////////////////////////
+  // time stepping methods 
+  ////////////////////////////////////////////////////////////////
+  
   void PropagateSAT(int stages, int substeps,
 		    BaseVector & hu, BaseVector & hu_init,
 		    LocalHeap & lh);

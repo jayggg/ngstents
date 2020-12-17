@@ -7,7 +7,6 @@ using namespace ngsolve;
 template <int D>
 class Wave : public T_ConservationLaw<Wave<D>,D,D+1,0,false>
 {
-  shared_ptr<GridFunction> gfU;
   //whether to use te constitutive parameters mu/epsilon
   //as, e.g., permeability/permittivity in electromagnetics
   bool use_mu_eps = false;
@@ -18,14 +17,7 @@ class Wave : public T_ConservationLaw<Wave<D>,D,D+1,0,false>
 public:
   Wave (const shared_ptr<TentPitchedSlab> &atps, const int & order)
     : BASE (atps, "wave", order)
-  {
-    shared_ptr<FESpace> fesvel =
-      CreateFESpace("l2ho",this->tps->ma, Flags().SetFlag("order",order).SetFlag("dim",D).SetFlag("all_dofs_together"));
-    fesvel->Update();
-    fesvel->FinalizeUpdate();
-    gfU = CreateGridFunction(fesvel,"U",Flags());
-    gfU->Update();
-  }
+  { };
 
   // these two were private
   using BASE::gfnu;
@@ -35,7 +27,6 @@ public:
   using BASE::Flux;
   using BASE::u_reflect;
   using BASE::u_transparent;
-  using BASE::TransformBackIR;
   using BASE::CalcEntropy;
 
   virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> mu,
@@ -47,23 +38,12 @@ public:
   }
 
   // solve for û: Û = ĝ(x̂, t̂, û) - ∇̂ φ(x̂, t̂) ⋅ f̂(x̂, t̂, û)
+  // at all points in an integration rule
   //
   // in this case, û = 2 Û / [ 1 + √(1 - 2 Û ⋅∇̂ φ(x̂, t̂)) ]
-  //
-  template <typename MIP=BaseMappedIntegrationPoint, typename SCAL=double>
-  void TransformBack(const MIP & mip,
-                     const Vec<D,SCAL > & grad,
-                     const FlatVec<1,SCAL > u) const
-  {
-    const double p = (u(D)+InnerProduct(grad, u.Range(0,D)))/(1.0-L2Norm2(grad));
-    u.Range(0,D) += p*grad;
-    u(D) = p;
-  }
-
-  // solve for û at all points in an integration rule
   template <typename T>
-  void TransformBackIR(const SIMD_BaseMappedIntegrationRule & mir,
-                       FlatMatrix<T> grad, FlatMatrix<T> u) const
+  void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
+		  FlatMatrix<T> grad, FlatMatrix<T> u) const
   {
     Matrix<T> mu(1, mir.Size());
     Matrix<T> eps(1, mir.Size());
@@ -204,15 +184,6 @@ public:
           prod += normals(j,i) * u(j,i);
         u_transp(D,i) = (use_mu_eps) ? sqrt(mu(i)/eps(i)) * prod : prod;
       }
-  } 
-
-  virtual void UpdateVisualisation(const BaseVector & hu, LocalHeap & lh) const
-  {
-    HeapReset hr(lh);
-    int n = gfU->GetVector().FVDouble().Size()/D;
-    FlatMatrixFixWidth<D+1> u(n, &hu.FV<double>()(0));
-    FlatMatrixFixWidth<D> U(n,&gfU->GetVector().FVDouble()(0));
-    U = u.Cols(0,D);
   }
 };
 

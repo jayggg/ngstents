@@ -165,46 +165,6 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
 }
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
-Cyl2Tent (int tentnr, FlatMatrixFixWidth<COMP> uhat,
-                   FlatMatrixFixWidth<COMP> u, double tstar, LocalHeap & lh)
-{
-  const Tent & tent = tps->GetTent(tentnr);
-
-  auto fedata = tent.fedata;
-  if (!fedata) throw Exception("fedata not set");
-
-  for (size_t i : Range(tent.els))
-    {
-      HeapReset hr(lh);
-      const DGFiniteElement<DIM> & fel =
-        static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
-
-      auto & simd_mir = *fedata->miri[i];
-      IntRange dn = tent.fedata->ranges[i];
-
-      FlatMatrix<SIMD<double>> u_ipts(COMP, simd_mir.Size(),lh);
-      for(size_t k = 0; k < COMP; k++)
-        fel.Evaluate (simd_mir.IR(), uhat.Col(k).Range(dn), u_ipts.Row(k));
-
-      FlatMatrix<SIMD<double>> gradphi_mat(DIM, simd_mir.Size(), lh);
-      gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
-                    tstar*fedata->agradphi_top[i];
-
-      Cast().TransformBackIR(simd_mir, gradphi_mat, u_ipts);
-
-      for(size_t k = 0; k < simd_mir.Size(); k++)
-        u_ipts.Col(k) *= simd_mir[k].GetWeight();
-
-      u.Rows(dn) = 0.0;
-      for(size_t k = 0; k < COMP; k++)
-        fel.AddTrans (simd_mir.IR(), u_ipts.Row(k), u.Col(k).Range(dn));
-
-      SolveM (tent, i, u.Rows (dn), lh);
-    }
-}
-
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
 void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP, XDEP>::
 CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                    FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
@@ -416,7 +376,7 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
             gradphi_mat(k,l).DValue(0) = gradtop(k,l) - gradbot(k,l);
           }
 
-      Cast().TransformBackIR(simd_mir, gradphi_mat, adu);
+      Cast().InverseMap(simd_mir, gradphi_mat, adu);
       FlatMatrix<SIMD<double>> Ei(ECOMP,simd_ir.Size(),lh),
                                Fi(DIM*ECOMP,simd_ir.Size(),lh);
       Cast().CalcEntropy(adu, gradphi_mat, Ei, Fi);
@@ -438,7 +398,7 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
     }
 
   FlatMatrixFixWidth<COMP> temp(u.Height(),lh);
-  Cyl2Tent(tentnr, u, temp, tstar, lh);
+  Cyl2Tent(tentnr, tstar, u, temp, lh);
 
   for(int i : Range(tent.internal_facets))
     {
@@ -588,13 +548,58 @@ CalcViscosityCoefficientTent (int tentnr, FlatMatrixFixWidth<COMP> u,
       gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
                     tstar*fedata->agradphi_top[i];
 
-      Cast().TransformBackIR(simd_mir, gradphi_mat, ui);
+      Cast().InverseMap(simd_mir, gradphi_mat, ui);
       Cast().CalcViscCoeffEl(simd_mir, ui, resi, hi, nu(ei.Nr()));
 
       if(nu(ei.Nr()) > nu_tent)
 	nu_tent = nu(ei.Nr());
     }
   return nu_tent;
+}
+
+////////////////////////////////////////////////////////////////
+// implementations of maps 
+////////////////////////////////////////////////////////////////
+
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
+void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
+Cyl2Tent (int tentnr, double tstar,
+	  FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
+	  LocalHeap & lh)
+{
+  const Tent & tent = tps->GetTent(tentnr);
+
+  auto fedata = tent.fedata;
+  if (!fedata) throw Exception("fedata not set");
+
+  for (size_t i : Range(tent.els))
+    {
+      HeapReset hr(lh);
+      const DGFiniteElement<DIM> & fel =
+        static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
+
+      auto & simd_mir = *fedata->miri[i];
+      IntRange dn = tent.fedata->ranges[i];
+
+      FlatMatrix<SIMD<double>> u_ipts(COMP, simd_mir.Size(),lh);
+      for(size_t k = 0; k < COMP; k++)
+        fel.Evaluate (simd_mir.IR(), uhat.Col(k).Range(dn), u_ipts.Row(k));
+
+      FlatMatrix<SIMD<double>> gradphi_mat(DIM, simd_mir.Size(), lh);
+      gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
+                    tstar*fedata->agradphi_top[i];
+
+      Cast().InverseMap(simd_mir, gradphi_mat, u_ipts);
+
+      for(size_t k = 0; k < simd_mir.Size(); k++)
+        u_ipts.Col(k) *= simd_mir[k].GetWeight();
+
+      u.Rows(dn) = 0.0;
+      for(size_t k = 0; k < COMP; k++)
+        fel.AddTrans (simd_mir.IR(), u_ipts.Row(k), u.Col(k).Range(dn));
+
+      SolveM (tent, i, u.Rows (dn), lh);
+    }
 }
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
@@ -741,6 +746,10 @@ Tent2Cyl (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
     }
 }
 
+////////////////////////////////////////////////////////////////
+// time stepping methods 
+////////////////////////////////////////////////////////////////
+
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
 void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
 PropagateSAT(int stages, int substeps,
@@ -778,7 +787,7 @@ PropagateSAT(int stages, int substeps,
 	   double fac = 1.0;
 	   for(int k : Range(1,stages+1))
 	     {
-	       Cyl2Tent(i, local_uhat1, local_u, j*taustar, slh);
+	       Cyl2Tent(i, j*taustar, local_uhat1, local_u, slh);
 	       CalcFluxTent(i, local_u, local_u0, local_uhat1, j*taustar, slh);
                local_uhat1 *= 1.0/k;
 	       fac *= taustar;
@@ -861,7 +870,7 @@ PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, L
        double tau_visc1 = sqr (h_tent / sqr(order));
 
        // calc |u|_M0 on advancing front
-       Cyl2Tent (i, local_Gu0, local_u0, 0, slh);
+       Cyl2Tent (i, 0, local_Gu0, local_u0, slh);
        ApplyM(i,0,local_u0,local_help,slh);
 
        double norm_bot = InnerProduct(AsFV(local_u0),AsFV(local_help));
@@ -871,17 +880,17 @@ PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, L
 	 {
            // third order
            U0 = local_Gu0;
-           Cyl2Tent (i, U0, u0, j*taustar, slh);
+           Cyl2Tent (i, j*taustar, U0, u0, slh);
            ApplyM1(i, j*taustar, u0, M1u0, slh);
            CalcFluxTent(i, u0, local_init, fu0, j*taustar, slh);
            U1 = U0 + 0.5*taustar*(M1u0+fu0);
 
-           Cyl2Tent (i, U1, u1, j*taustar, slh);
+           Cyl2Tent (i, j*taustar, U1, u1, slh);
            ApplyM1(i, j*taustar, u1, M1u1, slh);
            CalcFluxTent(i, u1, local_init, fu1, (j+0.5)*taustar, slh);
            U2 = U0 + taustar*(4*M1u1-3*M1u0+2*fu1-fu0);
 
-           Cyl2Tent (i, U2, u2, j*taustar, slh);
+           Cyl2Tent (i, j*taustar, U2, u2, slh);
            CalcFluxTent(i, u2, local_init, fu2, (j+1)*taustar, slh);
 
            Uhat = U0 + taustar * (1.0/6.0 * fu0 + 2.0/3.0 * fu1 + 1.0/6.0 * fu2);
@@ -892,7 +901,7 @@ PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, L
 	     {
                /////// use dUhatdt as approximation at the final time
 	       // U0 = local_Gu0;
-               // Cyl2Tent (i, local_Gu0, local_help, (j+1)*taustar, slh);
+               // Cyl2Tent (i, (j+1)*taustar, local_Gu0, local_help, slh);
                // CalcFluxTent(i, local_help, local_init, dUhatdt,
                //              (j+1)*taustar, slh);
 	       // CalcEntropyResidualTent(i, U0, dUhatdt, res, local_init,
@@ -914,7 +923,7 @@ PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, L
                    steps_visc = max(1.0,ceil(steps_visc));
                    double tau_visc = taustar/steps_visc;
 		   // store boundary conditions in local_help
-		   Cyl2Tent (i, local_Gu0, local_u, (j+1)*taustar, slh);
+		   Cyl2Tent (i, (j+1)*taustar, local_Gu0, local_u, slh);
 		   local_help = local_u;
                    for (int k = 0; k < steps_visc; k++)
                      {
@@ -928,7 +937,7 @@ PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, L
          }
 
        // calc |u|_M1 norm on advancing front
-       Cyl2Tent (i, local_Gu0, local_u0, 1, slh);
+       Cyl2Tent (i, 1, local_Gu0, local_u0, slh);
 
        ApplyM(i,1,local_u0,local_help,slh);
        double norm_top = InnerProduct(AsFV(local_u0),AsFV(local_help));

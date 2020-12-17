@@ -20,7 +20,6 @@ public:
   using BASE::CalcViscCoeffEl;
   using BASE::Flux;
   using BASE::u_reflect;
-  using BASE::TransformBackIR;
   using BASE::CalcEntropy;
 
 
@@ -29,8 +28,8 @@ public:
   // in this case, û = 2 Û / [ 1 + √(1 - 2 Û ⋅∇̂ φ(x̂, t̂)) ]
   //
   template <typename T>
-  void TransformBackIR(const SIMD_BaseMappedIntegrationRule & mir,
-                       FlatMatrix<T> grad, FlatMatrix<T> u) const
+  void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
+		  FlatMatrix<T> grad, FlatMatrix<T> u) const
   {
     for (int i : Range(grad.Width()))
       {
