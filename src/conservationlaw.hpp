@@ -301,27 +301,16 @@ public:
     throw Exception ("Transparent boundary just available for wave equation!");
   }
 
-  void EntropyFlux (const Vec<DIM+2> & ml, const Vec<DIM+2> & mr,
-                    const Vec<DIM> & n, double & flux) const
-  {
-    cout << "no overload for EntropyFlux" << endl;
-  }
-
-  void EntropyFlux (FlatMatrix<SIMD<double>> ml, FlatMatrix<SIMD<double>> mr,
-                    FlatMatrix<SIMD<double>> n,
-                    FlatMatrix<SIMD<double>> flux) const
-  {
-    cout << "no overload for EntropyFlux for FlatMatrix<SIMD>" << endl;
-  }
-
   void CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                      FlatMatrixFixWidth<COMP> u0, FlatMatrixFixWidth<COMP> flux,
                      double tstar, LocalHeap & lh);
 
-  void CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
-                          FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
-                          FlatMatrixFixWidth<COMP> visc, LocalHeap & lh);
+  ////////////////////////////////////////////////////////////////
+  // entropy viscosity for nonlinear conservation laws
+  ////////////////////////////////////////////////////////////////
 
+  // evaluation of the temporal derivative of the entropy E
+  // and evaluation the entropy flux F
   void CalcEntropy(FlatMatrix<AutoDiff<1,SIMD<double>>> adu,
                    FlatMatrix<AutoDiff<1,SIMD<double>>> grad,
 		   FlatMatrix<SIMD<double>> dEdt,
@@ -330,16 +319,39 @@ public:
     cout << "no overload for CalcEntropy for tent pitching" << endl;
   }
 
+  [[deprecated]]
+  void EntropyFlux (const Vec<DIM+2> & ml, const Vec<DIM+2> & mr,
+                    const Vec<DIM> & n, double & flux) const
+  {
+    cout << "no overload for EntropyFlux" << endl;
+  }
+
+  // numerical flux for the entropy flux
+  void EntropyFlux (FlatMatrix<SIMD<double>> ml, FlatMatrix<SIMD<double>> mr,
+                    FlatMatrix<SIMD<double>> n,
+                    FlatMatrix<SIMD<double>> flux) const
+  {
+    cout << "no overload for EntropyFlux for FlatMatrix<SIMD>" << endl;
+  }
+
+  // apply viscosity
+  void CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
+                          FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
+                          FlatMatrixFixWidth<COMP> visc, LocalHeap & lh);
+
+  // calculate entropy residual on a tent
   void CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                                 FlatMatrixFixWidth<COMP> ut,
                                 FlatMatrixFixWidth<ECOMP> res,
                                 FlatMatrixFixWidth<COMP> u0, double tstar,
                                 LocalHeap & lh);
 
+  // calculate viscosity coefficient based on the entropy residual on a tent
   double CalcViscosityCoefficientTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                                        FlatMatrixFixWidth<ECOMP> hres,
 				       double tstar, LocalHeap & lh);
 
+  // calculate viscosity coefficient based on the entropy residual on an element
   void CalcViscCoeffEl(const SIMD_BaseMappedIntegrationRule & mir,
                        FlatMatrix<SIMD<double>> elu_ipts,
                        FlatMatrix<SIMD<double>> res_ipts,
