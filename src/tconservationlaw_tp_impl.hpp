@@ -88,9 +88,9 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
 
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
           if (XDEP)
-            Cast().Flux (simd_mir1, u1, u2, fedata->anormals[i], fn);
+            Cast().NumFlux (simd_mir1, u1, u2, fedata->anormals[i], fn);
           else
-            Cast().Flux (u1, u2, fedata->anormals[i], fn);
+            Cast().NumFlux (u1, u2, fedata->anormals[i], fn);
 
           FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))
@@ -143,9 +143,9 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
 
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
           if (XDEP)
-            Cast().Flux (simd_mir, u1, u2, fedata->anormals[i], fn);
+            Cast().NumFlux (simd_mir, u1, u2, fedata->anormals[i], fn);
           else
-            Cast().Flux (u1, u2, fedata->anormals[i], fn);
+            Cast().NumFlux (u1, u2, fedata->anormals[i], fn);
 
           FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))

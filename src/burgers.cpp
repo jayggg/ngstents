@@ -16,9 +16,10 @@ public:
   // these two were private
   using BASE::gfnu;
   using BASE::gfres;
-
-  using BASE::CalcViscCoeffEl;
+  
   using BASE::Flux;
+  using BASE::NumFlux;
+  using BASE::CalcViscCoeffEl;
   using BASE::u_reflect;
   using BASE::CalcEntropy;
 
@@ -51,8 +52,8 @@ public:
   // Numerical Flux on a facet.  ul and ur are the values at integration points
   // of the two elements adjacent to an internal facet
   // of the spatial mesh of a tent.
-  void Flux(FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
-            FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+  void NumFlux(FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
+	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
     for(size_t i : Range(ula.Width()))
       {

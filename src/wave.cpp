@@ -23,12 +23,13 @@ public:
   using BASE::gfnu;
   using BASE::gfres;
 
-  using BASE::CalcViscCoeffEl;
   using BASE::Flux;
+  using BASE::NumFlux;
   using BASE::u_reflect;
   using BASE::u_transparent;
   using BASE::CalcEntropy;
-
+  using BASE::CalcViscCoeffEl;
+  
   virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> mu,
                                      shared_ptr<CoefficientFunction> eps)
   {
@@ -102,27 +103,8 @@ public:
       }
   }
 
-   Vec<D+1> Flux (const Vec<D+1> & ul, const Vec<D+1> & ur, const Vec<D> & nv) const
-  {
-    /*
-    Mat<D+1,D> flux;
-    flux.Rows(0,D) = (ul(D)+ur(D))*Id<D>();// 0.0*Id<D>();
-    flux.Row(D) = ul.Range(0,D)+ur.Range(0,D);
-    flux.Row(D) += 0.05*(ul(D)-ur(D)) * nv;
-    return 0.5*flux*nv;
-    */
-    Vec<D+1> flux;
-    flux.Range(0,D) = 0.5 * (ul(D)+ur(D)) * nv;
-    flux(D) = 0.5 * InnerProduct (ul.Range(0,D)+ur.Range(0,D), nv);
-
-    double N2 = L2Norm2(nv);
-    flux.Range(0,D) += 1/N2 * InnerProduct(ul.Range(0,D)-ur.Range(0,D), nv) * nv;
-    flux(D) += 1*(ul(D)-ur(D));
-    return flux;
-  }
-
-  void Flux(FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-            FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+  void NumFlux(FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
+	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
     for (size_t i : Range(ul.Width()))
       {

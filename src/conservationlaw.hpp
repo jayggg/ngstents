@@ -256,36 +256,36 @@ public:
   {
     throw Exception ("flux for FlatMatrix<SIMD> not implemented");
   }
-
-  void Flux(SIMD_BaseMappedIntegrationRule & mir,
-            FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-            FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+  
+  void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
+	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
+	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
     if (!XDEPENDENT)
-      Cast().Flux (ul, ur, normals, fna);
+      Cast().NumFlux (ul, ur, normals, fna);
     else
-      throw Exception ("simd-flux not implemented for X-dependent equation");
+      throw Exception ("numerical flux for FlatMatrix<SIMD> not implemented for X-dependent equation");
   }
 
-  void Flux(FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-            FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+  void NumFlux(FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
+	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
-    throw Exception ("flux for FlatMatrix<SIMD> not implemented for boundary");
+    throw Exception ("numerical flux for FlatMatrix<SIMD> not implemented");
   }
 
-  Vec<COMP> Flux (const BaseMappedIntegrationPoint & mip,
-                  const FlatVec<COMP> & ul, const FlatVec<COMP> & ur,
-                  const Vec<DIM> & nv) const
+  Vec<COMP> NumFlux (const BaseMappedIntegrationPoint & mip,
+		     const FlatVec<COMP> & ul, const FlatVec<COMP> & ur,
+		     const Vec<DIM> & nv) const
   {
-    return Cast().Flux(ul,ur,nv);
+    return Cast().NumFlux(ul,ur,nv);
   }
 
   template<typename SCAL=double>
-  Vec<COMP,SCAL> Flux (const FlatVec<COMP,SCAL> & ul,
-                       const FlatVec<COMP,SCAL> & ur,
-                       const Vec<DIM,SCAL> & nv) const
+  Vec<COMP,SCAL> NumFlux (const FlatVec<COMP,SCAL> & ul,
+			  const FlatVec<COMP,SCAL> & ur,
+			  const Vec<DIM,SCAL> & nv) const
   {
-    throw Exception ("flux not implemented for boundary");
+    throw Exception ("numerical flux not implemented");
   }
 
   void u_reflect(FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
