@@ -15,7 +15,9 @@ try:
 except ValueError:
     vnr = -1
 if 0 <= vnr < mesh.nv:
-    tps = TentSlab(mesh, dt=0.5, c=1.0)
+    tps = TentSlab(mesh)
+    tps.SetWavespeed(1.0)
+    tps.PitchTents(dt=0.5)
     ntents = tps.GetNTents()
     tents = [(i, tps.GetTent(i)) for i in range(ntents)]
     tents = sorted([(i, t) for (i, t) in tents

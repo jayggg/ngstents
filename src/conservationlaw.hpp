@@ -6,9 +6,61 @@
 #endif
 #include "tents.hpp"
 #include <atomic>
+class ConservationLaw
+{
+public:
+  shared_ptr<MeshAccess> ma = nullptr;
+  shared_ptr<TentPitchedSlab> tps = nullptr;
 
+  const int order = {};
+  const string equation = {};
+  shared_ptr<L2HighOrderFESpace> fes = nullptr;
+  shared_ptr<GridFunction> gfu = nullptr;
+  shared_ptr<GridFunction> gfres = nullptr;
+  shared_ptr<GridFunction> gfuorig = nullptr;
+  shared_ptr<GridFunction> gfnu = nullptr;
+
+  shared_ptr<LocalHeap> pylh = nullptr;
+  shared_ptr<BaseVector> u = nullptr;     // u(n)
+  shared_ptr<BaseVector> uinit = nullptr; // initial data, also used for bc
+public:
+  ConservationLaw (const shared_ptr<TentPitchedSlab> & atps,
+		   const string & eqn, int aorder)
+    : tps {atps}, ma {atps->ma}, order {aorder}, equation {eqn}
+  { };
+  
+  virtual ~ConservationLaw() { ; }
+  
+  virtual void SetBC() = 0;
+
+  virtual void SetFluxField(shared_ptr<CoefficientFunction> cf) = 0;
+
+  virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
+                                     shared_ptr<CoefficientFunction> cf_eps) = 0;
+
+  virtual void PropagateSAT(int stages, int substeps,
+			    BaseVector & hu, BaseVector & hu_init,
+			    LocalHeap & lh) = 0;
+
+  virtual void PropagateSARK(int stages, int substeps,
+			     BaseVector & hu, BaseVector & hu_init,
+			     LocalHeap & lh) = 0;
+  
+};
+
+
+/*Template for conservation law classes.
+Any conservation law to be used in the MTP scheme should derive
+from this class.
+The template parameters are as follows:
+EQUATION: the class representing the equation
+DIM: spatial dimension in which the conservation law is prescribed upon
+COMP: number of state variables/equations
+ECOMP: number of state variables/equations for entropy residual (non-linear eqs)
+XDEPENDENT: whether the flux depends on the spatial coordinates
+*/
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEPENDENT>
-class T_ConservationLaw
+class T_ConservationLaw : public ConservationLaw
 {
 protected:
   FlatVector<> nu;  // viscosity coefficient
@@ -17,46 +69,23 @@ protected:
   int maxbcnr = 4;
   Array<int> bcnr; // array of boundary condition numbers
 
-  // dt=timeslab height for tentpitching, timestep for other methods
-  double dt;
-  double tend;      // tend=final time
-
   // collection of tents in timeslab
-  size_t tentslab_heapsize = 10*1000000;
-  shared_ptr<TentPitchedSlab<DIM>> tps;
-  
   Table<int> & tent_dependency = tps->tent_dependency;
-  double wavespeed;
-
-  Array<IntegrationRule*> glrules;
 
   const EQUATION & Cast() const {return static_cast<const EQUATION&> (*this);}
 
 public:
-  shared_ptr<MeshAccess> ma = nullptr;
-  shared_ptr<L2HighOrderFESpace> fes = nullptr;
-  shared_ptr<GridFunction> gfu = nullptr;
-  shared_ptr<GridFunction> gfres = nullptr;
-  shared_ptr<GridFunction> gfuorig = nullptr;
-  shared_ptr<GridFunction> gfnu = nullptr;
-  shared_ptr<LocalHeap> pylh = nullptr;
-
-  shared_ptr<BaseVector> u;     // u(n)
-  shared_ptr<BaseVector> uinit; // initial data, also used for bc
-  shared_ptr<BaseVector> flux;
 
   // advancing front (used for time-dependent bc)
   shared_ptr<GridFunction> gftau = nullptr;
 
-  T_ConservationLaw (shared_ptr<TentPitchedSlab<DIM>> & atps, int order,
-                     const Flags & flags) : tps(atps)
+  T_ConservationLaw (const shared_ptr<TentPitchedSlab> & tps,
+		     const string & eqn, int order)
+    : ConservationLaw(tps, eqn, order)
   {
-    ma = tps->ma;
-
     size_t heapsize = 10*1000000;
     pylh = make_shared<LocalHeap>(heapsize,"ConsLaw - py main heap",true);
 
-    Init(flags);
     // store boundary condition numbers
     bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
@@ -93,8 +122,6 @@ public:
 	gfnu = CreateGridFunction(fes_lo,"nu",Flags());
 	gfnu->Update();
       }
-    gfuorig = CreateGridFunction(fes,"uorig",Flags());
-    gfuorig->Update();
 
     // first order H1 space for the advancing front
     shared_ptr<FESpace> fesh1 = CreateFESpace("h1ho", ma,
@@ -108,28 +135,10 @@ public:
     AllocateVectors();
   }
 
-  void Init(const Flags & flags) {
-    dt = flags.GetNumFlag ("dt", 1e-3);
-    tend = flags.GetNumFlag ("tend", 1.0);
-
-    wavespeed = flags.GetNumFlag ("wavespeed", 100.0);
-
-    Array<double> xn, wn;
-    for(int n = 2; 2*n-3 <= 10; n++)
-      {
-        ComputeGaussLobattoRule(n,xn,wn);
-        IntegrationRule * intrule = new IntegrationRule;
-        for(int i : Range(xn.Size()))
-          intrule->Append(IntegrationPoint(xn[i], 0.0, 0.0, wn[i]));
-        glrules.Append(intrule);
-      }
-  }
-
   void AllocateVectors()
   {
     u = gfu->GetVectorPtr();
     uinit = u->CreateVector();
-    flux = u->CreateVector();
     if(gfnu != NULL)
       {
 	gfnu->Update();
@@ -139,16 +148,12 @@ public:
       }
   }
 
-  virtual ~T_ConservationLaw()
-  {
-    for(auto intrule : glrules)
-      delete intrule;
-  }
+  virtual ~T_ConservationLaw() { ; }
   
   // Set the boundary condition numbers from the mesh boundary elements indices
   // These indices are 0-based here and 1-based in Python. 
   //  0: outflow, 1: wall, 2: inflow, 3: transparent 
-  virtual void SetBC()
+  void SetBC()
   {
     if(!def_bcnr)
       for(int i : Range(ma->GetNSE()))
@@ -159,30 +164,17 @@ public:
         }
   }
 
-  int GetNTents() { return tps->GetNTents(); }
-
-  virtual void PitchTents(double adt, shared_ptr<CoefficientFunction> awavespeed)
+  virtual void SetFluxField(shared_ptr<CoefficientFunction> cf)
   {
-    tps->SetWavespeed(awavespeed);
-    tps->PitchTents(adt,false);
+    throw Exception("SetFluxField just available for Advection equation");
   }
 
-  virtual double MaxSlope()
+  virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
+                                     shared_ptr<CoefficientFunction> cf_eps)
   {
-    return tps->MaxSlope();
+    throw Exception("SetMaterialParameters just available for Wave equation");
   }
-
-  void DrawPitchedTentsVTK(string vtkfilename)
-  {
-    tps->DrawPitchedTentsVTK(vtkfilename);
-  }
-
-  void DrawPitchedTentsGL(Array<int> & tentdata,
-                          Array<double> & tenttimes, int & nlevels)
-  {
-    tps->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
-  }
-
+  
   template <int W>
   void SolveM (const Tent & tent, int loci, FlatMatrixFixWidth<W> mat,
                LocalHeap & lh) const
@@ -280,36 +272,36 @@ public:
   {
     throw Exception ("flux for FlatMatrix<SIMD> not implemented");
   }
-
-  void Flux(SIMD_BaseMappedIntegrationRule & mir,
-            FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-            FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+  
+  void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
+	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
+	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
     if (!XDEPENDENT)
-      Cast().Flux (ul, ur, normals, fna);
+      Cast().NumFlux (ul, ur, normals, fna);
     else
-      throw Exception ("simd-flux not implemented for X-dependent equation");
+      throw Exception ("numerical flux for FlatMatrix<SIMD> not implemented for X-dependent equation");
   }
 
-  void Flux(FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-            FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+  void NumFlux(FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
+	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
-    throw Exception ("flux for FlatMatrix<SIMD> not implemented for boundary");
+    throw Exception ("numerical flux for FlatMatrix<SIMD> not implemented");
   }
 
-  Vec<COMP> Flux (const BaseMappedIntegrationPoint & mip,
-                  const FlatVec<COMP> & ul, const FlatVec<COMP> & ur,
-                  const Vec<DIM> & nv) const
+  Vec<COMP> NumFlux (const BaseMappedIntegrationPoint & mip,
+		     const FlatVec<COMP> & ul, const FlatVec<COMP> & ur,
+		     const Vec<DIM> & nv) const
   {
-    return Cast().Flux(ul,ur,nv);
+    return Cast().NumFlux(ul,ur,nv);
   }
 
   template<typename SCAL=double>
-  Vec<COMP,SCAL> Flux (const FlatVec<COMP,SCAL> & ul,
-                       const FlatVec<COMP,SCAL> & ur,
-                       const Vec<DIM,SCAL> & nv) const
+  Vec<COMP,SCAL> NumFlux (const FlatVec<COMP,SCAL> & ul,
+			  const FlatVec<COMP,SCAL> & ur,
+			  const Vec<DIM,SCAL> & nv) const
   {
-    throw Exception ("flux not implemented for boundary");
+    throw Exception ("numerical flux not implemented");
   }
 
   void u_reflect(FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
@@ -325,31 +317,16 @@ public:
     throw Exception ("Transparent boundary just available for wave equation!");
   }
 
-  void EntropyFlux (const Vec<DIM+2> & ml, const Vec<DIM+2> & mr,
-                    const Vec<DIM> & n, double & flux) const
-  {
-    cout << "no overload for EntropyFlux" << endl;
-  }
-
-  void EntropyFlux (FlatMatrix<SIMD<double>> ml, FlatMatrix<SIMD<double>> mr,
-                    FlatMatrix<SIMD<double>> n,
-                    FlatMatrix<SIMD<double>> flux) const
-  {
-    cout << "no overload for EntropyFlux for FlatMatrix<SIMD>" << endl;
-  }
-
   void CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                      FlatMatrixFixWidth<COMP> u0, FlatMatrixFixWidth<COMP> flux,
                      double tstar, LocalHeap & lh);
 
-  void Cyl2Tent (int tentnr, FlatMatrixFixWidth<COMP> uhat,
-                          FlatMatrixFixWidth<COMP> u, double tstar,
-                          LocalHeap & lh);
+  ////////////////////////////////////////////////////////////////
+  // entropy viscosity for nonlinear conservation laws
+  ////////////////////////////////////////////////////////////////
 
-  void CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
-                          FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
-                          FlatMatrixFixWidth<COMP> visc, LocalHeap & lh);
-
+  // evaluation of the temporal derivative of the entropy E
+  // and evaluation the entropy flux F
   void CalcEntropy(FlatMatrix<AutoDiff<1,SIMD<double>>> adu,
                    FlatMatrix<AutoDiff<1,SIMD<double>>> grad,
 		   FlatMatrix<SIMD<double>> dEdt,
@@ -358,16 +335,39 @@ public:
     cout << "no overload for CalcEntropy for tent pitching" << endl;
   }
 
+  [[deprecated]]
+  void EntropyFlux (const Vec<DIM+2> & ml, const Vec<DIM+2> & mr,
+                    const Vec<DIM> & n, double & flux) const
+  {
+    cout << "no overload for EntropyFlux" << endl;
+  }
+
+  // numerical flux for the entropy flux
+  void EntropyFlux (FlatMatrix<SIMD<double>> ml, FlatMatrix<SIMD<double>> mr,
+                    FlatMatrix<SIMD<double>> n,
+                    FlatMatrix<SIMD<double>> flux) const
+  {
+    cout << "no overload for EntropyFlux for FlatMatrix<SIMD>" << endl;
+  }
+
+  // apply viscosity
+  void CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
+                          FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
+                          FlatMatrixFixWidth<COMP> visc, LocalHeap & lh);
+
+  // calculate entropy residual on a tent
   void CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                                 FlatMatrixFixWidth<COMP> ut,
                                 FlatMatrixFixWidth<ECOMP> res,
                                 FlatMatrixFixWidth<COMP> u0, double tstar,
                                 LocalHeap & lh);
 
+  // calculate viscosity coefficient based on the entropy residual on a tent
   double CalcViscosityCoefficientTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                                        FlatMatrixFixWidth<ECOMP> hres,
 				       double tstar, LocalHeap & lh);
 
+  // calculate viscosity coefficient based on the entropy residual on an element
   void CalcViscCoeffEl(const SIMD_BaseMappedIntegrationRule & mir,
                        FlatMatrix<SIMD<double>> elu_ipts,
                        FlatMatrix<SIMD<double>> res_ipts,
@@ -376,26 +376,39 @@ public:
     cout << "no overload for CalcViscCoeffEl with FlatMatrix<SIMD>" << endl;
   }
 
-  void ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
-                FlatMatrixFixWidth<COMP> res, LocalHeap & lh);
-
-  void ApplyM (int tentnr, double tstar,
-               FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> res,
-               LocalHeap & lh);
-
-  void Tent2Cyl (int tentnr, FlatMatrixFixWidth<COMP> u,
-                 FlatMatrixFixWidth<COMP> uhat,
-                 double tstar, LocalHeap & lh);
+  ////////////////////////////////////////////////////////////////
+  // maps 
+  ////////////////////////////////////////////////////////////////
 
   template <typename T = SIMD<double>>
-  void TransformBackIR(const SIMD_BaseMappedIntegrationRule & mir,
-                       FlatMatrix<T> grad, FlatMatrix<T> u) const
+  void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
+		  FlatMatrix<T> grad, FlatMatrix<T> u) const
   {
     throw Exception ("TransformBack for FlatMatrix<SIMD> not available");
   }
 
-  void PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init,
-                       LocalHeap & lh);
+  void Cyl2Tent (int tentnr, double tstar,
+		 FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
+		 LocalHeap & lh);
+
+  void ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
+                FlatMatrixFixWidth<COMP> res, LocalHeap & lh);
+
+  void Tent2Cyl (int tentnr, double tstar,
+		 FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
+                 bool solvemass, LocalHeap & lh);
+  
+  ////////////////////////////////////////////////////////////////
+  // time stepping methods 
+  ////////////////////////////////////////////////////////////////
+  
+  void PropagateSAT(int stages, int substeps,
+		    BaseVector & hu, BaseVector & hu_init,
+		    LocalHeap & lh);
+
+  void PropagateSARK(int stages, int substeps,
+		     BaseVector & hu, BaseVector & hu_init,
+		     LocalHeap & lh);
 
 };
 

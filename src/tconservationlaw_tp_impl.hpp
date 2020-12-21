@@ -88,9 +88,9 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
 
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
           if (XDEP)
-            Cast().Flux (simd_mir1, u1, u2, fedata->anormals[i], fn);
+            Cast().NumFlux (simd_mir1, u1, u2, fedata->anormals[i], fn);
           else
-            Cast().Flux (u1, u2, fedata->anormals[i], fn);
+            Cast().NumFlux (u1, u2, fedata->anormals[i], fn);
 
           FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))
@@ -143,9 +143,9 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
 
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
           if (XDEP)
-            Cast().Flux (simd_mir, u1, u2, fedata->anormals[i], fn);
+            Cast().NumFlux (simd_mir, u1, u2, fedata->anormals[i], fn);
           else
-            Cast().Flux (u1, u2, fedata->anormals[i], fn);
+            Cast().NumFlux (u1, u2, fedata->anormals[i], fn);
 
           FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))
@@ -162,46 +162,6 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
   for (int i : Range (tent.els))
     SolveM (tent, i, flux.Rows (tent.fedata->ranges[i]), lh);
 
-}
-
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
-Cyl2Tent (int tentnr, FlatMatrixFixWidth<COMP> uhat,
-                   FlatMatrixFixWidth<COMP> u, double tstar, LocalHeap & lh)
-{
-  const Tent & tent = tps->GetTent(tentnr);
-
-  auto fedata = tent.fedata;
-  if (!fedata) throw Exception("fedata not set");
-
-  for (size_t i : Range(tent.els))
-    {
-      HeapReset hr(lh);
-      const DGFiniteElement<DIM> & fel =
-        static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
-
-      auto & simd_mir = *fedata->miri[i];
-      IntRange dn = tent.fedata->ranges[i];
-
-      FlatMatrix<SIMD<double>> u_ipts(COMP, simd_mir.Size(),lh);
-      for(size_t k = 0; k < COMP; k++)
-        fel.Evaluate (simd_mir.IR(), uhat.Col(k).Range(dn), u_ipts.Row(k));
-
-      FlatMatrix<SIMD<double>> gradphi_mat(DIM, simd_mir.Size(), lh);
-      gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
-                    tstar*fedata->agradphi_top[i];
-
-      Cast().TransformBackIR(simd_mir, gradphi_mat, u_ipts);
-
-      for(size_t k = 0; k < simd_mir.Size(); k++)
-        u_ipts.Col(k) *= simd_mir[k].GetWeight();
-
-      u.Rows(dn) = 0.0;
-      for(size_t k = 0; k < COMP; k++)
-        fel.AddTrans (simd_mir.IR(), u_ipts.Row(k), u.Col(k).Range(dn));
-
-      SolveM (tent, i, u.Rows (dn), lh);
-    }
 }
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
@@ -416,7 +376,7 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
             gradphi_mat(k,l).DValue(0) = gradtop(k,l) - gradbot(k,l);
           }
 
-      Cast().TransformBackIR(simd_mir, gradphi_mat, adu);
+      Cast().InverseMap(simd_mir, gradphi_mat, adu);
       FlatMatrix<SIMD<double>> Ei(ECOMP,simd_ir.Size(),lh),
                                Fi(DIM*ECOMP,simd_ir.Size(),lh);
       Cast().CalcEntropy(adu, gradphi_mat, Ei, Fi);
@@ -438,7 +398,7 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
     }
 
   FlatMatrixFixWidth<COMP> temp(u.Height(),lh);
-  Cyl2Tent(tentnr, u, temp, tstar, lh);
+  Cyl2Tent(tentnr, tstar, u, temp, lh);
 
   for(int i : Range(tent.internal_facets))
     {
@@ -588,13 +548,58 @@ CalcViscosityCoefficientTent (int tentnr, FlatMatrixFixWidth<COMP> u,
       gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
                     tstar*fedata->agradphi_top[i];
 
-      Cast().TransformBackIR(simd_mir, gradphi_mat, ui);
+      Cast().InverseMap(simd_mir, gradphi_mat, ui);
       Cast().CalcViscCoeffEl(simd_mir, ui, resi, hi, nu(ei.Nr()));
 
       if(nu(ei.Nr()) > nu_tent)
 	nu_tent = nu(ei.Nr());
     }
   return nu_tent;
+}
+
+////////////////////////////////////////////////////////////////
+// implementations of maps 
+////////////////////////////////////////////////////////////////
+
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
+void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
+Cyl2Tent (int tentnr, double tstar,
+	  FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
+	  LocalHeap & lh)
+{
+  const Tent & tent = tps->GetTent(tentnr);
+
+  auto fedata = tent.fedata;
+  if (!fedata) throw Exception("fedata not set");
+
+  for (size_t i : Range(tent.els))
+    {
+      HeapReset hr(lh);
+      const DGFiniteElement<DIM> & fel =
+        static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
+
+      auto & simd_mir = *fedata->miri[i];
+      IntRange dn = tent.fedata->ranges[i];
+
+      FlatMatrix<SIMD<double>> u_ipts(COMP, simd_mir.Size(),lh);
+      for(size_t k = 0; k < COMP; k++)
+        fel.Evaluate (simd_mir.IR(), uhat.Col(k).Range(dn), u_ipts.Row(k));
+
+      FlatMatrix<SIMD<double>> gradphi_mat(DIM, simd_mir.Size(), lh);
+      gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
+                    tstar*fedata->agradphi_top[i];
+
+      Cast().InverseMap(simd_mir, gradphi_mat, u_ipts);
+
+      for(size_t k = 0; k < simd_mir.Size(); k++)
+        u_ipts.Col(k) *= simd_mir[k].GetWeight();
+
+      u.Rows(dn) = 0.0;
+      for(size_t k = 0; k < COMP; k++)
+        fel.AddTrans (simd_mir.IR(), u_ipts.Row(k), u.Col(k).Range(dn));
+
+      SolveM (tent, i, u.Rows (dn), lh);
+    }
 }
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
@@ -647,55 +652,9 @@ ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
 void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
-ApplyM (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
-        FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
-{
-  const Tent & tent = tps->GetTent(tentnr);
-
-  auto fedata = tent.fedata;
-  if (!fedata) throw Exception("fedata not set");
-
-  res = 0.0;
-  for (int i : Range(tent.els))
-    {
-      HeapReset hr(lh);
-      const DGFiniteElement<DIM> & fel =
-	static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
-
-      const SIMD_IntegrationRule & simd_ir = *fedata->iri[i];
-      IntRange dn = tent.fedata->ranges[i];
-
-      FlatMatrix<SIMD<double>> u_ipts(COMP, simd_ir.Size(), lh),
-                               temp(COMP, simd_ir.Size(), lh);
-      FlatMatrix<SIMD<double>> flux(COMP*DIM, simd_ir.Size(), lh);
-      FlatMatrix<SIMD<double>> gradphi_mat(DIM, simd_ir.Size(), lh);
-      gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
-                    tstar*fedata->agradphi_top[i];
-
-      fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
-
-      auto & simd_mir = *fedata->miri[i];
-      Cast().Flux(simd_mir,u_ipts,flux);
-
-      for(size_t j : Range(simd_ir.Size()))
-        for(size_t l : Range(COMP))
-          {
-            SIMD<double> hsum(0.0);
-            for(size_t k : Range(DIM))
-              {
-                auto gradphi = gradphi_mat(k,j);
-                hsum += gradphi * flux(COMP*k+l,j);
-              }
-            temp(l,j) = simd_mir[j].GetWeight() * (u_ipts(l,j) - hsum);
-          }
-      fel.AddTrans(simd_ir,temp,res.Rows(dn));
-    }
-}
-
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
-Tent2Cyl (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
-          double tstar, LocalHeap & lh)
+Tent2Cyl (int tentnr, double tstar,
+	  FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
+          bool solvemass, LocalHeap & lh)
 {
   const Tent & tent = tps->GetTent(tentnr);
 
@@ -737,18 +696,76 @@ Tent2Cyl (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
           }
 
       fel.AddTrans(simd_ir,res,uhat.Rows(dn));
-      SolveM (tent, i, uhat.Rows (dn), lh);
+      if(solvemass)
+	SolveM (tent, i, uhat.Rows (dn), lh);
     }
+}
+
+////////////////////////////////////////////////////////////////
+// time stepping methods 
+////////////////////////////////////////////////////////////////
+
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
+void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
+PropagateSAT(int stages, int substeps,
+	     BaseVector & hu, BaseVector & hu0,
+	     LocalHeap & lh)
+{
+  static Timer tRK ("PropagateSAT", 2); RegionTimer reg(tRK);
+  static Timer tRKtent ("PropagateSAT - tent", 2); 
+
+  RunParallelDependency 
+    (tent_dependency, [&] (int i)
+     {
+       RegionTimer reg(tRKtent);
+       RegionTracer reg1(TaskManager::GetThreadId(), tRKtent, i);
+
+       LocalHeap slh = lh.Split();  // split to threads
+
+       const Tent & tent = tps->GetTent(i);
+       tent.fedata = new (slh) TentDataFE(tent, *fes, *ma, slh);
+
+       int ndof = tent.fedata->nd;
+       FlatMatrixFixWidth<COMP> local_uhat(ndof,slh);
+       FlatMatrixFixWidth<COMP> local_u0(ndof,slh);
+       hu.GetIndirect(tent.fedata->dofs, AsFV(local_uhat));
+       hu0.GetIndirect(tent.fedata->dofs, AsFV(local_u0));
+
+       FlatMatrixFixWidth<COMP> local_uhat1(ndof,slh);
+       FlatMatrixFixWidth<COMP> local_u(ndof,slh);
+       FlatMatrixFixWidth<COMP> local_help(ndof,slh);
+
+       double taustar = 1.0/substeps;
+       for (int j = 0; j < substeps; j++)
+	 {
+	   local_uhat1 = local_uhat;
+	   double fac = 1.0;
+	   for(int k : Range(1,stages+1))
+	     {
+	       Cyl2Tent(i, j*taustar, local_uhat1, local_u, slh);
+	       CalcFluxTent(i, local_u, local_u0, local_uhat1, j*taustar, slh);
+               local_uhat1 *= 1.0/k;
+	       fac *= taustar;
+	       local_uhat += fac*local_uhat1;           
+
+	       if(k < stages)
+	   	 {
+		   ApplyM1(i, j*taustar, local_u, local_help, slh);
+	   	   local_uhat1 += local_help;
+	   	 }
+	     }
+         }
+       hu.SetIndirect(tent.fedata->dofs, AsFV(local_uhat));
+       tent.fedata = nullptr;
+     });
 }
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
 void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
-PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh)
+PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh)
 {
   shared_ptr<BaseVector> hres = (ECOMP > 0) ? gfres->GetVectorPtr() : nullptr;
-  shared_ptr<BaseVector> huorig =
-    (gfuorig != NULL) ? gfuorig->GetVectorPtr() : hu.CreateVector();
-
+  
   RunParallelDependency
     (tent_dependency, [&] (int i)
      {
@@ -758,7 +775,7 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
        tent.fedata = new (slh) TentDataFE(tent, *fes, *ma, slh);
 
        int ndof = (tent.fedata)->nd;
-       double taustar = 1.0/steps;
+       double taustar = 1.0/substeps;
 
        // tent.fedata = new (slh) TentDataFE(tent, *fes, *ma, slh);
        // tent->InitTent(gftau);
@@ -808,26 +825,27 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
        double tau_visc1 = sqr (h_tent / sqr(order));
 
        // calc |u|_M0 on advancing front
-       Cyl2Tent (i, local_Gu0, local_u0, 0, slh);
-       ApplyM(i,0,local_u0,local_help,slh);
+       Cyl2Tent (i, 0, local_Gu0, local_u0, slh);
+       Tent2Cyl(i, 0, local_u0, local_help, false, slh);
 
        double norm_bot = InnerProduct(AsFV(local_u0),AsFV(local_help));
 
-       for (int j = 0; j < steps; j++)
+       //TODO: implement SARK for different number to stages
+       for (int j = 0; j < substeps; j++)
 	 {
            // third order
            U0 = local_Gu0;
-           Cyl2Tent (i, U0, u0, j*taustar, slh);
+           Cyl2Tent (i, j*taustar, U0, u0, slh);
            ApplyM1(i, j*taustar, u0, M1u0, slh);
            CalcFluxTent(i, u0, local_init, fu0, j*taustar, slh);
            U1 = U0 + 0.5*taustar*(M1u0+fu0);
 
-           Cyl2Tent (i, U1, u1, j*taustar, slh);
+           Cyl2Tent (i, j*taustar, U1, u1, slh);
            ApplyM1(i, j*taustar, u1, M1u1, slh);
            CalcFluxTent(i, u1, local_init, fu1, (j+0.5)*taustar, slh);
            U2 = U0 + taustar*(4*M1u1-3*M1u0+2*fu1-fu0);
 
-           Cyl2Tent (i, U2, u2, j*taustar, slh);
+           Cyl2Tent (i, j*taustar, U2, u2, slh);
            CalcFluxTent(i, u2, local_init, fu2, (j+1)*taustar, slh);
 
            Uhat = U0 + taustar * (1.0/6.0 * fu0 + 2.0/3.0 * fu1 + 1.0/6.0 * fu2);
@@ -838,7 +856,7 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
 	     {
                /////// use dUhatdt as approximation at the final time
 	       // U0 = local_Gu0;
-               // Cyl2Tent (i, local_Gu0, local_help, (j+1)*taustar, slh);
+               // Cyl2Tent (i, (j+1)*taustar, local_Gu0, local_help, slh);
                // CalcFluxTent(i, local_help, local_init, dUhatdt,
                //              (j+1)*taustar, slh);
 	       // CalcEntropyResidualTent(i, U0, dUhatdt, res, local_init,
@@ -854,13 +872,13 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
                                                              j*taustar, slh);
 
                local_nu = nu_tent;
-	       double steps_visc = (40*tau_tent*nu_tent/tau_visc1)/steps;
+	       double steps_visc = (40*tau_tent*nu_tent/tau_visc1)/substeps;
                if (steps_visc > 0.2)
                  {
                    steps_visc = max(1.0,ceil(steps_visc));
                    double tau_visc = taustar/steps_visc;
 		   // store boundary conditions in local_help
-		   Cyl2Tent (i, local_Gu0, local_u, (j+1)*taustar, slh);
+		   Cyl2Tent (i, (j+1)*taustar, local_Gu0, local_u, slh);
 		   local_help = local_u;
                    for (int k = 0; k < steps_visc; k++)
                      {
@@ -868,15 +886,14 @@ PropagatePicard(int steps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh
                                           local_flux, slh);
                        local_u -= tau_visc * local_flux;
                      }
-                   Tent2Cyl(i,local_u,local_Gu0,(j+1)*taustar,slh);
+                   Tent2Cyl(i, (j+1)*taustar, local_u, local_Gu0, true, slh);
                  }
 	     }
          }
 
        // calc |u|_M1 norm on advancing front
-       Cyl2Tent (i, local_Gu0, local_u0, 1, slh);
-
-       ApplyM(i,1,local_u0,local_help,slh);
+       Cyl2Tent (i, 1, local_Gu0, local_u0, slh);
+       Tent2Cyl(i, 1, local_u0, local_help, false, slh);
        double norm_top = InnerProduct(AsFV(local_u0),AsFV(local_help));
        if(norm_bot>0)
          *testout << "top/bot = " << norm_top/norm_bot << endl;

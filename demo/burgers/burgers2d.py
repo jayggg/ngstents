@@ -4,7 +4,8 @@ Burgers equation in 2-D
 from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, CoefficientFunction, x, y, exp, Draw, Redraw
 from ngsolve import TaskManager, SetNumThreads
-from ngstents import TentSlab, Burgers
+from ngstents import TentSlab
+from ngstents.conslaw import Burgers
 
 # options
 saved_mesh = False
@@ -53,7 +54,7 @@ if vtk_tents:
 input('start')
 with TaskManager():
     while t < tend - dt/2:
-        burg.PropagatePicard(sol.vec, steps=order*order)
+        burg.PropagateSARK(sol.vec, substeps=order*order)
         t += dt
         cnt += 1
         if cnt % 1 == 0:

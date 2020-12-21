@@ -113,7 +113,6 @@ namespace ngstents{
   enum PitchingMethod {EVolGrad =1, EEdgeGrad};
 }
 
-template <int DIM>
 class TentPitchedSlab {
 public:
   Array<Tent*> tents;         // tents between two time slices
@@ -139,6 +138,7 @@ public:
   //constant for the algorithm
   //global_ct is a globalwise constant that can be independently used
   //its return value will indicate whether the slab was successfully pitched.
+  template <int DIM>
   bool PitchTents(const double dt, const bool calc_local_ct, const double global_ct = 1.0);
   
   // Get object features

@@ -1,6 +1,7 @@
 from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, CoefficientFunction, exp, x, y, TaskManager
-from ngstents import Burgers, TentSlab
+from ngstents import TentSlab
+from ngstents.conslaw import Burgers
 
 
 def test_burgers2D():
@@ -31,5 +32,5 @@ def test_burgers2D():
     t = 0
     with TaskManager():
         while t < tend - dt/2:
-            burg.PropagatePicard(sol.vec, steps=order*order)
+            burg.PropagateSARK(sol.vec, substeps=order*order)
             t += dt
