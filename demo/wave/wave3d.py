@@ -1,12 +1,11 @@
-from netgen.csg import CSGeometry, OrthoBrick, Pnt
-from ngsolve import Mesh, Draw, Redraw
-from ngsolve import CoefficientFunction, sqrt, sin, cos, x, y, z
-from ngsolve import TaskManager
-from ngsolve.internal import visoptions, viewoptions
-from ngstents import TentSlab
-from ngstents.conslaw import Wave
-from math import pi
 import time
+from math import pi
+from ngstents.conslaw import Wave
+from ngstents import TentSlab
+from ngsolve.internal import visoptions, viewoptions
+from netgen.csg import CSGeometry, OrthoBrick, Pnt
+from ngsolve import (Mesh, Draw, Redraw, CoefficientFunction, sqrt, sin, cos,
+                     x, y, z, TaskManager, Integrate, InnerProduct)
 
 
 geom = CSGeometry()
@@ -71,5 +70,6 @@ exsol = CoefficientFunction((sin(x)*cos(y)*cos(z)*sin(sqrt(3)*t_end)/sqrt(3),
                              cos(x)*cos(y)*sin(z)*sin(sqrt(3)*t_end)/sqrt(3),
                              cos(x)*cos(y)*cos(z)*cos(sqrt(3)*t_end)))
 Draw(exsol, mesh, 'exact')
-l2error = sqrt(Integrate(InnerProduct(sol-exsol,sol-exsol),mesh,order=3*order))
-print("l2error = ",l2error)
+l2error = sqrt(Integrate(InnerProduct(
+    sol-exsol, sol-exsol), mesh, order=3*order))
+print("l2error = ", l2error)

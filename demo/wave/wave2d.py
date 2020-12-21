@@ -1,8 +1,7 @@
 from netgen.geom2d import SplineGeometry
-from ngsolve import Mesh, Draw, Redraw
-from ngsolve import CoefficientFunction, sqrt, sin, cos, x, y, z
-from ngsolve import TaskManager
-from ngsolve.internal import visoptions, viewoptions
+from ngsolve import (Mesh, Draw, Redraw, CoefficientFunction, sqrt, sin, cos,
+                     x, y, TaskManager, Integrate, InnerProduct)
+from ngsolve.internal import visoptions
 from ngstents import TentSlab
 from ngstents.conslaw import Wave
 from math import pi
@@ -10,7 +9,7 @@ import time
 
 
 geom = SplineGeometry()
-geom.AddRectangle(p1=(0,0),p2=(pi,pi),bc=2)
+geom.AddRectangle(p1=(0, 0), p2=(pi, pi), bc=2)
 mesh = geom.GenerateMesh(maxh=0.25)
 mesh = Mesh(mesh)
 
@@ -37,7 +36,7 @@ order = 2
 wave = Wave(ts, order)
 
 p = CoefficientFunction(cos(x)*cos(y))
-u = CoefficientFunction((0,0))
+u = CoefficientFunction((0, 0))
 cf = CoefficientFunction((u, p))
 wave.SetInitial(cf)
 sol = wave.sol
@@ -66,5 +65,6 @@ exsol = CoefficientFunction((sin(x)*cos(y)*sin(sqrt(2)*t_end)/sqrt(2),
                              cos(x)*sin(y)*sin(sqrt(2)*t_end)/sqrt(2),
                              cos(x)*cos(y)*cos(sqrt(2)*t_end)))
 Draw(exsol, mesh, 'exact')
-l2error = sqrt(Integrate(InnerProduct(sol-exsol,sol-exsol),mesh,order=3*order))
-print("l2error = ",l2error)
+l2error = sqrt(Integrate(InnerProduct(
+    sol-exsol, sol-exsol), mesh, order=3*order))
+print("l2error = ", l2error)
