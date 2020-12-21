@@ -36,6 +36,10 @@ void ExportConsLaw(py::module & m)
          py::arg("tentslab"),
   	 py::arg("equation"),
          py::arg("order"))
+    .def_property_readonly("tentslab", [](shared_ptr<CL> self)
+                           {
+  			     return self->tps;
+  			   })
     .def("__str__",[](shared_ptr<CL> self){ return self->equation; })
     .def_property_readonly("space", [](shared_ptr<CL> self)
   			   -> shared_ptr<FESpace>
