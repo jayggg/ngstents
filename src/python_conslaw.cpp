@@ -2,8 +2,8 @@
 #include <python_ngstd.hpp>
 
 shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<TentPitchedSlab> & tps, const int & order);
-
 shared_ptr<ConservationLaw> CreateWave(const shared_ptr<TentPitchedSlab> & tps, const int & order);
+shared_ptr<ConservationLaw> CreateAdvection(const shared_ptr<TentPitchedSlab> & tps, const int & order);
 
 typedef ConservationLaw CL;
 
@@ -15,6 +15,8 @@ shared_ptr<CL> CreateConsLaw(const shared_ptr<TentPitchedSlab> & tps,
     cl = CreateBurgers(tps,order);
   else if(eqn=="wave")
     cl = CreateWave(tps,order);
+  else if(eqn=="advection")
+    cl = CreateAdvection(tps,order);
   else
     throw Exception(string("unknown equation '"+eqn+"'"));
   return cl;
@@ -65,6 +67,19 @@ void ExportConsLaw(py::module & m)
            SetValues(cf,*(self->gfu),VOL,0,*(self->pylh));
            self->uinit = self->u; // set data used for b.c.
          })
+    // Set flux field
+    .def("SetFluxField",
+         [](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
+         {
+           self->SetFluxField(cf);
+         })
+    .def("SetMaterialParameters",
+         [](shared_ptr<CL> self,
+	    shared_ptr<CoefficientFunction> cf_mu,
+	    shared_ptr<CoefficientFunction> cf_eps)
+	 {
+	   self->SetMaterialParameters(cf_mu,cf_eps);
+	 }, py::arg("mu"), py::arg("eps"))
     .def("PropagateSAT",
          [](shared_ptr<CL> self, shared_ptr<BaseVector> vecu, int stages, int substeps)
          {

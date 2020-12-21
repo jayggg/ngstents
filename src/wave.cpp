@@ -30,8 +30,8 @@ public:
   using BASE::CalcEntropy;
   using BASE::CalcViscCoeffEl;
   
-  virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> mu,
-                                     shared_ptr<CoefficientFunction> eps)
+  void SetMaterialParameters(shared_ptr<CoefficientFunction> mu,
+			     shared_ptr<CoefficientFunction> eps)
   {
     use_mu_eps = true;
     cf_mu = mu;

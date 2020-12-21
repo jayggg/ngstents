@@ -212,14 +212,14 @@ void ApplyDGOperator (FESpace & fes,
              ElementTransformation & trafop = ma->GetTrafo (eip, lh);
 
 	     size_t tid= TaskManager::GetThreadId();
-	     auto nr = trace->StartTask(tid, tfac_getfe,
-                                        PajeTrace::Task::ID_TIMER);
+	     //auto nr = trace->StartTask(tid, tfac_getfe,
+             //                           PajeTrace::Task::ID_TIMER);
 
 
              const FiniteElement & felm = fes.GetFE (eim, lh);
              const FiniteElement & felp = fes.GetFE (eip, lh);
 
-	     trace->StopTask(tid, nr);
+	     //trace->StopTask(tid, nr);
 
              Array<int> dnumsm(felm.GetNDof(), lh);
              Array<int> dnumsp(felp.GetNDof(), lh);
@@ -271,7 +271,7 @@ void ApplyDGOperator (FESpace & fes,
                ud.AssignMemory (proxy, ir_facet.GetNIP(), proxy->Dimension(), lh);
 
 
-	     nr = trace->StartTask(tid, tfac_apply, PajeTrace::Task::ID_TIMER);
+	     //nr = trace->StartTask(tid, tfac_apply, PajeTrace::Task::ID_TIMER);
 
              for (ProxyFunction * proxy : numflux_trial_proxies)
                {
@@ -282,7 +282,7 @@ void ApplyDGOperator (FESpace & fes,
                    proxy->Evaluator()->Apply(felm, mirm, elxm,
                                              ud.GetAMemory(proxy));
                }
-	     trace->StopTask(tid, nr);
+	     //trace->StopTask(tid, nr);
 
              FlatMatrix<SIMD<double>> flux_pnt_values(num_equ, ir_facet.GetNIP(),
                                                       lh);
@@ -295,12 +295,12 @@ void ApplyDGOperator (FESpace & fes,
                    row(j) *= mirm[j].GetWeight();
                }
 
-	     nr = trace->StartTask(tid, tfac_applyt, PajeTrace::Task::ID_TIMER);
+	     //nr = trace->StartTask(tid, tfac_applyt, PajeTrace::Task::ID_TIMER);
 
 	     evaluator->AddTrans(felm, mirm, flux_pnt_values, elym);
              evaluator->AddTrans(felp, mirp, flux_pnt_values, elyp);
 
-	     trace->StopTask(tid, nr);
+	     // trace->StopTask(tid, nr);
 
              elym *= -1;
              y.AddIndirect(dnumsm, elym);

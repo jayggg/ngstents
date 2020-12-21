@@ -33,6 +33,11 @@ public:
   
   virtual void SetBC() = 0;
 
+  virtual void SetFluxField(shared_ptr<CoefficientFunction> cf) = 0;
+
+  virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
+                                     shared_ptr<CoefficientFunction> cf_eps) = 0;
+
   virtual void PropagateSAT(int stages, int substeps,
 			    BaseVector & hu, BaseVector & hu_init,
 			    LocalHeap & lh) = 0;
@@ -159,6 +164,17 @@ public:
         }
   }
 
+  virtual void SetFluxField(shared_ptr<CoefficientFunction> cf)
+  {
+    throw Exception("SetFluxField just available for Advection equation");
+  }
+
+  virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
+                                     shared_ptr<CoefficientFunction> cf_eps)
+  {
+    throw Exception("SetMaterialParameters just available for Wave equation");
+  }
+  
   template <int W>
   void SolveM (const Tent & tent, int loci, FlatMatrixFixWidth<W> mat,
                LocalHeap & lh) const

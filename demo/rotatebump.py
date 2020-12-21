@@ -24,7 +24,7 @@
 from netgen.geom2d import unit_square
 from ngsolve import Mesh, CoefficientFunction, exp, x, y
 import ngsolve as ng
-from tents import ApplyDG
+from ngstents.conslaw import ApplyDG
 
 ng.ngsglobals.msg_level = 1
 # ng.ngsglobals.pajetrace=10000000
