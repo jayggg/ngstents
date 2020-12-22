@@ -2,7 +2,6 @@
 using namespace ngsolve;
 
 #include "tconservationlaw_tp_impl.hpp"
-#include <python_ngstd.hpp>
 
 template <int D>
 class Wave : public T_ConservationLaw<Wave<D>, D, D+1, 0>
@@ -172,8 +171,6 @@ public:
   }
 };
 
-/////////////////////////////////////////////////////////////////////////
-//                 EXPORT TO PYTHON
 /////////////////////////////////////////////////////////////////////////
 
 shared_ptr<ConservationLaw> CreateWave(const shared_ptr<TentPitchedSlab> & tps, const int & order)

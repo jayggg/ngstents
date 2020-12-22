@@ -2,7 +2,6 @@
 using namespace ngsolve;
 
 #include "tconservationlaw_tp_impl.hpp"
-#include <python_ngstd.hpp>
 
 template <int D>
 class Burgers : public T_ConservationLaw<Burgers<D>, D, 1, 1>
@@ -151,8 +150,6 @@ public:
   }
 };
 
-/////////////////////////////////////////////////////////////////////////
-//                 EXPORT TO PYTHON
 /////////////////////////////////////////////////////////////////////////
 
 shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<TentPitchedSlab> & tps, const int & order)
