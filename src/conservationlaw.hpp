@@ -57,9 +57,8 @@ EQUATION: the class representing the equation
 DIM: spatial dimension in which the conservation law is prescribed upon
 COMP: number of state variables/equations
 ECOMP: number of state variables/equations for entropy residual (non-linear eqs)
-XDEPENDENT: whether the flux depends on the spatial coordinates
 */
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEPENDENT>
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
 class T_ConservationLaw : public ConservationLaw
 {
 protected:
@@ -264,7 +263,7 @@ public:
   Mat<COMP,DIM,SCAL> Flux (const BaseMappedIntegrationPoint & mip,
                            const FlatVec<COMP,SCAL> & u) const
   {
-    return Cast().Flux(u);
+    throw Exception ("flux not implemented");
   }
 
   void Flux (const SIMD_BaseMappedIntegrationRule & mir,
@@ -277,15 +276,6 @@ public:
 	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
-    if (!XDEPENDENT)
-      Cast().NumFlux (ul, ur, normals, fna);
-    else
-      throw Exception ("numerical flux for FlatMatrix<SIMD> not implemented for X-dependent equation");
-  }
-
-  void NumFlux(FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
-  {
     throw Exception ("numerical flux for FlatMatrix<SIMD> not implemented");
   }
 
@@ -293,24 +283,18 @@ public:
 		     const FlatVec<COMP> & ul, const FlatVec<COMP> & ur,
 		     const Vec<DIM> & nv) const
   {
-    return Cast().NumFlux(ul,ur,nv);
-  }
-
-  template<typename SCAL=double>
-  Vec<COMP,SCAL> NumFlux (const FlatVec<COMP,SCAL> & ul,
-			  const FlatVec<COMP,SCAL> & ur,
-			  const Vec<DIM,SCAL> & nv) const
-  {
     throw Exception ("numerical flux not implemented");
   }
 
-  void u_reflect(FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
+  void u_reflect(const SIMD_BaseMappedIntegrationRule & mir,
+		 FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
                  FlatMatrix<SIMD<double>> u_refl) const
   {
-    Cast().u_reflect(u,normals,u_refl);
+    throw Exception ("reflecting boundary conditions not implemented for "
+		     + ToString(this->equation) + "equation!");
   }
 
-  void u_transparent(SIMD_BaseMappedIntegrationRule & mir,
+  void u_transparent(const SIMD_BaseMappedIntegrationRule & mir,
                      FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
                      FlatMatrix<SIMD<double>> u_transp) const
   {

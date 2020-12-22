@@ -10,8 +10,8 @@ FlatVector<> AsFV (T & mat)
   return FlatVector<>( mat.Height()*mat.Width(), &mat(0,0) );
 };
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u0,
 	      FlatMatrixFixWidth<COMP> flux, double tstar, LocalHeap & lh)
 {
@@ -87,10 +87,7 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
           auto & simd_mir1 = *fedata->mfiri1[i];
 
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
-          if (XDEP)
-            Cast().NumFlux (simd_mir1, u1, u2, fedata->anormals[i], fn);
-          else
-            Cast().NumFlux (u1, u2, fedata->anormals[i], fn);
+	  Cast().NumFlux (simd_mir1, u1, u2, fedata->anormals[i], fn);
 
           FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))
@@ -125,7 +122,7 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
             }
           else if (bc == 1) // wall
             {
-              Cast().u_reflect(u1, fedata->anormals[i], u2);
+              Cast().u_reflect(simd_mir, u1, fedata->anormals[i], u2);
             }
           else if (bc == 2) // inflow, use initial data
             {
@@ -133,7 +130,6 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
             }
           else if (bc == 3) // transparent (wave)
             {
-              auto & simd_mir = *fedata->mfiri1[i];
               Cast().u_transparent(simd_mir, u1, fedata->anormals[i], u2);
             }
           else
@@ -142,10 +138,7 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
                   ToString(bc+1));
 
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
-          if (XDEP)
-            Cast().NumFlux (simd_mir, u1, u2, fedata->anormals[i], fn);
-          else
-            Cast().NumFlux (u1, u2, fedata->anormals[i], fn);
+	  Cast().NumFlux (simd_mir, u1, u2, fedata->anormals[i], fn);
 
           FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))
@@ -164,8 +157,8 @@ CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u
 
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP, XDEP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                    FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
                    FlatMatrixFixWidth<COMP> visc, LocalHeap & lh)
@@ -322,8 +315,8 @@ CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
     }
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP, XDEP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                          FlatMatrixFixWidth<COMP> ut,
                          FlatMatrixFixWidth<ECOMP> res,
@@ -458,6 +451,7 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
 
           fel1.Evaluate(simd_ir_facet_vol1,temp.Rows(dn1),u1);
 
+	  auto & simd_mir1 = *fedata->mfiri1[i];
 	  // set u2 dofs based on boundary condition number
           int bc = bcnr[tent.internal_facets[i]];
           if (bc == 0) // outflow, use same values as on the inside
@@ -466,7 +460,7 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
             }
           else if (bc == 1) // wall
             {
-              Cast().u_reflect(u1, fedata->anormals[i], u2);
+              Cast().u_reflect(simd_mir1, u1, fedata->anormals[i], u2);
             }
           else if (bc == 2) // inflow, use initial data
             {
@@ -474,8 +468,7 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
             }
           else if (bc == 3) // transparent (wave)
             {
-              auto & simd_mir = *fedata->mfiri1[i];
-              Cast().u_transparent(simd_mir, u1, fedata->anormals[i], u2);
+              Cast().u_transparent(simd_mir1, u1, fedata->anormals[i], u2);
             }
           else
             throw Exception(string(
@@ -485,8 +478,7 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
           FlatMatrix<SIMD<double>> Fn(ECOMP, simd_nipt, lh);
           Cast().EntropyFlux(u1,u2,fedata->anormals[i],Fn);
 
-          auto & simd_mir1 = *fedata->mfiri1[i];
-          FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
+	  FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))
             {
               auto fac = di(j) * simd_mir1[j].GetWeight();
@@ -500,8 +492,8 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
     SolveM (tent, i, res.Rows (tent.fedata->ranges[i]), lh);
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-double T_ConservationLaw<EQUATION, DIM, COMP,ECOMP, XDEP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
+double T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 CalcViscosityCoefficientTent (int tentnr, FlatMatrixFixWidth<COMP> u,
                               FlatMatrixFixWidth<ECOMP> res,
 			      double tstar, LocalHeap & lh)
@@ -561,8 +553,8 @@ CalcViscosityCoefficientTent (int tentnr, FlatMatrixFixWidth<COMP> u,
 // implementations of maps 
 ////////////////////////////////////////////////////////////////
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 Cyl2Tent (int tentnr, double tstar,
 	  FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
 	  LocalHeap & lh)
@@ -602,8 +594,8 @@ Cyl2Tent (int tentnr, double tstar,
     }
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
          FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
 {
@@ -650,8 +642,8 @@ ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
     }
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 Tent2Cyl (int tentnr, double tstar,
 	  FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
           bool solvemass, LocalHeap & lh)
@@ -705,8 +697,8 @@ Tent2Cyl (int tentnr, double tstar,
 // time stepping methods 
 ////////////////////////////////////////////////////////////////
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 PropagateSAT(int stages, int substeps,
 	     BaseVector & hu, BaseVector & hu0,
 	     LocalHeap & lh)
@@ -760,8 +752,8 @@ PropagateSAT(int stages, int substeps,
      });
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP, bool XDEP>
-void T_ConservationLaw<EQUATION, DIM, COMP,ECOMP,XDEP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, LocalHeap & lh)
 {
   shared_ptr<BaseVector> hres = (ECOMP > 0) ? gfres->GetVectorPtr() : nullptr;

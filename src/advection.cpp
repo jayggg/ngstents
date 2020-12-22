@@ -5,11 +5,11 @@ using namespace ngsolve;
 #include <python_ngstd.hpp>
 
 template <int D>
-class Advection : public T_ConservationLaw<Advection<D>,D,1,0,true>
+class Advection : public T_ConservationLaw<Advection<D>, D, 1, 0>
 {
   shared_ptr<CoefficientFunction> bfield = nullptr;
 
-  typedef T_ConservationLaw<Advection<D>,D,1,0,true> BASE;
+  typedef T_ConservationLaw<Advection<D>, D, 1, 0> BASE;
   
 public:
   Advection (const shared_ptr<TentPitchedSlab> & atps, const int & order)
@@ -55,7 +55,7 @@ public:
   }
 
   // numerical flux
-  void NumFlux(SIMD_BaseMappedIntegrationRule & mir,
+  void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
 	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {

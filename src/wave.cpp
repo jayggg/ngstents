@@ -5,17 +5,17 @@ using namespace ngsolve;
 #include <python_ngstd.hpp>
 
 template <int D>
-class Wave : public T_ConservationLaw<Wave<D>,D,D+1,0,false>
+class Wave : public T_ConservationLaw<Wave<D>, D, D+1, 0>
 {
   //whether to use te constitutive parameters mu/epsilon
   //as, e.g., permeability/permittivity in electromagnetics
   bool use_mu_eps = false;
   shared_ptr<CoefficientFunction> cf_mu = nullptr;
   shared_ptr<CoefficientFunction> cf_eps = nullptr;
-  typedef T_ConservationLaw<Wave<D>,D,D+1,0,false> BASE;
+  typedef T_ConservationLaw<Wave<D>, D, D+1, 0> BASE;
   
 public:
-  Wave (const shared_ptr<TentPitchedSlab> &atps, const int & order)
+  Wave (const shared_ptr<TentPitchedSlab> & atps, const int & order)
     : BASE (atps, "wave", order)
   { };
 
@@ -78,7 +78,7 @@ public:
       }
   }
 
-  template <typename T>//, typename SCAL=double>
+  template <typename T>
   Mat<D+1,D,typename T::TELEM> Flux (const T & u) const
   {
 
@@ -88,6 +88,7 @@ public:
 
     return flux;
   }
+  
   // Flux on element
   void Flux (const SIMD_BaseMappedIntegrationRule & mir,
              FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> flux) const
@@ -103,7 +104,8 @@ public:
       }
   }
 
-  void NumFlux(FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
+  void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
+	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
     for (size_t i : Range(ul.Width()))
@@ -124,7 +126,8 @@ public:
       }
   }
   
-  void u_reflect(FlatMatrix<SIMD<double>> u,
+  void u_reflect(const SIMD_BaseMappedIntegrationRule & mir,
+		 FlatMatrix<SIMD<double>> u,
                  FlatMatrix<SIMD<double>> normals,
                  FlatMatrix<SIMD<double>> u_refl) const
   {
@@ -147,7 +150,7 @@ public:
     u_refl.Row(D) = u.Row(D);
   }
 
-  void u_transparent(SIMD_BaseMappedIntegrationRule & mir,
+  void u_transparent(const SIMD_BaseMappedIntegrationRule & mir,
                      FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
                      FlatMatrix<SIMD<double>> u_transp) const
   {

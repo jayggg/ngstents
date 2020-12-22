@@ -5,9 +5,9 @@ using namespace ngsolve;
 #include <python_ngstd.hpp>
 
 template <int D>
-class Burgers : public T_ConservationLaw<Burgers<D>,D,1,1,false>
+class Burgers : public T_ConservationLaw<Burgers<D>, D, 1, 1>
 {
-  typedef T_ConservationLaw<Burgers<D>,D,1,1,false> BASE;
+  typedef T_ConservationLaw<Burgers<D>, D, 1, 1> BASE;
 
 public:
   Burgers (const shared_ptr<TentPitchedSlab> & tps, const int & order)
@@ -52,7 +52,8 @@ public:
   // Numerical Flux on a facet.  ul and ur are the values at integration points
   // of the two elements adjacent to an internal facet
   // of the spatial mesh of a tent.
-  void NumFlux(FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
+  void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
+	       FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
     for(size_t i : Range(ula.Width()))
@@ -69,12 +70,6 @@ public:
       }
   }
 
-  void u_reflect(FlatMatrix<SIMD<double>> u,
-                 FlatMatrix<SIMD<double>> normals,
-                 FlatMatrix<SIMD<double>> u_refl) const
-  {
-    cout << "no reflecting B.C. for Burgers Equation" << endl;
-  }
 
   void CalcEntropy(FlatMatrix<AutoDiff<1,SIMD<double>>> adu,
                    FlatMatrix<AutoDiff<1,SIMD<double>>> grad,
