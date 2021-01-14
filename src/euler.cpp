@@ -696,36 +696,6 @@ public:
     gfmach->GetVector().FVDouble() = pUT.Col(D+2);
   }
 
-  ////// solve uhat = u - grad * f(u) /////////////////
-  /*void TransformBack(const BaseMappedIntegrationPoint & mip, const Vec<D> & grad, const FlatVec<D+2> u) const
-  {
-    // TransformBackEuler<D>(mip,grad,u);
-
-    double temp = u(0) - InnerProduct(u.Range(1,D+1),grad);
-    double temp2 = 2*u(D+1)*u(0) - L2Norm2(u.Range(1,D+1));
-    double rhoe = temp2 /(temp + sqrt( sqr(temp) - 4*(dim_+1)/sqr(dim_)*L2Norm2(grad)*temp2));
-    
-    // *testout << "rho*e = " << rhoe << endl;
-    double rho = sqr(u(0))/(temp - 2*L2Norm2(grad)*rhoe/dim_);
-    // *testout << "rho= " << rho << endl;
-    Vec<D> U = 1.0/u(0) * (u.Range(1,D+1) + 2*rhoe/dim_ * grad);
-    // *testout << "U = " << U << endl;
-    // double E2 = rhoe + 0.5 * rho * L2Norm2(U);
-    double E = (u(D+1)+2*rhoe*InnerProduct(U,grad)/dim_)*rho/u(0); // better results with this version
-    
-    // *testout << u(0) << " ?= " << rho * (1.0 - InnerProduct(U,grad)) << endl;
-    // *testout << u(1) << " ?= " << rho * U(0) * (1.0 - InnerProduct(U,grad)) - 2.0*rhoe/dim_*grad(0) << endl;
-    // *testout << u(2) << " ?= " << rho * U(1) * (1.0 - InnerProduct(U,grad)) - 2.0*rhoe/dim_*grad(1) << endl;
-    // *testout << u(3) << " ?= " << E * (1.0 - InnerProduct(U,grad)) - 2.0*rhoe/dim_*InnerProduct(U,grad) << endl;
-
-    u(0) = rho;
-    u.Range(1,D+1) = rho * U;
-    u(D+1) = E;
-  }
-  */
-
-  
-  
   template <typename MIP=BaseMappedIntegrationPoint, typename TA, typename TB>
   void InverseMap(const MIP & mip, const TA & grad,
 		  const TB & u) const
@@ -737,46 +707,27 @@ public:
           res += a(i)*b(i);
         return res;
       };
+
+    // version diploma thesis
     auto temp = u(0) - InnerProduct(u.Range(1,D+1),grad);
     auto temp2 = 2*u(D+1)*u(0) - InnerProduct(u.Range(1,D+1),u.Range(1,D+1));
     auto rhoe = temp2 /(temp + sqrt( sqr(temp) - 4*(dim_+1)/sqr(dim_)*InnerProduct(grad,grad)*temp2));
     
     auto rho = sqr(u(0))/(temp - 2*InnerProduct(grad,grad)*rhoe/dim_);
-    Vec<D,typename TA::TELEM> U = 1.0/u(0) * (u.Range(1,D+1) + 2*rhoe/dim_ * grad);
-    auto E = (u(D+1)+2*rhoe*InnerProduct(U,grad)/dim_)*rho/u(0);
+    Vec<D,typename TA::TELEM> m = rho/u(0) * (u.Range(1,D+1) + 2*rhoe/dim_ * grad);
+    auto E = (rho*u(D+1)+2*rhoe*InnerProduct(m,grad)/dim_)/u(0);
 
-    /* version in diss
-    auto a1 = dim_/2.0*u(0);
-    auto a2 = 2*u(0)*u(D+1)-InnerProduct(u.Range(1,D+1),u.Range(1,D+1));
-    auto normgrad = InnerProduct(grad,grad);
-    auto p = a2/(a1 + sqrt(sqr(a1) - normgrad*a2));
-    auto rho = sqr(u(0))/(u(0) - InnerProduct(u.Range(1,D+1),grad) - p*normgrad);
-    Vec<D,typename TA::TELEM> U = 1.0/u(0) * (u.Range(1,D+1) + p* grad);
-    auto E = (u(D+1)+p*InnerProduct(U,grad))*rho/u(0);
-    rhoe = dim_/2.0*p;
-    */
-    /*
-    *testout << u(0) << " ?= " << rho * (1.0 - InnerProduct(U,grad)) << endl;
-    *testout << u(1) << " ?= " << 
-    rho * U(0) * (1.0 - InnerProduct(U,grad)) - 2.0*rhoe/dim_*grad(0) << endl;
-    *testout << u(2) << " ?= " << 
-    rho * U(1) * (1.0 - InnerProduct(U,grad)) - 2.0*rhoe/dim_*grad(1) << endl;
-    *testout << u(3) << " ?= " << 
-    E * (1.0 - InnerProduct(U,grad)) - 2.0*rhoe/dim_*InnerProduct(U,grad) << endl;
-    */
-    /*
-    Vec<D+2,SCAL> uhat;
-    uhat(0) = rho * (1.0 - InnerProduct(U,grad));
-    uhat(1) = rho * U(0) * (1.0 - InnerProduct(U,grad)) - 2.0*rhoe/dim_*grad(0);
-    uhat(2) = rho * U(1) * (1.0 - InnerProduct(U,grad)) - 2.0*rhoe/dim_*grad(1);
-    uhat(3) = E * (1.0 - InnerProduct(U,grad)) - 2.0*rhoe/dim_*InnerProduct(U,grad);
-    for(int i : Range(D+2))
-      if( (u(i).Value()-uhat(i).Value()) > 1e-14 || (u(i).DValue(0)-uhat(i).DValue(0)) > 1e-14)
-	cout << "i : " << u(i).Value() << " ? = " << uhat(i).Value() << endl
-	     << u(i).DValue(0) << " ? = " << uhat(i).DValue(0) << endl;
-    */
+    // version in diss
+    // auto a1 = dim_/2.0*(u(0)-InnerProduct(u.Range(1,D+1),grad));
+    // auto a2 = 2*u(0)*u(D+1)-InnerProduct(u.Range(1,D+1),u.Range(1,D+1));
+    // auto normgrad = InnerProduct(grad,grad);
+    // auto p = a2/(a1 + sqrt(sqr(a1) - (dim_+1)*normgrad*a2));
+    // auto rho = sqr(u(0))/(u(0) - (InnerProduct(u.Range(1,D+1),grad) + p*normgrad));
+    // Vec<D,typename TA::TELEM> m = rho/u(0) * (u.Range(1,D+1) + p* grad);
+    // auto E = (rho*u(D+1) + p*InnerProduct(m,grad))/u(0);
+
     u(0) = rho;
-    u.Range(1,D+1) = rho * U;
+    u.Range(1,D+1) = m;
     u(D+1) = E;
   }
 
@@ -787,32 +738,7 @@ public:
     for (auto i : Range(mir))
       InverseMap(mir[i], grad.Col(i), u.Col(i));
   }
-  
-  // void TransformBackDerivative(const BaseMappedIntegrationPoint & mip,
-  // 			       const Vec<D> & grad, const Vec<D> & gradt,
-  // 			       const FlatVec<D+2> u, const FlatVec<D+2> uhat_t) const
-  // {
-  //   // u has to be transformed variable, not uhat !!!!
-  //   Mat<D+2> mat;
-  //   mat = Id<D+2>();
-  // 
-  //   Vec<D+2,AutoDiff<D+2>> adu;
-  //   for(int i = 0; i < D+2; i++)
-  //     adu(i) = AutoDiff<D+2>(u(i),i);
-  // 
-  //   Mat<D+2,D,AutoDiff<D+2> > flux = Flux(adu);
-  //   Vec<D+2,AutoDiff<D+2> > adphif = flux*grad;
-  // 
-  //   for(int i = 0; i < D+2; i++)
-  //     for(int j = 0; j < D+2; j++)
-  // 	mat(i,j) -= adphif(i).DValue(j);
-  // 
-  //   CalcInverse(mat);
-  // 
-  //   uhat_t += Flux<double>(u)*gradt;
-  //   uhat_t = mat*uhat_t;
-  // }
-  
+
 };
 
 /////////////////////////////////////////////////////////////////////////
