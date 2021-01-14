@@ -72,42 +72,24 @@ public:
       gfmach->Update();
     }
   
-  //template <int W>
-  void SolveM (int i, FlatMatrixFixWidth<5> mat, LocalHeap & lh) const
-  {
-    //ConservationLaw<Euler<D>,D,D+2,1> a;
-    //a.SolveM(i,mat,lh);
-    BASE :: SolveM(i,mat,lh);
-  }
-  
   using BASE::u_reflect;
   using BASE::InverseMap;
   using BASE::CalcEntropy;
 
   template <typename T>//SCAL=double>
-    Mat<D+2,D,typename T::TELEM> Flux (const T & U) const
+  Mat<D+2,D,typename T::TELEM> Flux (const T & U) const
   {
     Mat<D+2,D,typename T::TELEM> flux;
     auto rho = U(0);
     Vec<D,typename T::TELEM> u = 1/rho * U.Range(1,D+1);
-    // double E = U(D+1) / rho;
-    // double e = E - 0.5 * L2Norm2(u);
     auto E = U(D+1);
     auto e = E/rho - 0.5 * InnerProduct(u,u); // L2Norm2(u) wouldn't work for AutoDiff
     auto temp = 4.0 * e / dim_;
-    // double h = ( dim_ + 2 ) / 4.0 * temp;
 
     flux.Row(0) = rho * u;
     flux.Rows(1,D+1) = 0.5 *rho*temp*Id<D>() + rho *u*Trans(u);
-    // flux.Row(D+1) = rho * ( h + 0.5 * L2Norm2(u)) * u;
     flux.Row(D+1) = ( E + 0.5*rho*temp ) * u;
     return flux;
-  }
-
-  template <typename SCAL>
-  Mat<D+2,D,SCAL> Flux (const BaseMappedIntegrationPoint & mip, const FlatVec<D+2,SCAL> & u) const
-  {
-    return Flux(u);
   }
 
   void Flux (const SIMD_BaseMappedIntegrationRule & mir,
@@ -123,12 +105,6 @@ public:
       }
   }
 
-  // Vec<D+2> Flux (const BaseMappedIntegrationPoint & mip,
-  //                const FlatVec<D+2> & ul, const FlatVec<D+2> & ur, const Vec<D> & n) const
-  // {
-  //   return Flux(ul,ur,n);
-  // }
-  
   Vec<D+2> NumFlux (Vec<D+2> ul, Vec<D+2> ur, Vec<D> n) const
     {
       /* // cout << "ul, ur = " << ul << ", " << ur << endl;
@@ -268,143 +244,7 @@ public:
             for(auto k : Range(D+2))
               u_refl(k,i)[j] = uvec_refl(k);
           }
-        /*
-        auto rho = u(0,i);
-        // cout << "rho = " << endl << rho << endl;
-        Vec<D,SIMD<double>> uvec;
-        for(auto j : Range(D))
-          uvec(j) = u(j+1)/rho;
-        // cout << "uvec = " << endl << uvec << endl;
-        auto E = u(D+1)/rho;
-        // cout << "E = " << endl << E << endl;
-        auto e = E - 0.5 * InnerProduct(uvec,uvec);
-        // cout << "e = " << endl << e << endl;
-
-        Vec<D,SIMD<double>> nn = normals.Col(i);
-        nn /= L2Norm(nn);
-        // cout << "n = " << endl << nn << endl;
-        Vec<D,SIMD<double>> uvec_refl = uvec - 2.0 * InnerProduct(nn,uvec) * nn;
-        // cout << "uvec_refl = " << endl << uvec_refl << endl;
-        
-        u_refl(0,i) = rho;
-        for(auto j : Range(D))
-          u_refl(j+1,i) = u_refl(j);
-        u_refl(D+1,i) = rho * ( e + 0.5 * InnerProduct(uvec_refl,uvec_refl));
-        // cout << "u_refl(D+1,i) = " << endl << u_refl(D+1,i) << endl;
-        */
       }
-  }
-
-  void CalcEntropy(const Vec<D+2> & U, const Vec<D+2> & Ut, Vec<1> & E, Vec<D> & F) const
-  {
-    AutoDiff<1> adU[D+2];
-    for (int j = 0; j < D+2; j++)
-      {
-	adU[j].Value() = U(j);
-	adU[j].DValue(0) = Ut(j);
-      }
-    
-    AutoDiff<1> adnormu2 = 0;
-    for(int l = 0; l < D; l++)
-      adnormu2 += adU[l+1]*adU[l+1];
-    
-    AutoDiff<1> adT =  2*(2*adU[0]*adU[D+1] - adnormu2) / (dim_*adU[0]*adU[0]);
-    if(adT.Value() <= 0)
-      adT.Value() = 1e-10;
-    
-    AutoDiff<1> adS = log (adU[0]) - dim_/2.0 * log (adT) - dim_/2.0 * log (M_PI) - dim_/2.0;
-    
-    AutoDiff<1> adrS = adU[0] * adS;
-    E = adrS.DValue(0);
-    
-    F = U.Range(1,D+1); // rho * u
-    F *= adS.Value();
-  }
-
-  // calculates dEdt and F for tent pitching
-  /* old version
-  void CalcEntropy(const Vec<D+2> & U, const Vec<D+2> & Ut, const Vec<D> & grad,
-		   Vec<1> & E, Vec<D> & F) const
-  {
-    AutoDiff<1> adU[D+2];
-    for (int j = 0; j < D+2; j++)
-      {
-	adU[j].Value() = U(j);
-	adU[j].DValue(0) = Ut(j);
-      }
-    
-    AutoDiff<1> adnormu2 = 0;
-    for(int l = 0; l < D; l++)
-      adnormu2 += adU[l+1]*adU[l+1];
-    
-    AutoDiff<1> adT =  2*(2*adU[0]*adU[D+1] - adnormu2) / (dim_*adU[0]*adU[0]);
-    AutoDiff<1> adS = log (adU[0]) - dim_/2.0 * log (adT) - dim_/2.0 * log (M_PI) - dim_/2.0;
-    
-    AutoDiff<1> adrS = adU[0] * adS;
-    E = adrS.DValue(0);
-
-    AutoDiff<1> adphiF = 0;
-    for(int l = 0; l < D; l++)
-      adphiF += adU[l+1]*grad(l);
-    adphiF *= adS;
-    E(0) -= adphiF.DValue(0);
-    
-    F = U.Range(1,D+1);
-    F *= adS.Value();
-    }*/
-
-  void CalcEntropy(const Vec<D+2,AutoDiff<1> > & adU, const Vec<D,AutoDiff<1> > & adgrad,
-		   Vec<1> & dEdt, Vec<D> & F) const
-  {
-    AutoDiff<1> adnormu2 = 0;
-    for(int l = 0; l < D; l++)
-      adnormu2 += adU[l+1]*adU[l+1];
-    
-    AutoDiff<1> adT =  2*(2*adU[0]*adU[D+1] - adnormu2) / (dim_*adU[0]*adU[0]);
-    if(adT.Value() <= 0)
-      adT.Value() = 1e-10;
-    
-    AutoDiff<1> adS = log (adU[0]) - dim_/2.0 * log (adT) - dim_/2.0 * log (M_PI) - dim_/2.0;
-    AutoDiff<1> adrS = adU[0] * adS;
-    
-    Vec<D,AutoDiff<1> > adF = adS*adU.Range(1,D+1);
-    adrS -= InnerProduct(adgrad,adF);
-    
-    dEdt(0) = adrS.DValue(0);
-    for(int l : Range(D))
-      F(l) = adF(l).Value();
-    
-    /*// check integrability condition
-    Vec<D+2,AutoDiff<D+2>> adu;
-    for(int i = 0; i < D+2; i++)
-      adu(i) = AutoDiff<D+2>(adU(i).Value(),i);
-
-    Mat<D+2,D,AutoDiff<D+2> > flux = Flux(adu);
-    AutoDiff<D+2> adTemp =  2*(2*adu(0)*adu(D+1) - InnerProduct(adu.Range(1,D+1),adu.Range(1,D+1))) / (dim_*adu(0)*adu(0));
-    AutoDiff<D+2> adrhoS = log (adu(0)) - dim_/2.0 * log (adTemp) - dim_/2.0 * log (M_PI) - dim_/2.0;
-    Vec<D,AutoDiff<D+2> > adFlux = adrhoS*adu.Range(1,D+1);
-    adrhoS *= adu(0);
-    
-    Vec<D+2> DurhoS, DuF;
-    Mat<D+2> Duflux;
-    
-    for(int j : Range(D))
-      {
-      for(int k : Range(D+2))
-	{
-	  DurhoS(k) = adrhoS.DValue(k);
-	  DuF(k) = adFlux(j).DValue(k);
-	  for(int l : Range(D+2))
-	    Duflux(k,l) = flux(k,j).DValue(l);
-	}
-      if( L2Norm(Trans(DurhoS)*Duflux - Trans(DuF)) > 1e-10 )
-	{
-	  cout <<"error = " << L2Norm(Trans(DurhoS)*Duflux - Trans(DuF)) << endl;
-	  cout << endl << "DuE * Dufi = " << endl << Trans(DurhoS)*Duflux << DuF << " = DuFi" << endl;
-	  Ng_Redraw(); getchar();
-	}
-      }
-    */
   }
 
   void CalcEntropy(FlatMatrix<AutoDiff<1,SIMD<double>>> adu,
@@ -436,58 +276,6 @@ public:
       }
   }
   
-  void EntropyFlux (const Vec<D+2> & Ul, const Vec<D+2> & Ur, const Vec<D> & n, double & flux) const
-  {
-    double len = L2Norm(n);
-    Vec<D> ntn = 1.0/len * n;
-    
-    double rhol = Ul(0);
-    Vec<D> ul = Ul.Range(1,D+1); // rho * u
-    double Tl = 2*(2*rhol*Ul(D+1) - L2Norm2(ul)) / (dim_*rhol*rhol);
-    if(Tl <= 0)
-    	Tl = 1e-10;
-
-    double Sl = (log(rhol) - dim_/2.0 * log(Tl) - dim_/2.0 * log (M_PI) - dim_/2.0);
-
-    double rhor = Ur(0);
-    Vec<D> ur = Ur.Range(1,D+1); // rho * u
-    double Tr = 2*(2*rhor*Ur(D+1) - L2Norm2(ur)) / (dim_*rhor*rhor);
-    if(Tr <= 0)
-        Tr = 1e-10;
-
-    double Sr = (log(rhor) - dim_/2.0 * log(Tr) - dim_/2.0 * log (M_PI) - dim_/2.0);
-    
-    double uln = InnerProduct (ul, ntn);
-    double urn = InnerProduct (ur, ntn);
-    
-    double upwind = (uln > 0) ?  uln * Sl :  urn * Sr;
-    flux = len * upwind;
-    
-    //double i0, i1, i2, i3;
-
-    //Int_x_infty (-uln/(rhol*sqrt (Tl)), i0, i1, i2, i3);
-    //flux = len * Sl * rhol / sqrt(M_PI) * (uln/rhol*i0 + sqrt(Tl)*i1);
-
-    //Int_x_infty ( urn/(rhor*sqrt (Tr)), i0, i1, i2, i3);
-    //flux -= len * Sr * rhor / sqrt(M_PI) * (-urn/rhor*i0 + sqrt(Tr)*i1);
-    
-  }
-  
-  void EntropyFlux (const Vec<D+2> & Ul, const Vec<D> & n, double & flux)  const
-  {
-    double len = L2Norm(n);
-    Vec<D> ntn = 1.0/len * n;
-    
-    double rhol = Ul(0);
-    Vec<D> ul = Ul.Range(1,D+1);
-    double Tl = 2*(2*rhol*Ul(D+1) - L2Norm2(ul)) / (dim_*rhol*rhol);
-    if(Tl <= 0) Tl = 1e-10;
-    double Sl = (log(rhol) - dim_/2.0 * log(Tl) - dim_/2.0 * log (M_PI) - dim_/2.0);
-    
-    flux = len * Sl * InnerProduct (ul, ntn);
-
-  }
-
   void EntropyFlux (FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
                     FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> flux) const
   {
@@ -512,51 +300,6 @@ public:
         auto upwind = IfPos(uln, uln * Sl, urn * Sr);
         flux.Col(i) = upwind;
       }
-  }
-
-  void CalcViscCoeffEl(const FlatMatrixFixWidth<D+2> & elu_ipts, const FlatMatrixFixWidth<1> & res_ipts, const double hi, double & coeff) const
-  {
-    int nipt = elu_ipts.Height();
-    
-    double betaeli = 0.0;
-    double rhoeli = 0.0;
-    double visci = 0;
-    
-    Vec<D+2> eluk;
-    
-    for(int k = 0; k < nipt; k++)
-      {
-	if(fabs (res_ipts(k,0)) > visci)
-	  visci = fabs (res_ipts(k,0));
-	
-	eluk = elu_ipts.Row(k);
-	rhoeli = max(rhoeli, eluk(0));
-	
-	// double normu = (sqr(eluk(1)) + sqr(eluk(2)))/sqr(eluk(0));
-	// double e = eluk(3) / eluk(0) - 0.5 * normu;
-	double normu = InnerProduct(eluk.Range(1,D+1),eluk.Range(1,D+1))/sqr(eluk(0));
-	double e = eluk(D+1) / eluk(0) - 0.5 * normu;
-	double elT = 4.0 * e / dim_;
-	double betaipt = sqrt(normu) + sqrt(gamma_*elT);
-	betaeli = max(betaeli, betaipt);
-      }
-    
-    coeff = min (0.25*betaeli*rhoeli, 0.25*visci * hi);
-    coeff *= hi;
-    
-  }
-  
-  void CalcViscCoeffEl(const FlatMatrixFixWidth<D+2> & elu_ipts,
-		       const FlatMatrixFixWidth<1> & res_ipts,
-		       const FlatMatrixFixWidth<D> & grad_ipts,
-		       const double hi, double & coeff) const
-  {
-    // input elu_ipts corresponds to uhat
-    // calculation of the viscosity coefficient should be probably different
-    BaseMappedIntegrationPoint mip;
-    for (int i: Range(elu_ipts.Height()))
-      InverseMap(mip,grad_ipts.Row(i),elu_ipts.Row(i));
-    CalcViscCoeffEl(elu_ipts, res_ipts, hi, coeff);
   }
 
   void CalcViscCoeffEl(const SIMD_BaseMappedIntegrationRule & mir,
@@ -598,79 +341,72 @@ public:
   
   void u2pUT(FlatMatrix<double> u, FlatMatrix<double> pUT, LocalHeap & lh) const
   {
-    //const L2HighOrderFESpace & fes1 = 
-    //  dynamic_cast<const L2HighOrderFESpace&> (gfrho->GetFESpace());
-    
     int ne = ma->GetNE();
     
-    // #pragma omp parallel 
-    {
-      //       LocalHeap & clh = lh, lh = clh.Split();
-      //#pragma omp for schedule(static)
-      for (int i = 0; i < ne; i++)
-        {
-          HeapReset hr(lh);
-	  ElementId ei(VOL,i);
+    for (int i = 0; i < ne; i++)
+      {
+	HeapReset hr(lh);
+	ElementId ei(VOL,i);
 
-          const ScalarFiniteElement<D> & fel = dynamic_cast<const ScalarFiniteElement<D>&> (fes->GetFE (ei, lh));
-          const IntegrationRuleTP<D> ir(ma->GetTrafo(ei, lh), 2*fel.Order()); // , &lh);
-          MappedIntegrationRule<D,D> mir(ir,ma->GetTrafo(ei,lh),lh);
-          IntRange dn = fes->GetElementDofs (i);
+	const ScalarFiniteElement<D> & fel = dynamic_cast<const ScalarFiniteElement<D>&> (fes->GetFE (ei, lh));
+	const IntegrationRuleTP<D> ir(ma->GetTrafo(ei, lh), 2*fel.Order()); // , &lh);
+	MappedIntegrationRule<D,D> mir(ir,ma->GetTrafo(ei,lh),lh);
+	IntRange dn = fes->GetElementDofs (i);
 	  
-          int ndof = fel.GetNDof();
-          int nipt = ir.Size();
+	int ndof = fel.GetNDof();
+	int nipt = ir.Size();
 	  
-          FlatVector<> elp(nipt,lh), elT(nipt, lh), elmach(nipt, lh), elpUT_col(nipt, lh);
-	  FlatVector<> elpUT_coef(ndof,lh);
+	FlatVector<> elp(nipt,lh), elT(nipt, lh), elmach(nipt, lh), elpUT_col(nipt, lh);
+	FlatVector<> elpUT_coef(ndof,lh);
 	  
 	  
-	  FlatMatrix<> elu_coef(D+2,ndof,lh);
-	  FlatMatrix<> elu_ipts(D+2,nipt,lh), elU(D,nipt,lh), elpUT_ipts(D+3,nipt,lh);
+	FlatMatrix<> elu_coef(D+2,ndof,lh);
+	FlatMatrix<> elu_ipts(D+2,nipt,lh), elU(D,nipt,lh), elpUT_ipts(D+3,nipt,lh);
 	  
-	  elu_coef = Trans(u.Rows(dn));
+	elu_coef = Trans(u.Rows(dn));
 	  
-          for(int k = 0; k < D+2; k++)
-	    fel.Evaluate (ir, elu_coef.Row(k), elu_ipts.Row(k));
+	for(int k = 0; k < D+2; k++)
+	  fel.Evaluate (ir, elu_coef.Row(k), elu_ipts.Row(k));
 	  
-          FlatVector<> eluk(D+2,lh);
+	FlatVector<> eluk(D+2,lh);
 	  
-          for (int k = 0; k < nipt; k++) 
-            {
-              double fac = mir[k].GetWeight();
-              eluk = elu_ipts.Col(k);
-              double rho = eluk(0);
+	for (int k = 0; k < nipt; k++) 
+	  {
+	    double fac = mir[k].GetWeight();
+	    eluk = elu_ipts.Col(k);
+	    double rho = eluk(0);
 	      
-	      for(int l = 0; l < D; l++)
-		elU(l,k) = eluk(l+1) / rho;
+	    for(int l = 0; l < D; l++)
+	      elU(l,k) = eluk(l+1) / rho;
 	      
-	      double normU2 = L2Norm2(elU.Col(k));
+	    double normU2 = L2Norm2(elU.Col(k));
 	      
-	      elU.Col(k) *= fac;
+	    elU.Col(k) *= fac;
 	      
-              double e = eluk(D+1) / rho - 0.5 * normU2;
+	    double e = eluk(D+1) / rho - 0.5 * normU2;
 	      
-              elT(k) = fac * 4.0 * e / dim_;
-              elp(k) = 0.5 * rho *elT(k) ;  // fac in elT(k) included
+	    elT(k) = fac * 4.0 * e / dim_;
+	    elp(k) = 0.5 * rho *elT(k) ;  // fac in elT(k) included
 	      
-	      elmach(k) = fac * sqrt(2 * normU2 / (gamma_ * elT(k) / fac) );
+	    elmach(k) = fac * sqrt(2 * normU2 / (gamma_ * elT(k) / fac) );
 	      
-            }
+	  }
 	  
-          elpUT_ipts.Row(0) = elp;
-	  elpUT_ipts.Rows(1,D+1) = elU;
-          elpUT_ipts.Row(D+1) = elT;
-          elpUT_ipts.Row(D+2) = elmach;
+	elpUT_ipts.Row(0) = elp;
+	elpUT_ipts.Rows(1,D+1) = elU;
+	elpUT_ipts.Row(D+1) = elT;
+	elpUT_ipts.Row(D+2) = elmach;
 	  
 	  
-          for(int k = 0; k < D+3; k++)
-            {
-	      fel.EvaluateTrans(ir,elpUT_ipts.Row(k),elpUT_coef);
-	      pUT.Col(k).Range(dn) = elpUT_coef;
-            }
+	for(int k = 0; k < D+3; k++)
+	  {
+	    fel.EvaluateTrans(ir,elpUT_ipts.Row(k),elpUT_coef);
+	    pUT.Col(k).Range(dn) = elpUT_coef;
+	  }
 	  
-	  SolveM(i,pUT.Rows(dn),lh);
-        }
-    }
+	// SolveM(i,pUT.Rows(dn),lh);
+	BASE::SolveM(i,pUT.Rows(dn),lh);
+      }
   }
   
   
