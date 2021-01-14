@@ -2,7 +2,6 @@
 using namespace ngsolve;
 
 #include "tconservationlaw_tp_impl.hpp"
-#include <python_ngstd.hpp>
 
 template <int D>
 class Advection : public T_ConservationLaw<Advection<D>, D, 1, 0>
@@ -19,9 +18,6 @@ public:
   using BASE::Flux;
   using BASE::NumFlux;
   using BASE::InverseMap;
-  // using BASE::u_reflect;
-  // using BASE::CalcEntropy;
-  // using BASE::CalcViscCoeffEl;
 
   void SetFluxField(shared_ptr<CoefficientFunction> cf) { bfield = cf; }
   
@@ -74,8 +70,6 @@ public:
   }
 };
 
-/////////////////////////////////////////////////////////////////////////
-//                 EXPORT TO PYTHON
 /////////////////////////////////////////////////////////////////////////
 
 shared_ptr<ConservationLaw> CreateAdvection (const shared_ptr<TentPitchedSlab> & tps, const int & order)

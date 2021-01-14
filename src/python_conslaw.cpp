@@ -1,7 +1,7 @@
 #include "conservationlaw.hpp"
 #include <python_ngstd.hpp>
 
-shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<TentPitchedSlab> & tps, const int & order);
+shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<TentPitchedSlab> & tps, const int & order);shared_ptr<ConservationLaw> CreateEuler(const shared_ptr<TentPitchedSlab> & tps, const int & order);
 shared_ptr<ConservationLaw> CreateWave(const shared_ptr<TentPitchedSlab> & tps, const int & order);
 shared_ptr<ConservationLaw> CreateAdvection(const shared_ptr<TentPitchedSlab> & tps, const int & order);
 
@@ -13,6 +13,8 @@ shared_ptr<CL> CreateConsLaw(const shared_ptr<TentPitchedSlab> & tps,
   shared_ptr<CL> cl = nullptr;
   if (eqn=="burgers")
     cl = CreateBurgers(tps,order);
+  else if(eqn=="euler")
+    cl = CreateEuler(tps,order);
   else if(eqn=="wave")
     cl = CreateWave(tps,order);
   else if(eqn=="advection")
