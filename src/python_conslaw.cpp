@@ -4,6 +4,7 @@
 shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<TentPitchedSlab> & tps, const int & order);shared_ptr<ConservationLaw> CreateEuler(const shared_ptr<TentPitchedSlab> & tps, const int & order);
 shared_ptr<ConservationLaw> CreateWave(const shared_ptr<TentPitchedSlab> & tps, const int & order);
 shared_ptr<ConservationLaw> CreateAdvection(const shared_ptr<TentPitchedSlab> & tps, const int & order);
+shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<TentPitchedSlab> & tps, const int & order);
 
 typedef ConservationLaw CL;
 
@@ -19,6 +20,8 @@ shared_ptr<CL> CreateConsLaw(const shared_ptr<TentPitchedSlab> & tps,
     cl = CreateWave(tps,order);
   else if(eqn=="advection")
     cl = CreateAdvection(tps,order);
+  else if(eqn=="maxwell")
+    cl = CreateMaxwell(tps,order);
   else
     throw Exception(string("unknown equation '"+eqn+"'"));
   return cl;
