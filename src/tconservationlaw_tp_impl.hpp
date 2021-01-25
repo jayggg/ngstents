@@ -703,14 +703,14 @@ PropagateSAT(int stages, int substeps,
 	     BaseVector & hu, BaseVector & hu0,
 	     LocalHeap & lh)
 {
-  static Timer tRK ("PropagateSAT", 2); RegionTimer reg(tRK);
-  static Timer tRKtent ("PropagateSAT - tent", 2); 
+  static Timer t_SAT ("PropagateSAT", 2); RegionTimer reg(t_SAT);
+  static Timer t_SATtent ("PropagateSAT - tent", 2);
 
   RunParallelDependency 
     (tent_dependency, [&] (int i)
      {
-       RegionTimer reg(tRKtent);
-       RegionTracer reg1(TaskManager::GetThreadId(), tRKtent, i);
+       RegionTimer reg(t_SATtent);
+       RegionTracer reg1(TaskManager::GetThreadId(), t_SATtent, i);
 
        LocalHeap slh = lh.Split();  // split to threads
 
@@ -720,8 +720,10 @@ PropagateSAT(int stages, int substeps,
        int ndof = tent.fedata->nd;
        FlatMatrixFixWidth<COMP> local_uhat(ndof,slh);
        FlatMatrixFixWidth<COMP> local_u0(ndof,slh);
+       FlatMatrixFixWidth<COMP> local_u0temp(ndof,slh);
        hu.GetIndirect(tent.fedata->dofs, AsFV(local_uhat));
        hu0.GetIndirect(tent.fedata->dofs, AsFV(local_u0));
+       local_u0temp = local_u0;
 
        FlatMatrixFixWidth<COMP> local_uhat1(ndof,slh);
        FlatMatrixFixWidth<COMP> local_u(ndof,slh);
@@ -732,6 +734,7 @@ PropagateSAT(int stages, int substeps,
 	 {
 	   local_uhat1 = local_uhat;
 	   double fac = 1.0;
+	   local_u0 = local_u0temp;
 	   for(int k : Range(1,stages+1))
 	     {
 	       Cyl2Tent(i, j*taustar, local_uhat1, local_u, slh);
@@ -745,6 +748,7 @@ PropagateSAT(int stages, int substeps,
 		   ApplyM1(i, j*taustar, local_u, local_help, slh);
 	   	   local_uhat1 += local_help;
 	   	 }
+	       local_u0 = 0.0;
 	     }
          }
        hu.SetIndirect(tent.fedata->dofs, AsFV(local_uhat));

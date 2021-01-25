@@ -70,7 +70,7 @@ void ExportConsLaw(py::module & m)
          [](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
          {
            SetValues(cf,*(self->gfu),VOL,0,*(self->pylh));
-           self->uinit = self->u; // set data used for b.c.
+           self->uinit->Set(1.0,*(self->u)); // set data used for b.c.
          })
     // Set flux field
     .def("SetFluxField",
