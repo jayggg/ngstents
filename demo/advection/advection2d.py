@@ -1,6 +1,6 @@
 from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, Draw, Redraw
-from ngsolve import CoefficientFunction, sqrt, sin, cos, x, y, z
+from ngsolve import CoefficientFunction, exp, sqrt, sin, cos, x, y, z
 from ngsolve import TaskManager
 from ngsolve.internal import visoptions, viewoptions
 from ngstents import TentSlab

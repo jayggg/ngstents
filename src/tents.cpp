@@ -328,10 +328,10 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
          const auto nneighbours = tent.nbv.Size();
 	 for (size_t k = 0; k < n_vertices; k++)
            {
-             if (vnums[k] != tent.vertex)
+             if (auto v = vmap[vnums[k]]; v != tent.vertex)
                {
                  for (size_t l = 0; l < nneighbours; l++)
-                   {if (tent.nbv[l] == vnums[k]) coef_bot(k) = coef_top(k) = tent.nbtime[l];}
+		   if (tent.nbv[l] == v) coef_bot(k) = coef_top(k) = tent.nbtime[l];
                }
              else
                {//central vertex
@@ -521,6 +521,8 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
             }
         }
     }
+  RemovePeriodicEdges(ma, fine_edges);
+
   const auto &vmap = Tent::vmap;
   //compute neighbouring data
   TableCreator<int> create_v2e, create_v2v;
@@ -538,9 +540,6 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
             create_v2e.Add (vmap[v2], e);
           }
     }
- 
-
-  RemovePeriodicEdges(ma, fine_edges);
 
   TableCreator<int> create_slave_verts(ma->GetNV());
   for ( ; !create_slave_verts.Done(); create_slave_verts++)
