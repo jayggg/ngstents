@@ -14,7 +14,7 @@ public:
 
   const int order = {};
   const string equation = {};
-  shared_ptr<L2HighOrderFESpace> fes = nullptr;
+  shared_ptr<FESpace> fes = nullptr;
   shared_ptr<GridFunction> gfu = nullptr;
   shared_ptr<GridFunction> gfres = nullptr;
   shared_ptr<GridFunction> gfuorig = nullptr;
@@ -24,9 +24,11 @@ public:
   shared_ptr<BaseVector> u = nullptr;     // u(n)
   shared_ptr<BaseVector> uinit = nullptr; // initial data, also used for bc
 public:
-  ConservationLaw (const shared_ptr<TentPitchedSlab> & atps,
-		   const string & eqn, int aorder)
-    : tps {atps}, ma {atps->ma}, order {aorder}, equation {eqn}
+  ConservationLaw (const shared_ptr<GridFunction> & agfu,
+		   const shared_ptr<TentPitchedSlab> & atps,
+		   const string & eqn)
+    : gfu{agfu}, fes{agfu->GetFESpace()}, tps {atps}, ma {atps->ma},
+      equation {eqn}, order{agfu->GetFESpace()->GetOrder()}
   { };
   
   virtual ~ConservationLaw() { ; }
@@ -78,49 +80,52 @@ public:
   // advancing front (used for time-dependent bc)
   shared_ptr<GridFunction> gftau = nullptr;
 
-  T_ConservationLaw (const shared_ptr<TentPitchedSlab> & tps,
-		     const string & eqn, int order)
-    : ConservationLaw(tps, eqn, order)
+  T_ConservationLaw (const shared_ptr<GridFunction> & gfu,
+		     const shared_ptr<TentPitchedSlab> & tps,
+		     const string & eqn)
+    : ConservationLaw(gfu, tps, eqn)
   {
+    // TODO: do I need that
     size_t heapsize = 10*1000000;
     pylh = make_shared<LocalHeap>(heapsize,"ConsLaw - py main heap",true);
 
+    // TODO: set boundaries later
     // store boundary condition numbers
     bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
 
     // Main L2 finite element space based on spatial mesh
-    Flags fesflags = Flags();
-    fesflags.SetFlag("order",order);
-    fesflags.SetFlag("dim",COMP);
-    fesflags.SetFlag("all_dofs_together");
-    fes = dynamic_pointer_cast<L2HighOrderFESpace>(
-        CreateFESpace("l2ho", ma, fesflags));
-    fes->Update();
-    fes->FinalizeUpdate();
+    // Flags fesflags = Flags();
+    // fesflags.SetFlag("order",order);
+    // fesflags.SetFlag("dim",COMP);
+    // fesflags.SetFlag("all_dofs_together");
+    // fes = dynamic_pointer_cast<L2HighOrderFESpace>(
+    //     CreateFESpace("l2ho", ma, fesflags));
+    // fes->Update();
+    // fes->FinalizeUpdate();
+    // 
+    // gfu = CreateGridFunction(fes,"u",Flags());
+    // gfu->Update();
 
-    gfu = CreateGridFunction(fes,"u",Flags());
-    gfu->Update();
-
-    if (ECOMP > 0)
-      {
-        // Scalar L2 finite element space for entropy residual
-        shared_ptr<FESpace> fes_scal =
-          CreateFESpace("l2ho", ma,
-              Flags().SetFlag("order",order).SetFlag("all_dofs_together"));
-        fes_scal->Update();
-        fes_scal->FinalizeUpdate();
-        gfres = CreateGridFunction(fes_scal,"res",Flags());
-	gfres->Update();
-
-        // Zero order L2 finite element space for viscosity
-	shared_ptr<FESpace> fes_lo = CreateFESpace("l2ho", ma,
-                                                   Flags().SetFlag("order",0));
-	fes_lo->Update();
-	fes_lo->FinalizeUpdate();
-	gfnu = CreateGridFunction(fes_lo,"nu",Flags());
-	gfnu->Update();
-      }
+    // if (ECOMP > 0)
+    //   {
+    //     // Scalar L2 finite element space for entropy residual
+    //     shared_ptr<FESpace> fes_scal =
+    //       CreateFESpace("l2ho", ma,
+    //           Flags().SetFlag("order",order).SetFlag("all_dofs_together"));
+    //     fes_scal->Update();
+    //     fes_scal->FinalizeUpdate();
+    //     gfres = CreateGridFunction(fes_scal,"res",Flags());
+    // 	gfres->Update();
+    // 
+    //     // Zero order L2 finite element space for viscosity
+    // 	shared_ptr<FESpace> fes_lo = CreateFESpace("l2ho", ma,
+    //                                                Flags().SetFlag("order",0));
+    // 	fes_lo->Update();
+    // 	fes_lo->FinalizeUpdate();
+    // 	gfnu = CreateGridFunction(fes_lo,"nu",Flags());
+    // 	gfnu->Update();
+    //   }
 
     // first order H1 space for the advancing front
     shared_ptr<FESpace> fesh1 = CreateFESpace("h1ho", ma,
@@ -136,15 +141,15 @@ public:
 
   void AllocateVectors()
   {
-    u = gfu->GetVectorPtr();
-    uinit = u->CreateVector();
-    if(gfnu != NULL)
-      {
-	gfnu->Update();
-	nu.AssignMemory(gfnu->GetVector().FVDouble().Size(),
-                        &gfnu->GetVector().FVDouble()(0));
-	nu = 0.0;
-      }
+    u = gfu->GetVectorPtr(); // TODO: should not be needed
+    uinit = u->CreateVector(); // TODO: how to set inflow boundary?
+    // if(gfnu != NULL)
+    //   {
+    // 	gfnu->Update();
+    // 	nu.AssignMemory(gfnu->GetVector().FVDouble().Size(),
+    //                     &gfnu->GetVector().FVDouble()(0));
+    // 	nu = 0.0;
+    //   }
   }
 
   virtual ~T_ConservationLaw() { ; }
@@ -178,6 +183,7 @@ public:
   void SolveM (const Tent & tent, int loci, FlatMatrixFixWidth<W> mat,
                LocalHeap & lh) const
   {
+    // TODO: check space
     auto fedata = tent.fedata;
     if (!fedata)
         throw Exception ("Expected tent.fedata to be set!");
@@ -229,6 +235,7 @@ public:
                FlatVector<SIMD<double>> delta,
                FlatMatrixFixWidth<W> mat, LocalHeap & lh) const
   {
+    // TODO: check space
     auto fedata = tent.fedata;
     if (!fedata)
         throw Exception ("Expected tent.fedata to be set!");

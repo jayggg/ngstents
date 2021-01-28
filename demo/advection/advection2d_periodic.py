@@ -37,15 +37,17 @@ print("max slope", ts.MaxSlope())
 print("n tents", ts.GetNTents())
 
 order = 4
-cl = Advection(ts,order)
+V = L2(mesh, order=order)
+u = GridFunction(V)
+cl = Advection(u, ts)
 flux = (1,0.1)
 cl.SetFluxField( CoefficientFunction(flux) )
 
 pos = (0.5,0.5)
-u = CoefficientFunction( exp(-100* ((x-pos[0])*(x-pos[0])+(y-pos[1])*(y-pos[1])) ))
-cl.SetInitial(u)
+u0 = CoefficientFunction( exp(-100* ((x-pos[0])*(x-pos[0])+(y-pos[1])*(y-pos[1])) ))
+cl.SetInitial(u0)
 
-Draw(cl.sol)
+Draw(u)
 visoptions.autoscale = 0
 
 t = 0
@@ -57,7 +59,8 @@ input("press enter to start")
 t1 = time.time()
 with TaskManager():
     while t < tend-dt/2:
-        cl.PropagateSAT(cl.sol.vec,substeps=2*order,stages=order+1)
+        # cl.PropagateSAT(substeps=2*order,stages=order+1)
+        cl.PropagateSARK(substeps=2*order)
         t += dt
         cnt += 1
         if cnt%redraw == 0:
