@@ -35,10 +35,7 @@ public:
   Array<Vector<>> gradphi_bot; // gradphi_bot[l], gradphi_top[l] =
   Array<Vector<>> gradphi_top; /* gradients of phi_bot/top at some point in the
 				  l-th simplex of the tent */
-
-  // access to global periodicity identifications
-  static Array<int> vmap;      // vertex map for periodic spaces
-
+  shared_ptr<Array<int>>vmap;
   // access to the finite element & dofs
   mutable class TentDataFE * fedata = nullptr;
 
@@ -228,6 +225,21 @@ public:
 
   //Returns the position in ready_vertices containing the vertex in which a tent will be pitched (and its level)
   [[nodiscard]] std::tuple<int,int> PickNextVertexForPitching(const FlatArray<int> &ready_vertices, const FlatArray<double> &ktilde, const FlatArray<int> &vertices_level);
+
+  //////////////// For handling periodicity //////////////////////////////////
+
+// Get the slave vertex elements for a master vertex in periodic case 3D
+  void GetVertexElements(shared_ptr<MeshAccess> ma, int vnr_master,
+                       const FlatArray<int> vnr_slaves, Array<int> & elems);
+
+  void MapPeriodicVertices(shared_ptr<MeshAccess> ma);
+
+
+  void RemovePeriodicEdges(shared_ptr<MeshAccess> ma, BitArray &fine_edges);
+
+  // access to global periodicity identifications
+  shared_ptr<Array<int>> periodicvmap;      // vertex map for periodic spaces
+
 };
 
 template <int DIM>

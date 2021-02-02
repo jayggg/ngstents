@@ -3,44 +3,6 @@
 #include <limits>
 
 
-//////////////// For handling periodicity //////////////////////////////////
-
-// Get the slave vertex elements for a master vertex in periodic case 3D
-void GetVertexElements(shared_ptr<MeshAccess> ma, int vnr_master,
-                       const FlatArray<int> vnr_slaves, Array<int> & elems)
-{
-  ma->GetVertexElements(vnr_master,elems);
-  for(auto slave : vnr_slaves)
-    for(auto elnr : ma->GetVertexElements(slave))
-      elems.Append(elnr);
-}
-
-void MapPeriodicVertices(shared_ptr<MeshAccess> ma)
-{
-  auto &vmap = Tent::vmap;
-  vmap.SetSize(ma->GetNV());
-  for (int i : Range(ma->GetNV()))
-    vmap[i] = i;
-  for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
-    {
-      const auto & periodic_nodes = ma->GetPeriodicNodes(NT_VERTEX, idnr);
-      for (const auto& per_verts : periodic_nodes)
-        vmap[per_verts[1]] = vmap[per_verts[0]];
-    }
-}
-
-
-void RemovePeriodicEdges(shared_ptr<MeshAccess> ma, BitArray &fine_edges)
-{
-  for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
-    {
-      const auto & periodic_edges = ma->GetPeriodicNodes(NT_EDGE, idnr);
-      for (const auto& per_edges : periodic_edges)
-        fine_edges.Clear(per_edges[1]);
-    }
-}
-
-Array<int> Tent::vmap;
 
 /////////////////// Tent methods ////////////////////////////////////////////
 double Tent::MaxSlope() const{
@@ -72,7 +34,6 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
       throw std::logic_error("Wavespeed has not been set!");
     }
   this->dt = dt; // set it so that GetSlabHeight can return it
-  auto &vmap = Tent::vmap;
   TentSlabPitcher * slabpitcher = [this]() ->TentSlabPitcher* {
     switch (this->method)
       {
@@ -89,9 +50,9 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
   }();
   if(!slabpitcher) return false;
   cout << "Created slab pitcher"<<endl;
-  
+  auto &vmap = *(slabpitcher->periodicvmap.get());
   //map periodic vertices
-  MapPeriodicVertices(ma);
+  slabpitcher->MapPeriodicVertices(ma);
   cout << "Mapped periodic vertices" << endl;
   //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
   Table<int> v2v, v2e,slave_verts;
@@ -156,6 +117,7 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
 
           //current tent
           Tent * tent = new Tent;
+          tent->vmap = slabpitcher->periodicvmap;
           tent->vertex = vi;
           tent->tbot = tau[vi];
 
@@ -226,7 +188,7 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
           if(slave_verts[vi].Size()==0)
             ma->GetVertexElements (vi, tent->els);
           else
-            GetVertexElements(ma,vi,slave_verts[vi],tent->els);
+            slabpitcher->GetVertexElements(ma,vi,slave_verts[vi],tent->els);
 
           slabpitcher->UpdateNeighbours(vi,adv_factor,v2v,v2e,tau,complete_vertices,
                                         ktilde,vertex_ready,ready_vertices,lh);
@@ -385,7 +347,8 @@ TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingM
 bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor,
                                        const FlatArray<double> &ktilde, const BitArray &complete_vertices,
                                        BitArray &vertex_ready, Array<int> &ready_vertices){
-  auto &vmap = Tent::vmap;
+
+  auto &vmap = *(this->periodicvmap.get());
   bool found{false};
   //how many times the adv_factor will be relaxed looking for new vertices
   constexpr int n_attempts = 5;
@@ -419,7 +382,7 @@ bool TentSlabPitcher::GetReadyVertices(double &adv_factor, bool reset_adv_factor
 
 void TentSlabPitcher::ComputeVerticesReferenceHeight(const Table<int> &v2v, const Table<int> &v2e, const FlatArray<double> &tau, LocalHeap &lh)
 {
-  auto &vmap = Tent::vmap;
+  auto &vmap = *(this->periodicvmap.get());
   this->vertex_refdt = std::numeric_limits<double>::max();
   for (auto i = 0; i < this->ma->GetNV(); i++)
     if(vmap[i]==i) // non-periodic
@@ -448,7 +411,7 @@ void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, co
                                        const BitArray &complete_vertices, Array<double> &ktilde,
                                        BitArray &vertex_ready, Array<int> &ready_vertices,
                                        LocalHeap &lh){
-  auto &vmap = Tent::vmap;
+  auto &vmap = *(this->periodicvmap.get());
   for (int nb : v2v[vi])
     {
       nb = vmap[nb]; // map periodic vertices
@@ -522,8 +485,7 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
         }
     }
   RemovePeriodicEdges(ma, fine_edges);
-
-  const auto &vmap = Tent::vmap;
+  auto &vmap = *(this->periodicvmap.get());
   //compute neighbouring data
   TableCreator<int> create_v2e, create_v2v;
   for ( ; !create_v2e.Done(); create_v2e++, create_v2v++)
@@ -563,6 +525,44 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
     }
   return std::make_tuple(v2v, v2e, slave_verts);
 }
+
+// Get the slave vertex elements for a master vertex in periodic case 3D
+void TentSlabPitcher::GetVertexElements(shared_ptr<MeshAccess> ma, int vnr_master,
+                       const FlatArray<int> vnr_slaves, Array<int> & elems)
+{
+  ma->GetVertexElements(vnr_master,elems);
+  for(auto slave : vnr_slaves)
+    for(auto elnr : ma->GetVertexElements(slave))
+      elems.Append(elnr);
+}
+
+void TentSlabPitcher::MapPeriodicVertices(shared_ptr<MeshAccess> ma)
+{
+  this->periodicvmap = std::make_shared<Array<int>>();
+  auto &vmap = *(this->periodicvmap.get());
+  vmap.SetSize(ma->GetNV());
+  for (int i : Range(ma->GetNV()))
+    vmap[i] = i;
+  for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
+    {
+      const auto & periodic_nodes = ma->GetPeriodicNodes(NT_VERTEX, idnr);
+      for (const auto& per_verts : periodic_nodes)
+        vmap[per_verts[1]] = vmap[per_verts[0]];
+    }
+}
+
+
+void TentSlabPitcher::RemovePeriodicEdges(shared_ptr<MeshAccess> ma, BitArray &fine_edges)
+{
+  for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
+    {
+      const auto & periodic_edges = ma->GetPeriodicNodes(NT_EDGE, idnr);
+      for (const auto& per_edges : periodic_edges)
+        fine_edges.Clear(per_edges[1]);
+    }
+}
+
+
 
 template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<double> & tau,  FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
   HeapReset hr(lh);
@@ -667,7 +667,7 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
   create_local_ctau.SetSize(n_mesh_vertices);
   create_local_ctau.SetMode(2);
   //just calculating the size of the table
-  const auto &vmap = Tent::vmap;
+  auto &vmap = *(this->periodicvmap.get());
   for(auto vi : IntRange(0, n_mesh_vertices))
     {
       if(vi != vmap[vi]) {continue;}
@@ -728,7 +728,7 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
 
 template <int DIM>
 double EdgeGradientPitcher<DIM>::GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv, FlatArray<int> nbe, LocalHeap & lh) const{
-  const auto &vmap = Tent::vmap;
+  auto &vmap = *(this->periodicvmap.get());
   double kt = std::numeric_limits<double>::max();
   for (int nb_index : nbv.Range())
     {
@@ -751,14 +751,13 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
 {
   constexpr auto el_type = EL_TYPE(DIM);//simplex of dimension dim
   constexpr auto n_el_vertices = DIM + 1;//number of vertices of that simplex
-  
+  auto &vmap = *(this->periodicvmap.get());
   const auto n_mesh_vertices = ma->GetNV();
   //this table will contain the local mesh-dependent constant
   TableCreator<double> create_local_ctau;
   create_local_ctau.SetSize(n_mesh_vertices);
   create_local_ctau.SetMode(2);
   //just calculating the size of the table
-  const auto &vmap = Tent::vmap;
   for(auto vi : IntRange(0, n_mesh_vertices))
     {
       if(vi != vmap[vi]) {continue;}
@@ -1087,9 +1086,10 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
       coef_top[i].AssignMemory(fe_nodal[i]->GetNDof(), lh);
       coef_bot[i].AssignMemory(fe_nodal[i]->GetNDof(), lh);
       auto vnums = ma.GetElVertices(ei);
+      auto &vmap = *(tent.vmap);
       for (size_t k = 0; k < vnums.Size(); k++)
         {
-          auto mapped_vnum = tent.vmap[vnums[k]]; // map periodic vertices
+          auto mapped_vnum = vmap[vnums[k]]; // map periodic vertices
           auto pos = tent.nbv.Pos(mapped_vnum);
           if (pos != tent.nbv.ILLEGAL_POSITION)
 
