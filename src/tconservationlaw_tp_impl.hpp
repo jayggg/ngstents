@@ -3,18 +3,15 @@
 
 #include "conservationlaw.hpp"
 #include "paralleldepend.hpp"
-
-template<typename T>
-FlatVector<> AsFV (T & mat)
-{
-  return FlatVector<>( mat.Height()*mat.Width(), &mat(0,0) );
-};
+#include "timestepping_impl.hpp"
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u0,
 	      FlatMatrixFixWidth<COMP> flux, double tstar, LocalHeap & lh)
 {
+  static Timer tflux ("CalcFluxTent", 2); RegionTimer reg(tflux);
+
   // note: tstar is not used
   const Tent & tent = tps->GetTent(tentnr);
   auto fedata = tent.fedata;
@@ -559,6 +556,7 @@ Cyl2Tent (int tentnr, double tstar,
 	  FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
 	  LocalHeap & lh)
 {
+  static Timer tcyl2tent ("Cyl2Tent", 2); RegionTimer reg(tcyl2tent);
   const Tent & tent = tps->GetTent(tentnr);
 
   auto fedata = tent.fedata;
@@ -599,6 +597,7 @@ void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
          FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
 {
+  static Timer tapplym1 ("ApplyM1", 2); RegionTimer reg(tapplym1);
   const Tent & tent = tps->GetTent(tentnr);
 
   auto fedata = tent.fedata;
@@ -648,6 +647,7 @@ Tent2Cyl (int tentnr, double tstar,
 	  FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
           bool solvemass, LocalHeap & lh)
 {
+  static Timer ttent2cyl ("Tent2Cyl", 2); RegionTimer reg(ttent2cyl);
   const Tent & tent = tps->GetTent(tentnr);
 
   auto fedata = tent.fedata;
@@ -696,6 +696,20 @@ Tent2Cyl (int tentnr, double tstar,
 ////////////////////////////////////////////////////////////////
 // time stepping methods 
 ////////////////////////////////////////////////////////////////
+
+template <typename EQUATION, int DIM, int COMP, int ECOMP>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
+Propagate(LocalHeap & lh)
+{
+  static Timer tprop ("Propagate new", 2); RegionTimer reg(tprop);
+  RunParallelDependency
+    (tent_dependency, [&] (int i)
+     {
+       LocalHeap slh = lh.Split();  // split to threads
+       // const Tent & tent = tps->GetTent(i);
+       timestepping->PropagateTent(i, *u, *uinit, slh);
+     });
+}
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::

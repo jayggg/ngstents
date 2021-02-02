@@ -89,6 +89,16 @@ void ExportConsLaw(py::module & m)
 	 {
 	   self->SetMaterialParameters(cf_mu,cf_eps);
 	 }, py::arg("mu"), py::arg("eps"))
+    .def("SetTimeStepping",
+         [](shared_ptr<CL> self, string method, int stages, int substeps)
+         {
+           self->SetTimeStepping(method, stages, substeps);
+         }, py::arg("method") = "SAT", py::arg("stages") = 2, py::arg("substeps") = 1)
+    .def("Propagate",
+         [](shared_ptr<CL> self)
+         {
+           self->Propagate(*(self->pylh));
+         })
     .def("PropagateSAT",
          [](shared_ptr<CL> self, int stages, int substeps)
          {

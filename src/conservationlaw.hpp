@@ -5,7 +5,9 @@
 #include "myvisual.hpp"
 #endif
 #include "tents.hpp"
+#include "timestepping.hpp"
 #include <atomic>
+
 class ConservationLaw
 {
 public:
@@ -23,6 +25,8 @@ public:
   shared_ptr<LocalHeap> pylh = nullptr;
   shared_ptr<BaseVector> u = nullptr;     // u(n)
   shared_ptr<BaseVector> uinit = nullptr; // initial data, also used for bc
+
+  shared_ptr<TimeStepping> timestepping;
 public:
   ConservationLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
@@ -39,6 +43,10 @@ public:
 
   virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
                                      shared_ptr<CoefficientFunction> cf_eps) = 0;
+
+  virtual void SetTimeStepping(string method, int stages, int substeps) = 0;
+
+  virtual void Propagate(LocalHeap & lh) = 0;
 
   virtual void PropagateSAT(int stages, int substeps,
 			    BaseVector & hu, BaseVector & hu_init,
@@ -61,7 +69,8 @@ COMP: number of state variables/equations
 ECOMP: number of state variables/equations for entropy residual (non-linear eqs)
 */
 template <typename EQUATION, int DIM, int COMP, int ECOMP>
-class T_ConservationLaw : public ConservationLaw
+class T_ConservationLaw : public ConservationLaw,
+			  public enable_shared_from_this<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>>
 {
 protected:
   FlatVector<> nu;  // viscosity coefficient
@@ -392,7 +401,14 @@ public:
   ////////////////////////////////////////////////////////////////
   // time stepping methods 
   ////////////////////////////////////////////////////////////////
+
+  void SetTimeStepping(string method, int stages, int substeps)
+  {
+    timestepping = make_shared<SAT<EQUATION,DIM,COMP,ECOMP>>(this->shared_from_this(), stages, substeps);
+  }
   
+  void Propagate(LocalHeap & lh);
+
   void PropagateSAT(int stages, int substeps,
 		    BaseVector & hu, BaseVector & hu_init,
 		    LocalHeap & lh);
