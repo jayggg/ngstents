@@ -196,7 +196,7 @@ public:
   //neighbouring data. It returns the table v2v (neighbouring vertices), v2e(edges adjacent to a given
   //vertex) and slave_verts (used for periodicity).
   template<int DIM>
-  std::tuple<Table<int>,Table<int>,Table<int>> InitializeMeshData(LocalHeap &lh,
+  std::tuple<Table<int>,Table<int>> InitializeMeshData(LocalHeap &lh,
                                                       shared_ptr<CoefficientFunction> wavespeed,
                                                       bool calc_local_ctau, const double global_ct );
 
@@ -229,9 +229,8 @@ public:
 
   //////////////// For handling periodicity //////////////////////////////////
 
-// Get the slave vertex elements for a master vertex in periodic case 3D
-  void GetVertexElements(int vnr_master,
-                       const FlatArray<int> vnr_slaves, Array<int> & elems);
+// Get the slave vertex elements for a master vertex including periodic case 3D
+  void GetVertexElements(int vnr_master, Array<int> & elems);
 
   void MapPeriodicVertices();
 
@@ -240,6 +239,7 @@ public:
 
   // access to global periodicity identifications
   Array<int> vmap;      // vertex map for periodic spaces
+  Table<int> slave_verts;
 
 };
 

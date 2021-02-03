@@ -51,8 +51,8 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
   if(!slabpitcher) return false;
   cout << "Created slab pitcher"<<endl;
   //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
-  Table<int> v2v, v2e,slave_verts;
-  std::tie(v2v,v2e,slave_verts) = slabpitcher->InitializeMeshData<DIM>(lh,cmax, calc_local_ct, global_ct);
+  Table<int> v2v, v2e;
+  std::tie(v2v,v2e) = slabpitcher->InitializeMeshData<DIM>(lh,cmax, calc_local_ct, global_ct);
   cout << "Initialised mesh data" << endl;
   
   Array<double> tau(ma->GetNV());  // advancing front values at vertices
@@ -180,13 +180,8 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
                     if (fpnts.Contains(vi) && !tent->internal_facets.Contains(f))
                       tent->internal_facets.Append(f);
                   }
-            }
-
-          if(slave_verts[vi].Size()==0)
-            ma->GetVertexElements (vi, tent->els);
-          else
-            slabpitcher->GetVertexElements(vi,slave_verts[vi],tent->els);
-
+            }          
+          slabpitcher->GetVertexElements(vi,tent->els);
           slabpitcher->UpdateNeighbours(vi,adv_factor,v2v,v2e,tau,complete_vertices,
                                         ktilde,vertex_ready,ready_vertices,lh);
           tents.Append (tent);
@@ -435,7 +430,7 @@ void TentSlabPitcher::UpdateNeighbours(const int vi, const double adv_factor, co
 }
 
 template<int DIM>
-std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap &lh, shared_ptr<CoefficientFunction>wavespeed, bool calc_local_ct, const double global_ct)
+std::tuple<Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap &lh, shared_ptr<CoefficientFunction>wavespeed, bool calc_local_ct, const double global_ct)
 {
   constexpr auto el_type = EL_TYPE(DIM);//simplex of dimension dim
   constexpr auto n_el_vertices = DIM + 1;//number of vertices of that simplex
@@ -508,7 +503,7 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
 
   auto v2v = create_v2v.MoveTable();
   auto v2e = create_v2e.MoveTable();
-  auto slave_verts = create_slave_verts.MoveTable();
+  slave_verts = create_slave_verts.MoveTable();
   if(calc_local_ct && DIM > 1)
     {
       local_ctau_table = this->CalcLocalCTau(lh, v2e);
@@ -518,17 +513,22 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
     {
       this->local_ctau = [](const int v, const int el_or_edge){return 1;};
     }
-  return std::make_tuple(v2v, v2e, slave_verts);
+  return std::make_tuple(v2v, v2e);
 }
 
 // Get the slave vertex elements for a master vertex in periodic case 3D
-void TentSlabPitcher::GetVertexElements(int vnr_master,
-                       const FlatArray<int> vnr_slaves, Array<int> & elems)
+void TentSlabPitcher::GetVertexElements(int vnr_master, Array<int> & elems)
 {
-  ma->GetVertexElements(vnr_master,elems);
-  for(auto slave : vnr_slaves)
-    for(auto elnr : ma->GetVertexElements(slave))
-      elems.Append(elnr);
+  ma->GetVertexElements (vnr_master, elems);
+  if(slave_verts[vnr_master].Size()==0)
+    return;
+  else
+    {
+      ma->GetVertexElements(vnr_master,elems);
+      for(auto slave : slave_verts[vnr_master])
+        for(auto elnr : ma->GetVertexElements(slave))
+          elems.Append(elnr);
+    }
 }
 
 void TentSlabPitcher::MapPeriodicVertices()
