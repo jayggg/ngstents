@@ -10,7 +10,8 @@ void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u0,
 	      FlatMatrixFixWidth<COMP> flux, double tstar, LocalHeap & lh)
 {
-  static Timer tflux ("CalcFluxTent", 2); RegionTimer reg(tflux);
+  static Timer tflux ("CalcFluxTent", 2);
+  ThreadRegionTimer reg(tflux, TaskManager::GetThreadId());
 
   // note: tstar is not used
   const Tent & tent = tps->GetTent(tentnr);
@@ -556,7 +557,9 @@ Cyl2Tent (int tentnr, double tstar,
 	  FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
 	  LocalHeap & lh)
 {
-  static Timer tcyl2tent ("Cyl2Tent", 2); RegionTimer reg(tcyl2tent);
+  static Timer tcyl2tent ("Cyl2Tent", 2);
+  ThreadRegionTimer reg(tcyl2tent, TaskManager::GetThreadId());
+
   const Tent & tent = tps->GetTent(tentnr);
 
   auto fedata = tent.fedata;
@@ -597,7 +600,9 @@ void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
          FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
 {
-  static Timer tapplym1 ("ApplyM1", 2); RegionTimer reg(tapplym1);
+  static Timer tapplym1 ("ApplyM1", 2);
+  ThreadRegionTimer reg(tapplym1, TaskManager::GetThreadId());
+
   const Tent & tent = tps->GetTent(tentnr);
 
   auto fedata = tent.fedata;
@@ -647,7 +652,9 @@ Tent2Cyl (int tentnr, double tstar,
 	  FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
           bool solvemass, LocalHeap & lh)
 {
-  static Timer ttent2cyl ("Tent2Cyl", 2); RegionTimer reg(ttent2cyl);
+  static Timer ttent2cyl ("Tent2Cyl", 2);
+  ThreadRegionTimer reg(ttent2cyl, TaskManager::GetThreadId());
+
   const Tent & tent = tps->GetTent(tentnr);
 
   auto fedata = tent.fedata;
@@ -723,8 +730,9 @@ PropagateSAT(int stages, int substeps,
   RunParallelDependency 
     (tent_dependency, [&] (int i)
      {
-       RegionTimer reg(t_SATtent);
-       RegionTracer reg1(TaskManager::GetThreadId(), t_SATtent, i);
+       size_t tid = TaskManager::GetThreadId();
+       ThreadRegionTimer reg(t_SATtent, tid);
+       RegionTracer reg1(tid, t_SATtent, i);
 
        LocalHeap slh = lh.Split();  // split to threads
 
