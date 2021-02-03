@@ -18,6 +18,7 @@ def Make2DPeriodicMesh(xint, yint, maxh):
     periodic.Append ( ["line", pnums[3], pnums[2]], leftdomain=0, rightdomain=1, bc="top", copy=lbot)
     return periodic.GenerateMesh(maxh=maxh)
 
+# SetNumThreads(1)
 maxh = 0.1
 mesh = Mesh(Make2DPeriodicMesh([0,1], [0,1], maxh))
 
@@ -42,7 +43,7 @@ cl = Advection(u, ts)
 flux = (1,0.1)
 cl.SetFluxField( CoefficientFunction(flux) )
 
-cl.SetTimeStepping("SAT",stages=order+1, substeps=2*order)
+cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)
 
 pos = (0.5,0.5)
 u0 = CoefficientFunction( exp(-100* ((x-pos[0])*(x-pos[0])+(y-pos[1])*(y-pos[1])) ))

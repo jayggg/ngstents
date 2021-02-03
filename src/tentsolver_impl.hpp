@@ -1,6 +1,6 @@
-#ifndef TIMESTEPPING_IMPL
-#define TIMESTEPPING_IMPL
-#include "timestepping.hpp"
+#ifndef TENTSOLVER_IMPL
+#define TENTSOLVER_IMPL
+#include "tentsolver.hpp"
 
 template<typename T>
 FlatVector<> AsFV (T & mat)
@@ -56,4 +56,4 @@ PropagateTent(const int tentnr, BaseVector & hu,
   tent.fedata = nullptr; 
 };
 
-#endif //TIMESTEPPING_IMPL
+#endif //TENTSOLVER_IMPL

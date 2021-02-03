@@ -1,12 +1,12 @@
-#ifndef TIMESTEPPING_HPP
-#define TIMESTEPPING_HPP
+#ifndef TENTSOLVER_HPP
+#define TENTSOLVER_HPP
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP> class T_ConservationLaw;
 
-class TimeStepping
+class TentSolver
 {
 public:
-  TimeStepping ()
+  TentSolver ()
   { };
 
   // const Tent & tent instead of tentnr ?
@@ -15,7 +15,7 @@ public:
 };
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP>
-class SAT : public TimeStepping
+class SAT : public TentSolver
 {
 protected:
   const int stages;
@@ -33,8 +33,7 @@ public:
   };
   
   void PropagateTent(const int tentnr, BaseVector & hu,
-		     const BaseVector & hu0, LocalHeap & lh);
+		     const BaseVector & hu0, LocalHeap & lh) override;
 };
   
-
-#endif //TIMESTEPPING_HPP
+#endif //TENTSOLVER_HPP

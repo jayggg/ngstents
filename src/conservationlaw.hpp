@@ -5,7 +5,7 @@
 #include "myvisual.hpp"
 #endif
 #include "tents.hpp"
-#include "timestepping.hpp"
+#include "tentsolver.hpp"
 #include <atomic>
 
 class ConservationLaw
@@ -26,7 +26,7 @@ public:
   shared_ptr<BaseVector> u = nullptr;     // u(n)
   shared_ptr<BaseVector> uinit = nullptr; // initial data, also used for bc
 
-  shared_ptr<TimeStepping> timestepping;
+  shared_ptr<TentSolver> tentsolver;
 public:
   ConservationLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
@@ -44,7 +44,7 @@ public:
   virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
                                      shared_ptr<CoefficientFunction> cf_eps) = 0;
 
-  virtual void SetTimeStepping(string method, int stages, int substeps) = 0;
+  virtual void SetTentSolver(string method, int stages, int substeps) = 0;
 
   virtual void Propagate(LocalHeap & lh) = 0;
 
@@ -402,9 +402,9 @@ public:
   // time stepping methods 
   ////////////////////////////////////////////////////////////////
 
-  void SetTimeStepping(string method, int stages, int substeps)
+  void SetTentSolver(string method, int stages, int substeps)
   {
-    timestepping = make_shared<SAT<EQUATION,DIM,COMP,ECOMP>>(this->shared_from_this(), stages, substeps);
+    tentsolver = make_shared<SAT<EQUATION,DIM,COMP,ECOMP>>(this->shared_from_this(), stages, substeps);
   }
   
   void Propagate(LocalHeap & lh);

@@ -3,7 +3,7 @@
 
 #include "conservationlaw.hpp"
 #include "paralleldepend.hpp"
-#include "timestepping_impl.hpp"
+#include "tentsolver_impl.hpp"
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
@@ -707,7 +707,7 @@ Propagate(LocalHeap & lh)
      {
        LocalHeap slh = lh.Split();  // split to threads
        // const Tent & tent = tps->GetTent(i);
-       timestepping->PropagateTent(i, *u, *uinit, slh);
+       tentsolver->PropagateTent(i, *u, *uinit, slh);
      });
 }
 

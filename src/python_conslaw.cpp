@@ -89,10 +89,10 @@ void ExportConsLaw(py::module & m)
 	 {
 	   self->SetMaterialParameters(cf_mu,cf_eps);
 	 }, py::arg("mu"), py::arg("eps"))
-    .def("SetTimeStepping",
+    .def("SetTentSolver",
          [](shared_ptr<CL> self, string method, int stages, int substeps)
          {
-           self->SetTimeStepping(method, stages, substeps);
+           self->SetTentSolver(method, stages, substeps);
          }, py::arg("method") = "SAT", py::arg("stages") = 2, py::arg("substeps") = 1)
     .def("Propagate",
          [](shared_ptr<CL> self)
