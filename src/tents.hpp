@@ -230,13 +230,13 @@ public:
   //////////////// For handling periodicity //////////////////////////////////
 
 // Get the slave vertex elements for a master vertex in periodic case 3D
-  void GetVertexElements(shared_ptr<MeshAccess> ma, int vnr_master,
+  void GetVertexElements(int vnr_master,
                        const FlatArray<int> vnr_slaves, Array<int> & elems);
 
-  void MapPeriodicVertices(shared_ptr<MeshAccess> ma);
+  void MapPeriodicVertices();
 
 
-  void RemovePeriodicEdges(shared_ptr<MeshAccess> ma, BitArray &fine_edges);
+  void RemovePeriodicEdges(BitArray &fine_edges);
 
   // access to global periodicity identifications
   Array<int> vmap;      // vertex map for periodic spaces

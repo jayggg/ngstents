@@ -185,7 +185,7 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
           if(slave_verts[vi].Size()==0)
             ma->GetVertexElements (vi, tent->els);
           else
-            slabpitcher->GetVertexElements(ma,vi,slave_verts[vi],tent->els);
+            slabpitcher->GetVertexElements(vi,slave_verts[vi],tent->els);
 
           slabpitcher->UpdateNeighbours(vi,adv_factor,v2v,v2e,tau,complete_vertices,
                                         ktilde,vertex_ready,ready_vertices,lh);
@@ -339,7 +339,7 @@ TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingM
   else {cmax.SetSize(ma->GetNE());}
   cmax = -1;
   //map periodic vertices
-  MapPeriodicVertices(ma);
+  MapPeriodicVertices();
 }
 
 
@@ -480,7 +480,7 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
             }
         }
     }
-  RemovePeriodicEdges(ma, fine_edges);
+  RemovePeriodicEdges(fine_edges);
   //compute neighbouring data
   TableCreator<int> create_v2e, create_v2v;
   for ( ; !create_v2e.Done(); create_v2e++, create_v2v++)
@@ -522,7 +522,7 @@ std::tuple<Table<int>,Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData
 }
 
 // Get the slave vertex elements for a master vertex in periodic case 3D
-void TentSlabPitcher::GetVertexElements(shared_ptr<MeshAccess> ma, int vnr_master,
+void TentSlabPitcher::GetVertexElements(int vnr_master,
                        const FlatArray<int> vnr_slaves, Array<int> & elems)
 {
   ma->GetVertexElements(vnr_master,elems);
@@ -531,7 +531,7 @@ void TentSlabPitcher::GetVertexElements(shared_ptr<MeshAccess> ma, int vnr_maste
       elems.Append(elnr);
 }
 
-void TentSlabPitcher::MapPeriodicVertices(shared_ptr<MeshAccess> ma)
+void TentSlabPitcher::MapPeriodicVertices()
 {
   vmap.SetSize(ma->GetNV());
   for (int i : Range(ma->GetNV()))
@@ -545,7 +545,7 @@ void TentSlabPitcher::MapPeriodicVertices(shared_ptr<MeshAccess> ma)
 }
 
 
-void TentSlabPitcher::RemovePeriodicEdges(shared_ptr<MeshAccess> ma, BitArray &fine_edges)
+void TentSlabPitcher::RemovePeriodicEdges(BitArray &fine_edges)
 {
   for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
     {
