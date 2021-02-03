@@ -404,7 +404,8 @@ public:
 
   void SetTentSolver(string method, int stages, int substeps)
   {
-    tentsolver = make_shared<SAT<EQUATION,DIM,COMP,ECOMP>>(this->shared_from_this(), stages, substeps);
+    tentsolver = make_shared<SAT<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>,COMP>>
+      (this->shared_from_this(), stages, substeps);
   }
   
   void Propagate(LocalHeap & lh);
