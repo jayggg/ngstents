@@ -123,7 +123,7 @@ public:
   LocalHeap lh;
   ngstents::PitchingMethod method;
 
-public:
+  
   // access to base spatial mesh (public for export to Python visualization)
   shared_ptr<MeshAccess> ma;
   // Constructor and initializers
@@ -163,6 +163,9 @@ public:
 
   // Propagate methods need to access this somehow
   Table<int> tent_dependency; // DAG of tent dependencies
+
+protected:
+  Array<int> vmap;
 };
 
 //Abstract class with the interface of methods used for pitching a tent
@@ -189,7 +192,7 @@ protected:
   const ngstents::PitchingMethod method;
 public:
   //constructor
-  TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m);
+  TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m, Array<int> &avmap);
   //destructor
   virtual ~TentSlabPitcher(){;}
   //This method precomputes mesh-dependent data. It includes the wavespeed (per element) and
@@ -238,7 +241,7 @@ public:
   void RemovePeriodicEdges(BitArray &fine_edges);
 
   // access to global periodicity identifications
-  Array<int> vmap;      // vertex map for periodic spaces
+  Array<int> &vmap;      // vertex map for periodic spaces
   Table<int> slave_verts;
 
 };
@@ -247,7 +250,7 @@ template <int DIM>
 class VolumeGradientPitcher : public TentSlabPitcher{
 public:
   
-  VolumeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama, ngstents::PitchingMethod::EVolGrad){;}
+  VolumeGradientPitcher(shared_ptr<MeshAccess> ama, Array<int> &avmap) : TentSlabPitcher(ama, ngstents::PitchingMethod::EVolGrad, avmap){;}
 
   double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
@@ -259,7 +262,7 @@ template <int DIM>
 class EdgeGradientPitcher : public TentSlabPitcher{
 public:
   
-  EdgeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama, ngstents::PitchingMethod::EEdgeGrad) {;}
+  EdgeGradientPitcher(shared_ptr<MeshAccess> ama, Array<int> &avmap) : TentSlabPitcher(ama, ngstents::PitchingMethod::EEdgeGrad, avmap) {;}
 
   double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;

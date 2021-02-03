@@ -38,10 +38,10 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
     switch (this->method)
       {
       case ngstents::EVolGrad:
-        return new VolumeGradientPitcher<DIM>(this->ma);
+        return new VolumeGradientPitcher<DIM>(this->ma, vmap);
         break;
       case ngstents::EEdgeGrad:
-        return new EdgeGradientPitcher<DIM>(this->ma);
+        return new EdgeGradientPitcher<DIM>(this->ma, vmap);
       default:
         cout << "Trying to pitch tent without setting a pitching method." << endl;
         return nullptr;
@@ -90,7 +90,6 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
   //numerical tolerance
   const double num_tol = std::numeric_limits<double>::epsilon() * dt;
 
-  auto &vmap = slabpitcher->vmap;
   while ( !slab_complete )
     {
       cout << "Setting ready vertices" << endl;
@@ -329,7 +328,7 @@ double TentPitchedSlab::MaxSlope() const{
 
 
 ///////////////////// Pitching Algo Routines ///////////////////////////////
-TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m) : ma(ama), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()), local_ctau([](const int, const int){return 1.;}), method(m) {
+TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m, Array<int> &avmap) : ma(ama), vertex_refdt(ama->GetNV()), edge_len(ama->GetNEdges()), local_ctau([](const int, const int){return 1.;}), method(m), vmap(avmap) {
   if(method == ngstents::PitchingMethod::EEdgeGrad){ cmax.SetSize(ma->GetNEdges());}
   else {cmax.SetSize(ma->GetNE());}
   cmax = -1;
