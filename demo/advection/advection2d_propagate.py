@@ -41,7 +41,7 @@ V = L2(mesh, order=order)
 u = GridFunction(V)
 cl = Advection(u, ts)
 flux = (1,0.1)
-cl.SetFluxField( CoefficientFunction(flux) )
+cl.SetVectorField( CoefficientFunction(flux) )
 
 cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)
 

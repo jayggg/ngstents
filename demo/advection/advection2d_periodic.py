@@ -41,7 +41,7 @@ V = L2(mesh, order=order)
 u = GridFunction(V)
 cl = Advection(u, ts)
 flux = (1,0.1)
-cl.SetFluxField( CoefficientFunction(flux) )
+cl.SetVectorField( CoefficientFunction(flux) )
 
 pos = (0.5,0.5)
 u0 = CoefficientFunction( exp(-100* ((x-pos[0])*(x-pos[0])+(y-pos[1])*(y-pos[1])) ))

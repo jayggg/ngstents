@@ -30,7 +30,7 @@ print("n tents", ts.GetNTents())
 
 order = 4
 cl = Advection(ts,order)
-cl.SetFluxField( CoefficientFunction((y,-x)) )
+cl.SetVectorField( CoefficientFunction((y,-x)) )
 
 u = CoefficientFunction( exp(-100* ((x-0.5)*(x-0.5)+y*y)))
 cl.SetInitial(u)

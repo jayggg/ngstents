@@ -77,10 +77,10 @@ void ExportConsLaw(py::module & m)
            self->uinit->Set(1.0,*(self->u)); // set data used for b.c.
          })
     // Set flux field
-    .def("SetFluxField",
+    .def("SetVectorField",
          [](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
          {
-           self->SetFluxField(cf);
+           self->SetVectorField(cf);
          })
     .def("SetMaterialParameters",
          [](shared_ptr<CL> self,

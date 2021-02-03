@@ -39,7 +39,7 @@ public:
   
   virtual void SetBC() = 0;
 
-  virtual void SetFluxField(shared_ptr<CoefficientFunction> cf) = 0;
+  virtual void SetVectorField(shared_ptr<CoefficientFunction> cf) = 0;
 
   virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
                                      shared_ptr<CoefficientFunction> cf_eps) = 0;
@@ -177,9 +177,9 @@ public:
         }
   }
 
-  virtual void SetFluxField(shared_ptr<CoefficientFunction> cf)
+  virtual void SetVectorField(shared_ptr<CoefficientFunction> cf)
   {
-    throw Exception("SetFluxField just available for Advection equation");
+    throw Exception("SetVectorField just available for Advection equation");
   }
 
   virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,

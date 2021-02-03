@@ -20,7 +20,7 @@ public:
   using BASE::NumFlux;
   using BASE::InverseMap;
 
-  void SetFluxField(shared_ptr<CoefficientFunction> cf) { bfield = cf; }
+  void SetVectorField(shared_ptr<CoefficientFunction> cf) { bfield = cf; }
   
   // solve for û: Û = ĝ(x̂, t̂, û) - ∇̂ φ(x̂, t̂) ⋅ f̂(x̂, t̂, û)
   // at all points in an integration rule
