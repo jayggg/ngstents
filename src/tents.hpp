@@ -20,7 +20,8 @@ using namespace std;
 class Tent {
 
 public:
-
+  Tent(const Array<int> &avmap) : vmap(avmap){}
+  Tent() = delete;
   int vertex;                 // central vertex
   double tbot, ttop;          // bottom and top times of central vertex
   Array<int> nbv;             // neighbour vertices
@@ -35,7 +36,7 @@ public:
   Array<Vector<>> gradphi_bot; // gradphi_bot[l], gradphi_top[l] =
   Array<Vector<>> gradphi_top; /* gradients of phi_bot/top at some point in the
 				  l-th simplex of the tent */
-  shared_ptr<Array<int>>vmap;
+  const Array<int> &vmap;
   // access to the finite element & dofs
   mutable class TentDataFE * fedata = nullptr;
 
@@ -238,7 +239,7 @@ public:
   void RemovePeriodicEdges(shared_ptr<MeshAccess> ma, BitArray &fine_edges);
 
   // access to global periodicity identifications
-  shared_ptr<Array<int>> periodicvmap;      // vertex map for periodic spaces
+  Array<int> vmap;      // vertex map for periodic spaces
 
 };
 
