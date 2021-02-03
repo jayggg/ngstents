@@ -51,8 +51,6 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
   if(!slabpitcher) return false;
   cout << "Created slab pitcher"<<endl;
   auto &vmap = slabpitcher->vmap;
-  //map periodic vertices
-  slabpitcher->MapPeriodicVertices(ma);
   cout << "Mapped periodic vertices" << endl;
   //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
   Table<int> v2v, v2e,slave_verts;
@@ -340,6 +338,8 @@ TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingM
   if(method == ngstents::PitchingMethod::EEdgeGrad){ cmax.SetSize(ma->GetNEdges());}
   else {cmax.SetSize(ma->GetNE());}
   cmax = -1;
+  //map periodic vertices
+  MapPeriodicVertices(ma);
 }
 
 
