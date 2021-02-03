@@ -50,8 +50,6 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
   }();
   if(!slabpitcher) return false;
   cout << "Created slab pitcher"<<endl;
-  auto &vmap = slabpitcher->vmap;
-  cout << "Mapped periodic vertices" << endl;
   //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
   Table<int> v2v, v2e,slave_verts;
   std::tie(v2v,v2e,slave_verts) = slabpitcher->InitializeMeshData<DIM>(lh,cmax, calc_local_ct, global_ct);
@@ -91,6 +89,8 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
   complete_vertices.Clear();
   //numerical tolerance
   const double num_tol = std::numeric_limits<double>::epsilon() * dt;
+
+  auto &vmap = slabpitcher->vmap;
   while ( !slab_complete )
     {
       cout << "Setting ready vertices" << endl;
@@ -101,7 +101,7 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
       // ---------------------------------------------
       // Main loop: constructs one tent each iteration
       // ---------------------------------------------
-      cout << "Pitching tents..." << endl;
+      cout << "Pitching tents..." << endl;      
       while (ready_vertices.Size())
         {
           int minlevel, posmin;
