@@ -14,14 +14,16 @@ public:
 			     const BaseVector & hu0, LocalHeap & lh) = 0;
 };
 
-template <typename T, int COMP>
+template <typename T>
 class SAT : public TentSolver
 {
 protected:
   const int stages;
   const int substeps;
+
   // pointer to T_ConservationLaw
   shared_ptr<T> tcl;
+  static constexpr int COMP = T::NCOMP;
   
 public:
   SAT (const shared_ptr<T> & atcl, int astages, int asubsteps)

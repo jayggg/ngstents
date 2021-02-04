@@ -85,6 +85,7 @@ protected:
   const EQUATION & Cast() const {return static_cast<const EQUATION&> (*this);}
 
 public:
+  enum { NCOMP = COMP };
 
   // advancing front (used for time-dependent bc)
   shared_ptr<GridFunction> gftau = nullptr;
@@ -404,7 +405,7 @@ public:
 
   void SetTentSolver(string method, int stages, int substeps)
   {
-    tentsolver = make_shared<SAT<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>,COMP>>
+    tentsolver = make_shared<SAT<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>>>
       (this->shared_from_this(), stages, substeps);
   }
   

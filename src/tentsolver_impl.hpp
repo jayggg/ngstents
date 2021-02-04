@@ -8,9 +8,9 @@ FlatVector<> AsFV (T & mat)
   return FlatVector<>( mat.Height()*mat.Width(), &mat(0,0) );
 };
 
-template <typename T, int COMP>
-void SAT<T, COMP>::PropagateTent(const int tentnr, BaseVector & hu,
-				 const BaseVector & hu0, LocalHeap & lh)
+template <typename T>
+void SAT<T>::PropagateTent(const int tentnr, BaseVector & hu,
+			   const BaseVector & hu0, LocalHeap & lh)
 {
   static Timer tproptent ("Propagate Tent SAT", 2);
   ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
