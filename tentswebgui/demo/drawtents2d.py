@@ -5,6 +5,16 @@ from ngstents import TentSlab
 
 mesh = Mesh(unit_square.GenerateMesh(maxh=0.2))
 print("Fetching tent data")
-tps = TentSlab(mesh, dt=0.1, c=5)
+
+# using causality constant
+local_ctau = True
+global_ctau = 1
+wavespeed = 2
+dt = 1.0
+ts = TentSlab(mesh, method="edge")
+ts.SetWavespeed(wavespeed)
+ts.PitchTents(dt=dt, local_ct=local_ctau, global_ct=global_ctau)
+print("max slope", ts.MaxSlope())
+print("n tents", ts.GetNTents())
 print("Generating tents.html")
-Draw(tps, 'tents.html')
+Draw(ts, 'tents.html')
