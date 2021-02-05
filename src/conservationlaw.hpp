@@ -318,7 +318,7 @@ public:
     throw Exception ("Transparent boundary just available for wave equation!");
   }
 
-  void CalcFluxTent (int tentnr, FlatMatrixFixWidth<COMP> u,
+  void CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                      FlatMatrixFixWidth<COMP> u0, FlatMatrixFixWidth<COMP> flux,
                      double tstar, LocalHeap & lh);
 
@@ -388,14 +388,15 @@ public:
     throw Exception ("TransformBack for FlatMatrix<SIMD> not available");
   }
 
-  void Cyl2Tent (int tentnr, double tstar,
+  void Cyl2Tent (const Tent & tent, double tstar,
 		 FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
 		 LocalHeap & lh);
 
-  void ApplyM1 (int tentnr, double tstar, FlatMatrixFixWidth<COMP> u,
-                FlatMatrixFixWidth<COMP> res, LocalHeap & lh);
+  void ApplyM1 (const Tent & tent, double tstar,
+		FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> res,
+		LocalHeap & lh);
 
-  void Tent2Cyl (int tentnr, double tstar,
+  void Tent2Cyl (const Tent & tent, double tstar,
 		 FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
                  bool solvemass, LocalHeap & lh);
   
