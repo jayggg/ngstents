@@ -406,8 +406,15 @@ public:
 
   void SetTentSolver(string method, int stages, int substeps)
   {
-    tentsolver = make_shared<SAT<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>>>
-      (this->shared_from_this(), stages, substeps);
+    if(method == "SAT")
+      {
+	tentsolver = make_shared<SAT<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>>>
+	  (this->shared_from_this(), stages, substeps);
+      }
+    else
+      {
+	throw Exception("unknown TentSolver "+method);
+      }
   }
   
   void Propagate(LocalHeap & lh);

@@ -28,6 +28,9 @@ public:
   SAT (const shared_ptr<TCONSLAW> & atcl, int astages, int asubsteps)
     : tcl{atcl}, stages{astages}, substeps{asubsteps}
   {
+    cout << "set up structure-aware Taylor time stepping with "+
+      ToString(stages)+" stages and "+ToString(substeps)+" substeps within each tent" << endl;
+
     shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(atcl->fes);
     if(!fes_check)
       throw Exception("Structure-aware Taylor time stepping available for L2 spaces only");
