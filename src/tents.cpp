@@ -332,8 +332,6 @@ TentSlabPitcher::TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingM
   if(method == ngstents::PitchingMethod::EEdgeGrad){ cmax.SetSize(ma->GetNEdges());}
   else {cmax.SetSize(ma->GetNE());}
   cmax = -1;
-  //map periodic vertices
-  MapPeriodicVertices();
 }
 
 
@@ -474,6 +472,8 @@ std::tuple<Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap 
             }
         }
     }
+  //map periodic vertices
+  MapPeriodicVertices();
   RemovePeriodicEdges(fine_edges);
   //compute neighbouring data
   TableCreator<int> create_v2e, create_v2v;
@@ -515,7 +515,7 @@ std::tuple<Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap 
   return std::make_tuple(v2v, v2e);
 }
 
-// Get the slave vertex elements for a master vertex in periodic case 3D
+// Get the slave vertex elements for a master vertex in periodic case
 void TentSlabPitcher::GetVertexElements(int vnr_master, Array<int> & elems)
 {
   ma->GetVertexElements (vnr_master, elems);
@@ -523,7 +523,6 @@ void TentSlabPitcher::GetVertexElements(int vnr_master, Array<int> & elems)
     return;
   else
     {
-      ma->GetVertexElements(vnr_master,elems);
       for(auto slave : slave_verts[vnr_master])
         for(auto elnr : ma->GetVertexElements(slave))
           elems.Append(elnr);

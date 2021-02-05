@@ -112,20 +112,23 @@ namespace ngstents{
 }
 
 class TentPitchedSlab {
-public:
-  Array<Tent*> tents;         // tents between two time slices
-  double dt;                  // time step between two time slices
-  //wavespeed
-  shared_ptr<CoefficientFunction> cmax;
-  int nlayers;//number of layers in the time slab
-  //whether the slab has been already pitched
-  bool has_been_pitched;
-  LocalHeap lh;
+protected:
+  double dt;                              // time step between two time slices
+  shared_ptr<CoefficientFunction> cmax;   // wavespeed
   ngstents::PitchingMethod method;
+  bool has_been_pitched;                  // whether the slab has been already pitched
+  Array<Tent*> tents;                     // tents between two time slices
+  int nlayers;                            // number of layers in the time slab
 
-  
+  Array<int> vmap;                        // vertex map for periodic boundaries
+  LocalHeap lh;
+
+public:
   // access to base spatial mesh (public for export to Python visualization)
   shared_ptr<MeshAccess> ma;
+  // Propagate methods need access to DAG of tent dependencies
+  Table<int> tent_dependency;
+
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
     dt(0), ma(ama), cmax(nullptr), nlayers(0),
@@ -143,7 +146,6 @@ public:
   int GetNTents() { return tents.Size(); }
   int GetNLayers() { return nlayers; }
 
-
   void SetWavespeed(const double c){cmax =  make_shared<ConstantCoefficientFunction>(c);}
   void SetWavespeed(shared_ptr<CoefficientFunction> c){ cmax = c;}
   
@@ -160,12 +162,6 @@ public:
                           Array<double> & tenttimes, int & nlevels);
 
   void SetPitchingMethod(ngstents::PitchingMethod amethod) {this->method = amethod;}
-
-  // Propagate methods need to access this somehow
-  Table<int> tent_dependency; // DAG of tent dependencies
-
-protected:
-  Array<int> vmap;
 };
 
 //Abstract class with the interface of methods used for pitching a tent

@@ -42,7 +42,6 @@ auto ExportTimeSlab(py::module &m)
 	 {
 	   int dim = self->ma->GetDimension();
 	   bool success = false;
-	   self->dt = dt;
 	   switch(dim){
 	   case 1:
 	     success = self->PitchTents<1>(dt,local_ct,global_ct);
