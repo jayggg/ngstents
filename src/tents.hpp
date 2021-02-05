@@ -20,7 +20,8 @@ using namespace std;
 class Tent {
 
 public:
-
+  Tent(const Array<int> &avmap) : vmap(avmap){}
+  Tent() = delete;
   int vertex;                 // central vertex
   double tbot, ttop;          // bottom and top times of central vertex
   Array<int> nbv;             // neighbour vertices
@@ -35,10 +36,7 @@ public:
   Array<Vector<>> gradphi_bot; // gradphi_bot[l], gradphi_top[l] =
   Array<Vector<>> gradphi_top; /* gradients of phi_bot/top at some point in the
 				  l-th simplex of the tent */
-
-  // access to global periodicity identifications
-  static Array<int> vmap;      // vertex map for periodic spaces
-
+  const Array<int> &vmap;
   // access to the finite element & dofs
   mutable class TentDataFE * fedata = nullptr;
 
@@ -114,20 +112,23 @@ namespace ngstents{
 }
 
 class TentPitchedSlab {
-public:
-  Array<Tent*> tents;         // tents between two time slices
-  double dt;                  // time step between two time slices
-  //wavespeed
-  shared_ptr<CoefficientFunction> cmax;
-  int nlayers;//number of layers in the time slab
-  //whether the slab has been already pitched
-  bool has_been_pitched;
-  LocalHeap lh;
+protected:
+  double dt;                              // time step between two time slices
+  shared_ptr<CoefficientFunction> cmax;   // wavespeed
   ngstents::PitchingMethod method;
+  bool has_been_pitched;                  // whether the slab has been already pitched
+  Array<Tent*> tents;                     // tents between two time slices
+  int nlayers;                            // number of layers in the time slab
+
+  Array<int> vmap;                        // vertex map for periodic boundaries
+  LocalHeap lh;
 
 public:
   // access to base spatial mesh (public for export to Python visualization)
   shared_ptr<MeshAccess> ma;
+  // Propagate methods need access to DAG of tent dependencies
+  Table<int> tent_dependency;
+
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
     dt(0), ma(ama), cmax(nullptr), nlayers(0),
@@ -145,7 +146,6 @@ public:
   int GetNTents() { return tents.Size(); }
   int GetNLayers() { return nlayers; }
 
-
   void SetWavespeed(const double c){cmax =  make_shared<ConstantCoefficientFunction>(c);}
   void SetWavespeed(shared_ptr<CoefficientFunction> c){ cmax = c;}
   
@@ -162,9 +162,6 @@ public:
                           Array<double> & tenttimes, int & nlevels);
 
   void SetPitchingMethod(ngstents::PitchingMethod amethod) {this->method = amethod;}
-
-  // Propagate methods need to access this somehow
-  Table<int> tent_dependency; // DAG of tent dependencies
 };
 
 //Abstract class with the interface of methods used for pitching a tent
@@ -191,14 +188,14 @@ protected:
   const ngstents::PitchingMethod method;
 public:
   //constructor
-  TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m);
+  TentSlabPitcher(shared_ptr<MeshAccess> ama, ngstents::PitchingMethod m, Array<int> &avmap);
   //destructor
   virtual ~TentSlabPitcher(){;}
   //This method precomputes mesh-dependent data. It includes the wavespeed (per element) and
   //neighbouring data. It returns the table v2v (neighbouring vertices), v2e(edges adjacent to a given
   //vertex) and slave_verts (used for periodicity).
   template<int DIM>
-  std::tuple<Table<int>,Table<int>,Table<int>> InitializeMeshData(LocalHeap &lh,
+  std::tuple<Table<int>,Table<int>> InitializeMeshData(LocalHeap &lh,
                                                       shared_ptr<CoefficientFunction> wavespeed,
                                                       bool calc_local_ctau, const double global_ct );
 
@@ -228,13 +225,28 @@ public:
 
   //Returns the position in ready_vertices containing the vertex in which a tent will be pitched (and its level)
   [[nodiscard]] std::tuple<int,int> PickNextVertexForPitching(const FlatArray<int> &ready_vertices, const FlatArray<double> &ktilde, const FlatArray<int> &vertices_level);
+
+  //////////////// For handling periodicity //////////////////////////////////
+
+// Get the slave vertex elements for a master vertex including periodic case 3D
+  void GetVertexElements(int vnr_master, Array<int> & elems);
+
+  void MapPeriodicVertices();
+
+
+  void RemovePeriodicEdges(BitArray &fine_edges);
+
+  // access to global periodicity identifications
+  Array<int> &vmap;      // vertex map for periodic spaces
+  Table<int> slave_verts;
+
 };
 
 template <int DIM>
 class VolumeGradientPitcher : public TentSlabPitcher{
 public:
   
-  VolumeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama, ngstents::PitchingMethod::EVolGrad){;}
+  VolumeGradientPitcher(shared_ptr<MeshAccess> ama, Array<int> &avmap) : TentSlabPitcher(ama, ngstents::PitchingMethod::EVolGrad, avmap){;}
 
   double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
@@ -246,7 +258,7 @@ template <int DIM>
 class EdgeGradientPitcher : public TentSlabPitcher{
 public:
   
-  EdgeGradientPitcher(shared_ptr<MeshAccess> ama) : TentSlabPitcher(ama, ngstents::PitchingMethod::EEdgeGrad) {;}
+  EdgeGradientPitcher(shared_ptr<MeshAccess> ama, Array<int> &avmap) : TentSlabPitcher(ama, ngstents::PitchingMethod::EEdgeGrad, avmap) {;}
 
   double GetPoleHeight(const int vi, const FlatArray<double> & tau, FlatArray<int> nbv,
                        FlatArray<int> nbe, LocalHeap & lh) const override;
