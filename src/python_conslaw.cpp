@@ -3,7 +3,8 @@
 
 //shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<TentPitchedSlab> & tps, const int & order);
 //shared_ptr<ConservationLaw> CreateEuler(const shared_ptr<TentPitchedSlab> & tps, const int & order);
-//shared_ptr<ConservationLaw> CreateWave(const shared_ptr<TentPitchedSlab> & tps, const int & order);
+shared_ptr<ConservationLaw> CreateWave(const shared_ptr<GridFunction> & gfu,
+				       const shared_ptr<TentPitchedSlab> & tps);
 shared_ptr<ConservationLaw> CreateAdvection(const shared_ptr<GridFunction> & gfu,
 					    const shared_ptr<TentPitchedSlab> & tps);
 shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<GridFunction> & gfu,
@@ -20,9 +21,9 @@ shared_ptr<CL> CreateConsLaw(const shared_ptr<GridFunction> & gfu,
   //   cl = CreateBurgers(tps,order);
   // else if(eqn=="euler")
   //   cl = CreateEuler(tps,order);
-  // else if(eqn=="wave")
-  //   cl = CreateWave(tps,order);
-  if(eqn=="advection")
+  if(eqn=="wave")
+    cl = CreateWave(gfu, tps);
+  else if(eqn=="advection")
     cl = CreateAdvection(gfu, tps);
   else if(eqn=="maxwell")
     cl = CreateMaxwell(gfu, tps);

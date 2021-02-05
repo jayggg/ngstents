@@ -38,7 +38,7 @@ print("n tents", ts.GetNTents())
 
 order = 4
 V = L2(mesh, order=order)
-u = GridFunction(V)
+u = GridFunction(V,"u")
 cl = Advection(u, ts)
 flux = (1,0.1)
 cl.SetVectorField( CoefficientFunction(flux) )

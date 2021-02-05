@@ -18,7 +18,7 @@ add_ngsolve_python_module(conslaw
   symbolicDG.cpp
   #burgers.cpp
   #euler.cpp
-  #wave.cpp
+  wave.cpp
   advection.cpp
   maxwell.cpp
   )

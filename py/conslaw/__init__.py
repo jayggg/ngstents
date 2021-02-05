@@ -11,15 +11,15 @@ from .conslaw import ApplyDG
 #         """
 #         ConservationLaw.__init__(self, tentslab, "burgers", order)
 # 
-# class Wave(ConservationLaw):
-#     def __init__(self, tentslab, order):
-#         """
-#         INPUTS:
-#         
-#         tentslab : TentSlab
-#         order    : int : order of the L2 space
-#         """
-#         ConservationLaw.__init__(self, tentslab, "wave", order)
+class Wave(ConservationLaw):
+    def __init__(self, gfu, tentslab):
+        """
+        INPUTS:
+        
+        gfu      : GridFunction
+        tentslab : TentSlab
+        """
+        ConservationLaw.__init__(self, gfu, tentslab, "wave")
 
 class Advection(ConservationLaw):
     def __init__(self, gfu, tentslab):

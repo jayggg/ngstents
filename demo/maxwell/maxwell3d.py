@@ -27,7 +27,7 @@ print("n tents", ts.GetNTents())
 
 # setting the approximation space order
 order = 2
-V = L2(mesh, order=order, dim=6)
+V = L2(mesh, order=order, dim=2*mesh.dim)
 u = GridFunction(V,"u")
 cl = Maxwell(u, ts)
 cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)
@@ -46,7 +46,6 @@ cfH = CoefficientFunction((u[3],u[4],u[5]))
 Draw(cfE, mesh, name="E")
 Draw(cfH, mesh, name="H")
 
-# Draw(sol,sd=1)
 visoptions.scalfunction = "E:3"
 # visoptions.scalfunction = "u:2"
 viewoptions.clipping.enable = 1
