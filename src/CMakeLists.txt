@@ -20,7 +20,7 @@ add_ngsolve_python_module(conslaw
   #euler.cpp
   #wave.cpp
   advection.cpp
-  #maxwell.cpp
+  maxwell.cpp
   )
 target_link_libraries(conslaw PRIVATE tents)
 

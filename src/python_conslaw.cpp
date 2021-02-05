@@ -6,7 +6,8 @@
 //shared_ptr<ConservationLaw> CreateWave(const shared_ptr<TentPitchedSlab> & tps, const int & order);
 shared_ptr<ConservationLaw> CreateAdvection(const shared_ptr<GridFunction> & gfu,
 					    const shared_ptr<TentPitchedSlab> & tps);
-//shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<TentPitchedSlab> & tps, const int & order);
+shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<GridFunction> & gfu,
+					  const shared_ptr<TentPitchedSlab> & tps);
 
 typedef ConservationLaw CL;
 
@@ -23,8 +24,8 @@ shared_ptr<CL> CreateConsLaw(const shared_ptr<GridFunction> & gfu,
   //   cl = CreateWave(tps,order);
   if(eqn=="advection")
     cl = CreateAdvection(gfu, tps);
-  // else if(eqn=="maxwell")
-  //   cl = CreateMaxwell(tps,order);
+  else if(eqn=="maxwell")
+    cl = CreateMaxwell(gfu, tps);
   else
     throw Exception(string("unknown equation '"+eqn+"'"));
   return cl;
@@ -44,9 +45,9 @@ void ExportConsLaw(py::module & m)
                     cl->SetBC(); //use old style bc numbers for now
                     return cl;
                   }),
-         py::arg("tentslab"),
-  	 py::arg("equation"),
-         py::arg("order"))
+         py::arg("gridfunction"),
+  	 py::arg("tentslab"),
+         py::arg("equation"))
     .def_property_readonly("tentslab", [](shared_ptr<CL> self)
                            {
   			     return self->tps;

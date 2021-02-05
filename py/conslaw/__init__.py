@@ -31,15 +31,15 @@ class Advection(ConservationLaw):
         """
         ConservationLaw.__init__(self, gfu, tentslab, "advection")
 
-# class Maxwell(ConservationLaw):
-#     def __init__(self, tentslab, order):
-#         """
-#         INPUTS:
-#         
-#         tentslab : TentSlab
-#         order    : int : order of the L2 space
-#         """
-#         ConservationLaw.__init__(self, tentslab, "maxwell", order)
+class Maxwell(ConservationLaw):
+    def __init__(self, gfu, tentslab):
+        """
+        INPUTS:
+        
+        gfu      : GridFunction
+        tentslab : TentSlab
+        """
+        ConservationLaw.__init__(self, gfu, tentslab, "maxwell")
         
 # clean up
 del conslaw

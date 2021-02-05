@@ -10,7 +10,6 @@ brick = OrthoBrick(Pnt(0, 0, 0), Pnt(1, 1, 1)).bc(2)
 geom.Add(brick)
 mesh = geom.GenerateMesh(maxh=0.1)
 mesh = Mesh(mesh)
-# mesh = Mesh("maxwell_cube.vol.gz")
 
 # setting the problem
 t_end = 0.5
@@ -28,7 +27,10 @@ print("n tents", ts.GetNTents())
 
 # setting the approximation space order
 order = 2
-cl = Maxwell(ts,order)
+V = L2(mesh, order=order, dim=6)
+u = GridFunction(V,"u")
+cl = Maxwell(u, ts)
+cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)
 
 # initial data
 Ez = exp(-40*((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5)+(z-0.5)*(z-0.5)))
@@ -38,9 +40,8 @@ H = CoefficientFunction((0,0,0))
 cf = CoefficientFunction((E,H))
 cl.SetInitial(cf)
 
-sol = cl.sol
-cfE = CoefficientFunction((sol[0],sol[1],sol[2]))
-cfH = CoefficientFunction((sol[3],sol[4],sol[5]))
+cfE = CoefficientFunction((u[0],u[1],u[2]))
+cfH = CoefficientFunction((u[3],u[4],u[5]))
 
 Draw(cfE, mesh, name="E")
 Draw(cfH, mesh, name="H")
@@ -60,11 +61,11 @@ import time
 t1 = time.time()
 with TaskManager():
     while t < t_end-dt/2:
-        cl.PropagateSAT(sol.vec, stages=order+1, substeps=2*order)
+        # cl.PropagateSAT(stages=order+1, substeps=2*order)
+        cl.Propagate()
         t += dt
         cnt += 1
         if cnt%redraw == 0:
             print("{:5f}".format(t))
-            # cl.UpdateVisual(sol.vec)
-        Redraw(True)
+            Redraw(True)
 print("total time = ",time.time()-t1)
