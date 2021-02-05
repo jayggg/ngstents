@@ -91,6 +91,8 @@ public:
   enum { NCOMP = COMP };
   enum { NECOMP = ECOMP };
 
+  bool symbolic = false;
+
   T_ConservationLaw (const shared_ptr<GridFunction> & gfu,
 		     const shared_ptr<TentPitchedSlab> & tps,
 		     const string & eqn)
@@ -216,6 +218,7 @@ public:
 	  }
     cf_bnd_deriv = true;
   }
+  bool IsSymbolic() { return symbolic; }
   
   virtual void SetVectorField(shared_ptr<CoefficientFunction> cf)
   {

@@ -33,12 +33,19 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 
       IntRange dn = fedata->ranges[i];
 
-      FlatMatrix<SIMD<double>> u_iptsa(COMP, simd_ir.Size(),lh);
       FlatMatrix<SIMD<double>> flux_iptsa(DIM*COMP, simd_ir.Size(),lh);
       FlatMatrix<SIMD<double>> flux_iptsa2(DIM*COMP, simd_ir.Size(),lh);
+      FlatMatrix<SIMD<double>> u_iptsa(COMP, simd_ir.Size(),lh);
 
-      fel.Evaluate (simd_ir, u.Rows(dn), u_iptsa);
-
+      // if(Cast().IsSymbolic())
+      // 	{
+      // 	  // ProxyUserData
+      // 	}
+      // else
+      // 	{
+      // 	  fel.Evaluate (simd_ir, u.Rows(dn), u_iptsa);
+      // 	}
+      // // u_iptsa unused in symbolic case
       Cast().Flux(simd_mir, u_iptsa, flux_iptsa);
 
       FlatVector<SIMD<double>> di = fedata->adelta[i];

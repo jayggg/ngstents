@@ -11,6 +11,9 @@ shared_ptr<ConservationLaw> CreateAdvection(const shared_ptr<GridFunction> & gfu
 					    const shared_ptr<TentPitchedSlab> & tps);
 shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<GridFunction> & gfu,
 					  const shared_ptr<TentPitchedSlab> & tps);
+shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction> & gfu,
+						   const shared_ptr<TentPitchedSlab> & tps,
+						   const shared_ptr<CoefficientFunction> & flux);
 
 typedef ConservationLaw CL;
 
@@ -67,6 +70,25 @@ void ExportConsLaw(py::module & m)
          py::arg("gridfunction"), py::arg("tentslab"), py::arg("equation"),
 	 py::arg("outflow")=nullptr, py::arg("inflow")=nullptr,
          py::arg("reflect")=nullptr, py::arg("transparent")=nullptr)
+    .def(py::init([](const shared_ptr<GridFunction> & gfu,
+     		     const shared_ptr<TentPitchedSlab> & tps,
+     		     py::object Flux)
+     		  -> shared_ptr<CL>
+		  {
+     		    py::object u = py::cast (gfu->GetFESpace()).attr("TrialFunction")();
+     		    py::object flux_u = Flux( u );
+     		    
+     		    shared_ptr<CoefficientFunction> cpp_flux_u =
+     		      py::extract<shared_ptr<CoefficientFunction>> (flux_u)();
+     		    cpp_flux_u = Compile(cpp_flux_u);
+     		    
+		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u);
+		    cl->SetBC(); //use old style bc numbers for now
+		    return cl;
+		  }),
+	 py::arg("gridfunction"),
+	 py::arg("tentslab"),
+     	 py::arg("flux"))
     .def_property_readonly("tentslab", [](shared_ptr<CL> self)
                            {
   			     return self->tps;
