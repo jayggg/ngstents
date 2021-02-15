@@ -228,8 +228,8 @@ public:
 
   //////////////// For handling periodicity //////////////////////////////////
 
-// Get the slave vertex elements for a master vertex including periodic case 3D
-  void GetVertexElements(int vnr_master, Array<int> & elems);
+  // Get all elements connected to a given vertex (contemplating periodicity)
+  void GetVertexElements(int vnr_master, Array<int> & elems) const;
 
   void MapPeriodicVertices();
 

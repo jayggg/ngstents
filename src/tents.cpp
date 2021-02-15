@@ -516,7 +516,7 @@ std::tuple<Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap 
 }
 
 // Get the slave vertex elements for a master vertex in periodic case
-void TentSlabPitcher::GetVertexElements(int vnr_master, Array<int> & elems)
+void TentSlabPitcher::GetVertexElements(int vnr_master, Array<int> & elems) const
 {
   ma->GetVertexElements (vnr_master, elems);
   if(slave_verts[vnr_master].Size()==0)
