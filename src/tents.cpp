@@ -587,7 +587,7 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
   // array of all elements containing vertex vi
   ArrayMem<int,30>  els;
   els.SetSize(0);
-  this->ma->GetVertexElements(vi, els);
+  this->GetVertexElements(vi, els);
 
   constexpr double init_pole_height = std::numeric_limits<double>::max();
   double pole_height = init_pole_height;
@@ -679,17 +679,17 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
   TableCreator<double> create_local_ctau;
   create_local_ctau.SetSize(n_mesh_vertices);
   create_local_ctau.SetMode(2);
+  ArrayMem<int,30>vertex_els(0);
   //just calculating the size of the table
   for(auto vi : IntRange(0, n_mesh_vertices))
     {
       if(vi != vmap[vi]) {continue;}
-      const auto n_vert_els = ma->GetVertexElements(vi).Size();
+      this->GetVertexElements(vi,vertex_els);
+      const auto n_vert_els = vertex_els.Size();
       for(auto el : IntRange(0, n_vert_els))
         {create_local_ctau.Add(vi,0);}
     }
   create_local_ctau++;// it is in insert mode
-
-  ArrayMem<int, 30> vertex_els(0);
   //for a given vertex V in an element E with faces F the constant is calculated as
   //the minimum (over the faces F) ratio between the length of the opposite
   //edge and the biggest edge adjacent to V in F
@@ -697,8 +697,7 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
   for(auto vi : IntRange(0,n_mesh_vertices))
     {
       if(vi != vmap[vi]){continue;}
-      
-      vertex_els = ma->GetVertexElements(vi);
+      this->GetVertexElements(vi,vertex_els);
       for(auto iel : IntRange(0,vertex_els.Size()))
         {
           HeapReset hr(lh);
