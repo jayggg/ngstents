@@ -231,6 +231,9 @@ public:
   // Get all elements connected to a given vertex (contemplating periodicity)
   void GetVertexElements(int vnr_master, Array<int> & elems) const;
 
+  // Get all elements connected to a given edge (contemplating periodicity)
+  void GetEdgeElements(int edge, Array<int> & elems) const;
+  
   void MapPeriodicVertices();
 
 

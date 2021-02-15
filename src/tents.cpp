@@ -529,6 +529,28 @@ void TentSlabPitcher::GetVertexElements(int vnr_master, Array<int> & elems) cons
     }
 }
 
+void TentSlabPitcher::GetEdgeElements(int edge, Array<int> & elems) const
+{
+  ma->GetEdgeElements (edge, elems);
+
+  ArrayMem<int,30> slave_edge_els(0);
+  for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
+    {
+      const auto & periodic_edges = ma->GetPeriodicNodes(NT_EDGE, idnr);
+      for (const auto& per_edges : periodic_edges)
+        {
+          if(per_edges[0] == edge)
+            {
+              slave_edge_els.SetSize(0);
+              ma->GetEdgeElements(per_edges[1], slave_edge_els);
+              for(auto slave_el : slave_edge_els)
+                {elems.Append(slave_el);}
+            }
+        }
+    }
+}
+
+
 void TentSlabPitcher::MapPeriodicVertices()
 {
   vmap.SetSize(ma->GetNV());
@@ -776,7 +798,8 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
         {
           //gets the elements that have this edge as a side
           edge_els.SetSize(0);
-          ma->GetEdgeElements(edge, edge_els);
+          
+          this->GetEdgeElements(edge, edge_els);
           double val = std::numeric_limits<double>::max();
           //gets the vertices belonging to the edge
           auto pnts = ma->GetEdgePNums(edge);
