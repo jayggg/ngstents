@@ -709,7 +709,16 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
             {
               auto face_vertices = ma->GetFacePNums(face);
               //check if the face contains the vertex vi
-              if(face_vertices.Pos(vi) == face_vertices.ILLEGAL_POSITION) continue;
+              if(face_vertices.Pos(vi) == face_vertices.ILLEGAL_POSITION)
+                {
+                  bool found = false;
+                  for(auto sl_v : slave_verts[vi])
+                    {
+                      if(face_vertices.Pos(sl_v) == face_vertices.ILLEGAL_POSITION)
+                        { found = true;}
+                    }
+                  if(!found) {continue;}
+                }
               
               auto face_edges = ma->GetFaceEdges(face);
               double opposite_edge = -1;
@@ -717,7 +726,7 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
               for(auto edge : face_edges)
                 {
                   auto pnts = ma->GetEdgePNums(edge);
-                  if(pnts[0] != vi && pnts[1] != vi)
+                  if(vmap[pnts[0]] != vi && vmap[pnts[1]] != vi)
                     {
                       opposite_edge = edge_len[edge];
                     }
@@ -815,10 +824,28 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
               ElementTransformation &trafo = this->ma->GetTrafo(ei, lh);
               MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
               my_fel.CalcMappedDShape(mip,gradphi);
+              //let us test for periodicity support
+              auto FindVertexInEl = [el,this](const int v)
+              {
+                auto &slave_v = this->slave_verts[v];
+                if(el.Points().Pos(v) != el.Points().ILLEGAL_POSITION)
+                  { return el.Points().Pos(v);}
+                else
+                  {
+                    for (const auto &s_v : slave_v)
+                      {
+                        if(el.Points().Pos(s_v) != el.Points().ILLEGAL_POSITION)
+                          { return el.Points().Pos(s_v);}
+                      }
+
+                    //we really should not hit this point
+                    return el.Points().ILLEGAL_POSITION;
+                  }
+              };
               /*the inner products gradphi.edgevec are identically equal to one so
                 there is no need to calculate them*/
-              const auto v1_local = el.Points().Pos(v1);
-              const auto v2_local = el.Points().Pos(v2);
+              const auto v1_local = FindVertexInEl(vmap[v1]);
+              const auto v2_local = FindVertexInEl(vmap[v2]);
 
               /*
                 splitting 2d and 3d code. there is no need to generate that much
