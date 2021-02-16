@@ -9,8 +9,10 @@ class Burgers : public T_ConservationLaw<Burgers<D>, D, 1, 1>
   typedef T_ConservationLaw<Burgers<D>, D, 1, 1> BASE;
 
 public:
-  Burgers (const shared_ptr<TentPitchedSlab> & tps, const int & order)
-    : BASE (tps, "burgers", order) { ; }
+  Burgers (const shared_ptr<GridFunction> & agfu,
+	   const shared_ptr<TentPitchedSlab> & atps)
+    : BASE (agfu, atps, "burgers")
+  { };
 
   // these two were private
   using BASE::gfnu;
@@ -18,9 +20,9 @@ public:
   
   using BASE::Flux;
   using BASE::NumFlux;
-  using BASE::CalcViscCoeffEl;
-  using BASE::u_reflect;
-  using BASE::CalcEntropy;
+  // using BASE::CalcViscCoeffEl;
+  // using BASE::u_reflect;
+  // using BASE::CalcEntropy;
 
 
   // solve for û: Û = ĝ(x̂, t̂, û) - ∇̂ φ(x̂, t̂) ⋅ f̂(x̂, t̂, û)
@@ -152,14 +154,15 @@ public:
 
 /////////////////////////////////////////////////////////////////////////
 
-shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<TentPitchedSlab> & tps, const int & order)
+shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<GridFunction> & gfu,
+					  const shared_ptr<TentPitchedSlab> & tps)
 {
   int dim = tps->ma->GetDimension();
   switch(dim){
   case 1:
-    return make_shared<Burgers<1>>(tps,order);
+    return make_shared<Burgers<1>>(gfu, tps);
   case 2:
-    return make_shared<Burgers<2>>(tps,order);
+    return make_shared<Burgers<2>>(gfu, tps);
   }
   throw Exception ("Burgers only available for 1D and 2D");
 }

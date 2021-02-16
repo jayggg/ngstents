@@ -156,11 +156,11 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
-CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
+CalcViscosityTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                    FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
                    FlatMatrixFixWidth<COMP> visc, LocalHeap & lh)
 {
-  const Tent & tent = tps->GetTent(tentnr);
+  // const Tent & tent = tps->GetTent(tentnr);
 
   // grad(u)*grad(v) - {du/dn} * [v] - {dv/dn} * [u] + alpha * p^2 / h * [u]*[v]
   double alpha = 4.0;
@@ -314,7 +314,7 @@ CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
-CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
+CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                          FlatMatrixFixWidth<COMP> ut,
                          FlatMatrixFixWidth<ECOMP> res,
                          FlatMatrixFixWidth<COMP> u0, double tstar,
@@ -322,7 +322,7 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
 {
   HeapReset hr(lh);
 
-  const Tent & tent = tps->GetTent(tentnr);
+  // const Tent & tent = tps->GetTent(tentnr);
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
 
@@ -491,11 +491,11 @@ CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP>
 double T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
-CalcViscosityCoefficientTent (int tentnr, FlatMatrixFixWidth<COMP> u,
+CalcViscosityCoefficientTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                               FlatMatrixFixWidth<ECOMP> res,
 			      double tstar, LocalHeap & lh)
 {
-  const Tent & tent = tps->GetTent(tentnr);
+  // const Tent & tent = tps->GetTent(tentnr);
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
 
@@ -869,16 +869,16 @@ PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, L
                // Cyl2Tent (tent, (j+1)*taustar, local_Gu0, local_help, slh);
                // CalcFluxTent(tent, local_help, local_init, dUhatdt,
                //              (j+1)*taustar, slh);
-	       // CalcEntropyResidualTent(i, U0, dUhatdt, res, local_init,
+	       // CalcEntropyResidualTent(tent, U0, dUhatdt, res, local_init,
                //                         (j+1)*taustar, slh);
                // hres->SetIndirect(tent.dofs,AsFV(res));
 	       // double nu_tent = CalcViscosityCoefficientTent(
-               //                        i, U0, res, (j+1)*taustar, slh);
+               //                        tent, U0, res, (j+1)*taustar, slh);
 	       /////// use dUhatdt as approximation at the initial time
-               CalcEntropyResidualTent(i, U0, dUhatdt, res, local_init,
+               CalcEntropyResidualTent(tent, U0, dUhatdt, res, local_init,
                                        j*taustar, slh);
                hres->SetIndirect(tent.fedata->dofs,AsFV(res));
-	       double nu_tent = CalcViscosityCoefficientTent(i, U0, res,
+	       double nu_tent = CalcViscosityCoefficientTent(tent, U0, res,
                                                              j*taustar, slh);
 
                local_nu = nu_tent;
@@ -892,7 +892,7 @@ PropagateSARK(int stages, int substeps, BaseVector & hu, BaseVector & hu_init, L
 		   local_help = local_u;
                    for (int k = 0; k < steps_visc; k++)
                      {
-		       CalcViscosityTent (i, local_u, local_help, local_nu,
+		       CalcViscosityTent (tent, local_u, local_help, local_nu,
                                           local_flux, slh);
                        local_u -= tau_visc * local_flux;
                      }

@@ -86,6 +86,7 @@ protected:
 
 public:
   enum { NCOMP = COMP };
+  enum { NECOMP = ECOMP };
 
   // advancing front (used for time-dependent bc)
   shared_ptr<GridFunction> gftau = nullptr;
@@ -117,25 +118,31 @@ public:
     // gfu = CreateGridFunction(fes,"u",Flags());
     // gfu->Update();
 
-    // if (ECOMP > 0)
-    //   {
-    //     // Scalar L2 finite element space for entropy residual
-    //     shared_ptr<FESpace> fes_scal =
-    //       CreateFESpace("l2ho", ma,
-    //           Flags().SetFlag("order",order).SetFlag("all_dofs_together"));
-    //     fes_scal->Update();
-    //     fes_scal->FinalizeUpdate();
-    //     gfres = CreateGridFunction(fes_scal,"res",Flags());
-    // 	gfres->Update();
-    // 
-    //     // Zero order L2 finite element space for viscosity
-    // 	shared_ptr<FESpace> fes_lo = CreateFESpace("l2ho", ma,
-    //                                                Flags().SetFlag("order",0));
-    // 	fes_lo->Update();
-    // 	fes_lo->FinalizeUpdate();
-    // 	gfnu = CreateGridFunction(fes_lo,"nu",Flags());
-    // 	gfnu->Update();
-    //   }
+    u = gfu->GetVectorPtr(); // TODO: should not be needed
+    uinit = u->CreateVector(); // TODO: how to set inflow boundary?
+
+    if (ECOMP > 0)
+      {
+        // Scalar L2 finite element space for entropy residual
+        shared_ptr<FESpace> fes_scal =
+          CreateFESpace("l2ho", ma,
+			Flags().SetFlag("order",order).SetFlag("all_dofs_together"));
+        fes_scal->Update();
+        fes_scal->FinalizeUpdate();
+        gfres = CreateGridFunction(fes_scal,"res",Flags());
+    	gfres->Update();
+
+        // Zero order L2 finite element space for viscosity
+    	shared_ptr<FESpace> fes_lo = CreateFESpace("l2ho", ma,
+                                                   Flags().SetFlag("order",0));
+    	fes_lo->Update();
+    	fes_lo->FinalizeUpdate();
+    	gfnu = CreateGridFunction(fes_lo,"nu",Flags());
+    	gfnu->Update();
+	nu.AssignMemory(gfnu->GetVector().FVDouble().Size(),
+                        &gfnu->GetVector().FVDouble()(0));
+    	nu = 0.0;
+      }
 
     // first order H1 space for the advancing front
     shared_ptr<FESpace> fesh1 = CreateFESpace("h1ho", ma,
@@ -146,20 +153,22 @@ public:
     gftau->Update();
     gftau->GetVector() = 0.0;
 
-    AllocateVectors();
+    // AllocateVectors();
+    
   }
 
   void AllocateVectors()
   {
     u = gfu->GetVectorPtr(); // TODO: should not be needed
     uinit = u->CreateVector(); // TODO: how to set inflow boundary?
-    // if(gfnu != NULL)
-    //   {
-    // 	gfnu->Update();
-    // 	nu.AssignMemory(gfnu->GetVector().FVDouble().Size(),
-    //                     &gfnu->GetVector().FVDouble()(0));
-    // 	nu = 0.0;
-    //   }
+    if(gfnu != NULL)
+      {
+	cout << "gfnu in allocate vectors" << endl;
+    	gfnu->Update();
+    	nu.AssignMemory(gfnu->GetVector().FVDouble().Size(),
+                        &gfnu->GetVector().FVDouble()(0));
+    	nu = 0.0;
+      }
   }
 
   virtual ~T_ConservationLaw() { ; }
@@ -352,19 +361,19 @@ public:
   }
 
   // apply viscosity
-  void CalcViscosityTent (int tentnr, FlatMatrixFixWidth<COMP> u,
+  void CalcViscosityTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                           FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
                           FlatMatrixFixWidth<COMP> visc, LocalHeap & lh);
 
   // calculate entropy residual on a tent
-  void CalcEntropyResidualTent (int tentnr, FlatMatrixFixWidth<COMP> u,
+  void CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                                 FlatMatrixFixWidth<COMP> ut,
                                 FlatMatrixFixWidth<ECOMP> res,
                                 FlatMatrixFixWidth<COMP> u0, double tstar,
                                 LocalHeap & lh);
 
   // calculate viscosity coefficient based on the entropy residual on a tent
-  double CalcViscosityCoefficientTent (int tentnr, FlatMatrixFixWidth<COMP> u,
+  double CalcViscosityCoefficientTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                                        FlatMatrixFixWidth<ECOMP> hres,
 				       double tstar, LocalHeap & lh);
 
@@ -407,14 +416,13 @@ public:
   void SetTentSolver(string method, int stages, int substeps)
   {
     if(method == "SAT")
-      {
-	tentsolver = make_shared<SAT<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>>>
-	  (this->shared_from_this(), stages, substeps);
-      }
+      tentsolver = make_shared<SAT<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>>>
+	(this->shared_from_this(), stages, substeps);
+    else if(method == "SARK")
+      tentsolver = make_shared<SARK<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>>>
+	(this->shared_from_this(), stages, substeps);
     else
-      {
-	throw Exception("unknown TentSolver "+method);
-      }
+      throw Exception("unknown TentSolver "+method);
   }
   
   void Propagate(LocalHeap & lh);
