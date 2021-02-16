@@ -171,13 +171,22 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
               // DIM == 3 => internal facets are faces
               //points contained in a given facet
               ArrayMem<int,4> fpnts;
-              for (auto elnr : ma->GetVertexElements(vi))
+              ArrayMem<int,30> vertex_els;
+              slabpitcher->GetVertexElements(vi,vertex_els);
+              for (auto elnr : vertex_els)
                 for (auto f : ma->GetElement(ElementId(VOL,elnr)).Faces())
                   {
                     //get facet vertices
                     ma->GetFacetPNums(f, fpnts);
-                    if (fpnts.Contains(vi) && !tent->internal_facets.Contains(f))
-                      tent->internal_facets.Append(f);
+                    for (auto f_v : fpnts)
+                      {
+                        if (vmap[f_v]  == vi &&
+                            !tent->internal_facets.Contains(f))
+                          {
+                            tent->internal_facets.Append(f);
+                            break;
+                          }
+                      }
                   }
             }          
           slabpitcher->GetVertexElements(vi,tent->els);
