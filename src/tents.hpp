@@ -193,7 +193,7 @@ public:
   virtual ~TentSlabPitcher(){;}
   //This method precomputes mesh-dependent data. It includes the wavespeed (per element) and
   //neighbouring data. It returns the table v2v (neighbouring vertices), v2e(edges adjacent to a given
-  //vertex) and slave_verts (used for periodicity).
+  //vertex) and per_verts (used for periodicity).
   template<int DIM>
   std::tuple<Table<int>,Table<int>> InitializeMeshData(LocalHeap &lh,
                                                       shared_ptr<CoefficientFunction> wavespeed,
@@ -241,7 +241,9 @@ public:
 
   // access to global periodicity identifications
   Array<int> &vmap;      // vertex map for periodic spaces
-  Table<int> slave_verts;
+  //per_verts[v] will contain all periodic
+  // vertices associated with v
+  Table<int> per_verts;
 
 };
 

@@ -147,7 +147,7 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
           //add neighboring vertices and update their level
           for (int nb : v2v[vi])
             {
-              nb = vmap[nb]; // only update master if periodic
+              nb = vmap[nb]; // only update main vertex if periodic
               tent->nbv.Append (nb);
               tent->nbtime.Append (tau[nb]);
               //update level of vertices if needed
@@ -501,17 +501,17 @@ std::tuple<Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap 
           }
     }
 
-  TableCreator<int> create_slave_verts(ma->GetNV());
-  for ( ; !create_slave_verts.Done(); create_slave_verts++)
+  TableCreator<int> create_per_verts(ma->GetNV());
+  for ( ; !create_per_verts.Done(); create_per_verts++)
     {
       for(auto i : Range(vmap))
         if(vmap[i]!=i)
-          create_slave_verts.Add(vmap[i],i);
+          create_per_verts.Add(vmap[i],i);
     }
 
   auto v2v = create_v2v.MoveTable();
   auto v2e = create_v2e.MoveTable();
-  slave_verts = create_slave_verts.MoveTable();
+  per_verts = create_per_verts.MoveTable();
   if(calc_local_ct && DIM > 1)
     {
       local_ctau_table = this->CalcLocalCTau(lh, v2e);
@@ -524,16 +524,16 @@ std::tuple<Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap 
   return std::make_tuple(v2v, v2e);
 }
 
-// Get the slave vertex elements for a master vertex in periodic case
-void TentSlabPitcher::GetVertexElements(int vnr_master, Array<int> & elems) const
+// Get the periodic vertex associated with a primary vertex in periodic case
+void TentSlabPitcher::GetVertexElements(int vnr_main, Array<int> & elems) const
 {
-  ma->GetVertexElements (vnr_master, elems);
-  if(slave_verts[vnr_master].Size()==0)
+  ma->GetVertexElements (vnr_main, elems);
+  if(per_verts[vnr_main].Size()==0)
     return;
   else
     {
-      for(auto slave : slave_verts[vnr_master])
-        for(auto elnr : ma->GetVertexElements(slave))
+      for(auto per_v : per_verts[vnr_main])
+        for(auto elnr : ma->GetVertexElements(per_v))
           elems.Append(elnr);
     }
 }
@@ -542,7 +542,7 @@ void TentSlabPitcher::GetEdgeElements(int edge, Array<int> & elems) const
 {
   ma->GetEdgeElements (edge, elems);
 
-  ArrayMem<int,30> slave_edge_els(0);
+  ArrayMem<int,30> per_edge_els(0);
   for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
     {
       const auto & periodic_edges = ma->GetPeriodicNodes(NT_EDGE, idnr);
@@ -550,10 +550,10 @@ void TentSlabPitcher::GetEdgeElements(int edge, Array<int> & elems) const
         {
           if(per_edges[0] == edge)
             {
-              slave_edge_els.SetSize(0);
-              ma->GetEdgeElements(per_edges[1], slave_edge_els);
-              for(auto slave_el : slave_edge_els)
-                {elems.Append(slave_el);}
+              per_edge_els.SetSize(0);
+              ma->GetEdgeElements(per_edges[1], per_edge_els);
+              for(auto per_el : per_edge_els)
+                {elems.Append(per_el);}
             }
         }
     }
@@ -721,7 +721,7 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
               if(face_vertices.Pos(vi) == face_vertices.ILLEGAL_POSITION)
                 {
                   bool found = false;
-                  for(auto sl_v : slave_verts[vi])
+                  for(auto sl_v : per_verts[vi])
                     {
                       if(face_vertices.Pos(sl_v) == face_vertices.ILLEGAL_POSITION)
                         { found = true;}
@@ -836,15 +836,15 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
               //let us test for periodicity support
               auto FindVertexInEl = [el,this](const int v)
               {
-                auto &slave_v = this->slave_verts[v];
+                auto &per_vs = this->per_verts[v];
                 if(el.Points().Pos(v) != el.Points().ILLEGAL_POSITION)
                   { return el.Points().Pos(v);}
                 else
                   {
-                    for (const auto &s_v : slave_v)
+                    for (const auto &p_v : per_vs)
                       {
-                        if(el.Points().Pos(s_v) != el.Points().ILLEGAL_POSITION)
-                          { return el.Points().Pos(s_v);}
+                        if(el.Points().Pos(p_v) != el.Points().ILLEGAL_POSITION)
+                          { return el.Points().Pos(p_v);}
                       }
 
                     //we really should not hit this point
@@ -1205,7 +1205,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
                 {
                   auto pos = fnums.Pos(facet2);
                   if(pos != size_t(-1))
-                    fnr = facet2; // change facet nr to slave
+                    fnr = facet2; // change facet nr to periodic
                 }
               for (int k : Range(fnums.Size()))
                 if (fnums[k] == fnr) loc_facetnr[j] = k;
