@@ -51,9 +51,11 @@ class Euler : public T_ConservationLaw<Euler<D>, D, D+2, 1>
   using BASE::pylh;
 
 public: 
-  Euler (const shared_ptr<TentPitchedSlab> & atps, const int & order)
-    : BASE (atps, "euler", order)
+  Euler (const shared_ptr<GridFunction> & agfu,
+	 const shared_ptr<TentPitchedSlab> & atps)
+    : BASE (agfu, atps, "euler")
     {
+      int order = fes->GetOrder();
       shared_ptr<FESpace> fesvel =
 	CreateFESpace("l2ho", ma, Flags().SetFlag("order",order).SetFlag("dim",D).SetFlag("all_dofs_together"));
       fesvel->Update();
@@ -479,14 +481,15 @@ public:
 
 /////////////////////////////////////////////////////////////////////////
 
-shared_ptr<ConservationLaw> CreateEuler(const shared_ptr<TentPitchedSlab> & tps, const int & order)
+shared_ptr<ConservationLaw> CreateEuler(const shared_ptr<GridFunction> & gfu,
+					const shared_ptr<TentPitchedSlab> & tps)
 {
   int dim = tps->ma->GetDimension();
   switch(dim){
   case 1:
-    return make_shared<Euler<1>>(tps,order);
+    return make_shared<Euler<1>>(gfu, tps);
   case 2:
-    return make_shared<Euler<2>>(tps,order);
+    return make_shared<Euler<2>>(gfu, tps);
   }
   throw Exception ("euler only available for 1D and 2D");
 }

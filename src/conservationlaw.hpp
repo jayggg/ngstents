@@ -427,10 +427,12 @@ public:
   
   void Propagate(LocalHeap & lh);
 
+  [[deprecated("use Propagate after setting up a TentSolver")]]
   void PropagateSAT(int stages, int substeps,
 		    BaseVector & hu, BaseVector & hu_init,
 		    LocalHeap & lh);
 
+  [[deprecated("use Propagate after setting up a TentSolver")]]
   void PropagateSARK(int stages, int substeps,
 		     BaseVector & hu, BaseVector & hu_init,
 		     LocalHeap & lh);

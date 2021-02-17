@@ -2,7 +2,7 @@ from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, Draw, Redraw, CoefficientFunction, sqrt, x, y, TaskManager
 from ngsolve.internal import visoptions
 from ngstents import TentSlab
-from ngstents.conslaw import ConservationLaw
+from ngstents.conslaw import Euler
 
 maxh = 0.05
 geom = SplineGeometry()
@@ -23,19 +23,21 @@ print("max slope", ts.MaxSlope())
 print("n tents", ts.GetNTents())
 
 order = 4
-cl = ConservationLaw(ts,"euler",order)
+V = L2(mesh, order=order, dim=mesh.dim+2)
+u = GridFunction(V,"u")
+cl = Euler(u, ts)
+cl.SetTentSolver("SARK",substeps=2*order)
 
 d = 5
 rho = CoefficientFunction(0.1+exp(-200*((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5))))
-u = CoefficientFunction((0,0))
+m = CoefficientFunction((0,0))
 p = CoefficientFunction(0.1+exp(-200*((x-0.5)*(x-0.5)+(y-0.5)*(y-0.5))))
 T = 2*p/rho
-E = rho*(d/4*T + 1/2*sqrt(u*u))
+E = d/4*T*rho + 1/(2*rho)*m*m
 
-cf = CoefficientFunction((rho,rho*u,E))
+cf = CoefficientFunction((rho,m,E))
 cl.SetInitial(cf)
-sol = cl.sol
-Draw(sol)
+Draw(u)
 
 visoptions.scalfunction = "u:1"
 visoptions.vecfunction = None
@@ -44,7 +46,8 @@ t = 0
 cnt = 0
 with TaskManager():
     while t<tend-dt/2:
-        cl.PropagateSARK(sol.vec,substeps=2*order)
+        # cl.PropagateSARK(substeps=2*order)
+        cl.Propagate()
         t += dt
         cnt += 1
         if cnt%1 == 0:
