@@ -848,6 +848,11 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
                       }
 
                     //we really should not hit this point
+                    //it is probably something related to periodicity.
+                    throw Exception ("\nngstents error:"
+                                     " node numbering inconsistency.\n"
+                                     "Please open an issue copying "
+                                     "this message.\n");
                     return el.Points().ILLEGAL_POSITION;
                   }
               };
