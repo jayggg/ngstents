@@ -40,13 +40,13 @@ if(BUILD_STUB_FILES)
     message(WARNING "pybind11-stubgen not found, if you want to create stub files
 for better autocompletion support install it with pip.")
   else()
-    message(WARNING
-      "========================================
-this project is only compatible with\npybind11-stubgen==0.5
-========================================")
     message("-- Found pybind11-stubgen: ${stubgen_path}")
     set(FOUND_STUBGEN ON)
   endif()
+   message(STATUS
+      "\n========================================
+this project is only compatible with\npybind11-stubgen==0.5
+========================================")
 endif(BUILD_STUB_FILES)
 
 install(FILES
