@@ -32,6 +32,19 @@ endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 message("With 'make install' the python package will be installed to: ${CMAKE_INSTALL_PREFIX}")
 install(TARGETS tents DESTINATION ngstents)
 install(TARGETS conslaw DESTINATION ngstents/conslaw)
+
+option(BUILD_STUB_FILES "Generate stub files for better autocompletion support" ON)
+if(BUILD_STUB_FILES)
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import pybind11_stubgen; print(pybind11_stubgen.__file__)" OUTPUT_VARIABLE stubgen_path RESULT_VARIABLE pybind11_stubgen)
+  if(pybind11_stubgen AND NOT ${pybind11_stubgen} EQUAL 0)    
+    message(WARNING "pybind11-stubgen not found, if you want to create stub files
+for better autocompletion support install it with pip.")
+  else()
+    message("-- Found pybind11-stubgen: ${stubgen_path}")
+    set(FOUND_STUBGEN ON)
+  endif()
+endif(BUILD_STUB_FILES)
+
 install(FILES
   ../py/__init__.py
   ../py/tentslab.py
@@ -45,3 +58,8 @@ install(FILES
 install(FILES
   ../py/conslaw/__init__.py
   DESTINATION ngstents/conslaw)
+
+if(FOUND_STUBGEN)
+  install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pybind11_stubgen --no-setup-py  ngstents)")
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/stubs/ngstents-stubs/ DESTINATION ngstents)
+endif(FOUND_STUBGEN)
