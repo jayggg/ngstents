@@ -60,7 +60,6 @@ viewoptions.drawcolorbar = 0
 input('start')
 with TaskManager():
     while t < tend:
-        # burg.PropagateSARK(substeps=order*order)
         burg.Propagate()
         t += dt
         cnt += 1

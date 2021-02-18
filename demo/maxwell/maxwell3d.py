@@ -60,7 +60,6 @@ import time
 t1 = time.time()
 with TaskManager():
     while t < t_end-dt/2:
-        # cl.PropagateSAT(stages=order+1, substeps=2*order)
         cl.Propagate()
         t += dt
         cnt += 1

@@ -19,10 +19,10 @@ public:
   shared_ptr<FESpace> fes = nullptr;
   shared_ptr<GridFunction> gfu = nullptr;
   shared_ptr<GridFunction> gfres = nullptr;
-  shared_ptr<GridFunction> gfuorig = nullptr;
   shared_ptr<GridFunction> gfnu = nullptr;
 
   shared_ptr<LocalHeap> pylh = nullptr;
+
   shared_ptr<BaseVector> u = nullptr;     // u(n)
   shared_ptr<BaseVector> uinit = nullptr; // initial data, also used for bc
 
@@ -105,21 +105,14 @@ public:
     bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
 
-    // Main L2 finite element space based on spatial mesh
-    // Flags fesflags = Flags();
-    // fesflags.SetFlag("order",order);
-    // fesflags.SetFlag("dim",COMP);
-    // fesflags.SetFlag("all_dofs_together");
-    // fes = dynamic_pointer_cast<L2HighOrderFESpace>(
-    //     CreateFESpace("l2ho", ma, fesflags));
-    // fes->Update();
-    // fes->FinalizeUpdate();
-    // 
-    // gfu = CreateGridFunction(fes,"u",Flags());
-    // gfu->Update();
+    // check dimension of space
+    shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(fes);
+    if(fes_check && (fes->GetDimension() != COMP) )
+      throw Exception("set dimension of L2 finite element space to "
+		      +ToString(COMP)+" by adding the argument 'dim="+ToString(COMP)+"'");
 
-    u = gfu->GetVectorPtr(); // TODO: should not be needed
-    uinit = u->CreateVector(); // TODO: how to set inflow boundary?
+    u = gfu->GetVectorPtr();
+    uinit = u->CreateVector();
 
     if (ECOMP > 0)
       {
@@ -152,23 +145,6 @@ public:
     gftau = CreateGridFunction(fesh1,"tau",Flags().SetFlag("novisual"));
     gftau->Update();
     gftau->GetVector() = 0.0;
-
-    // AllocateVectors();
-    
-  }
-
-  void AllocateVectors()
-  {
-    u = gfu->GetVectorPtr(); // TODO: should not be needed
-    uinit = u->CreateVector(); // TODO: how to set inflow boundary?
-    if(gfnu != NULL)
-      {
-	cout << "gfnu in allocate vectors" << endl;
-    	gfnu->Update();
-    	nu.AssignMemory(gfnu->GetVector().FVDouble().Size(),
-                        &gfnu->GetVector().FVDouble()(0));
-    	nu = 0.0;
-      }
   }
 
   virtual ~T_ConservationLaw() { ; }
@@ -202,7 +178,6 @@ public:
   void SolveM (const Tent & tent, int loci, FlatMatrixFixWidth<W> mat,
                LocalHeap & lh) const
   {
-    // TODO: check space
     auto fedata = tent.fedata;
     if (!fedata)
         throw Exception ("Expected tent.fedata to be set!");
@@ -254,7 +229,6 @@ public:
                FlatVector<SIMD<double>> delta,
                FlatMatrixFixWidth<W> mat, LocalHeap & lh) const
   {
-    // TODO: check space
     auto fedata = tent.fedata;
     if (!fedata)
         throw Exception ("Expected tent.fedata to be set!");
@@ -343,13 +317,6 @@ public:
                    FlatMatrix<SIMD<double>> F) const
   {
     cout << "no overload for CalcEntropy for tent pitching" << endl;
-  }
-
-  [[deprecated]]
-  void EntropyFlux (const Vec<DIM+2> & ml, const Vec<DIM+2> & mr,
-                    const Vec<DIM> & n, double & flux) const
-  {
-    cout << "no overload for EntropyFlux" << endl;
   }
 
   // numerical flux for the entropy flux

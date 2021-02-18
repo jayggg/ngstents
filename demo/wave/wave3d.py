@@ -59,7 +59,6 @@ t1 = time.time()
 with TaskManager():
     print("starting...")
     while t < t_end - dt/2:
-        # wave.PropagateSARK(sol.vec, substeps=order*order)
         wave.Propagate()
         t += dt
         cnt += 1

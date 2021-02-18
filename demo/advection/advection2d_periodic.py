@@ -1,5 +1,4 @@
 from ngsolve import Mesh, Draw, Redraw
-from ngsolve import Integrate
 from ngsolve import CoefficientFunction, exp, sqrt, sin, cos, x, y, z
 from ngsolve import TaskManager
 from ngsolve.internal import visoptions
@@ -42,6 +41,7 @@ u = GridFunction(V)
 cl = Advection(u, ts)
 flux = (1,0.1)
 cl.SetVectorField( CoefficientFunction(flux) )
+cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)
 
 pos = (0.5,0.5)
 u0 = CoefficientFunction( exp(-100* ((x-pos[0])*(x-pos[0])+(y-pos[1])*(y-pos[1])) ))
@@ -59,8 +59,7 @@ input("press enter to start")
 t1 = time.time()
 with TaskManager():
     while t < tend-dt/2:
-        # cl.PropagateSAT(substeps=2*order,stages=order+1)
-        cl.PropagateSARK(substeps=2*order)
+        cl.Propagate()
         t += dt
         cnt += 1
         if cnt%redraw == 0:

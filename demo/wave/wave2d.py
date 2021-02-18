@@ -55,7 +55,6 @@ t1 = time.time()
 with TaskManager():
     print("starting...")
     while t < t_end - dt/2:
-        # wave.PropagateSAT(stages=order+1, substeps=4*order)
         wave.Propagate()
         t += dt
         cnt += 1

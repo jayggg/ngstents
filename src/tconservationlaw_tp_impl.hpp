@@ -701,7 +701,7 @@ template <typename EQUATION, int DIM, int COMP, int ECOMP>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 Propagate(LocalHeap & lh)
 {
-  static Timer tprop ("Propagate new", 2); RegionTimer reg(tprop);
+  static Timer tprop ("Propagate", 2); RegionTimer reg(tprop);
   RunParallelDependency
     (tent_dependency, [&] (int i)
      {

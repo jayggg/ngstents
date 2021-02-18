@@ -54,7 +54,6 @@ if vtk_tents:
 input('start')
 with TaskManager():
     while t < tend - dt/2:
-        # burg.PropagateSARK(substeps=order*order)
         burg.Propagate()
         t += dt
         cnt += 1

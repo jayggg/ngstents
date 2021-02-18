@@ -46,7 +46,6 @@ t = 0
 cnt = 0
 with TaskManager():
     while t<tend-dt/2:
-        # cl.PropagateSARK(substeps=2*order)
         cl.Propagate()
         t += dt
         cnt += 1
