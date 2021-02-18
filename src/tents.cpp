@@ -147,7 +147,7 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
           //add neighboring vertices and update their level
           for (int nb : v2v[vi])
             {
-              nb = vmap[nb]; // only update master if periodic
+              nb = vmap[nb]; // only update main vertex if periodic
               tent->nbv.Append (nb);
               tent->nbtime.Append (tau[nb]);
               //update level of vertices if needed
@@ -171,13 +171,22 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
               // DIM == 3 => internal facets are faces
               //points contained in a given facet
               ArrayMem<int,4> fpnts;
-              for (auto elnr : ma->GetVertexElements(vi))
+              ArrayMem<int,30> vertex_els;
+              slabpitcher->GetVertexElements(vi,vertex_els);
+              for (auto elnr : vertex_els)
                 for (auto f : ma->GetElement(ElementId(VOL,elnr)).Faces())
                   {
                     //get facet vertices
                     ma->GetFacetPNums(f, fpnts);
-                    if (fpnts.Contains(vi) && !tent->internal_facets.Contains(f))
-                      tent->internal_facets.Append(f);
+                    for (auto f_v : fpnts)
+                      {
+                        if (vmap[f_v]  == vi &&
+                            !tent->internal_facets.Contains(f))
+                          {
+                            tent->internal_facets.Append(f);
+                            break;
+                          }
+                      }
                   }
             }          
           slabpitcher->GetVertexElements(vi,tent->els);
@@ -492,17 +501,17 @@ std::tuple<Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap 
           }
     }
 
-  TableCreator<int> create_slave_verts(ma->GetNV());
-  for ( ; !create_slave_verts.Done(); create_slave_verts++)
+  TableCreator<int> create_per_verts(ma->GetNV());
+  for ( ; !create_per_verts.Done(); create_per_verts++)
     {
       for(auto i : Range(vmap))
         if(vmap[i]!=i)
-          create_slave_verts.Add(vmap[i],i);
+          create_per_verts.Add(vmap[i],i);
     }
 
   auto v2v = create_v2v.MoveTable();
   auto v2e = create_v2e.MoveTable();
-  slave_verts = create_slave_verts.MoveTable();
+  per_verts = create_per_verts.MoveTable();
   if(calc_local_ct && DIM > 1)
     {
       local_ctau_table = this->CalcLocalCTau(lh, v2e);
@@ -515,19 +524,41 @@ std::tuple<Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap 
   return std::make_tuple(v2v, v2e);
 }
 
-// Get the slave vertex elements for a master vertex in periodic case
-void TentSlabPitcher::GetVertexElements(int vnr_master, Array<int> & elems)
+// Get the periodic vertex associated with a primary vertex in periodic case
+void TentSlabPitcher::GetVertexElements(int vnr_main, Array<int> & elems) const
 {
-  ma->GetVertexElements (vnr_master, elems);
-  if(slave_verts[vnr_master].Size()==0)
+  ma->GetVertexElements (vnr_main, elems);
+  if(per_verts[vnr_main].Size()==0)
     return;
   else
     {
-      for(auto slave : slave_verts[vnr_master])
-        for(auto elnr : ma->GetVertexElements(slave))
+      for(auto per_v : per_verts[vnr_main])
+        for(auto elnr : ma->GetVertexElements(per_v))
           elems.Append(elnr);
     }
 }
+
+void TentSlabPitcher::GetEdgeElements(int edge, Array<int> & elems) const
+{
+  ma->GetEdgeElements (edge, elems);
+
+  ArrayMem<int,30> per_edge_els(0);
+  for (auto idnr : Range(ma->GetNPeriodicIdentifications()))
+    {
+      const auto & periodic_edges = ma->GetPeriodicNodes(NT_EDGE, idnr);
+      for (const auto& per_edges : periodic_edges)
+        {
+          if(per_edges[0] == edge)
+            {
+              per_edge_els.SetSize(0);
+              ma->GetEdgeElements(per_edges[1], per_edge_els);
+              for(auto per_el : per_edge_els)
+                {elems.Append(per_el);}
+            }
+        }
+    }
+}
+
 
 void TentSlabPitcher::MapPeriodicVertices()
 {
@@ -565,7 +596,7 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
   // array of all elements containing vertex vi
   ArrayMem<int,30>  els;
   els.SetSize(0);
-  this->ma->GetVertexElements(vi, els);
+  this->GetVertexElements(vi, els);
 
   constexpr double init_pole_height = std::numeric_limits<double>::max();
   double pole_height = init_pole_height;
@@ -657,17 +688,17 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
   TableCreator<double> create_local_ctau;
   create_local_ctau.SetSize(n_mesh_vertices);
   create_local_ctau.SetMode(2);
+  ArrayMem<int,30>vertex_els(0);
   //just calculating the size of the table
   for(auto vi : IntRange(0, n_mesh_vertices))
     {
       if(vi != vmap[vi]) {continue;}
-      const auto n_vert_els = ma->GetVertexElements(vi).Size();
+      this->GetVertexElements(vi,vertex_els);
+      const auto n_vert_els = vertex_els.Size();
       for(auto el : IntRange(0, n_vert_els))
         {create_local_ctau.Add(vi,0);}
     }
   create_local_ctau++;// it is in insert mode
-
-  ArrayMem<int, 30> vertex_els(0);
   //for a given vertex V in an element E with faces F the constant is calculated as
   //the minimum (over the faces F) ratio between the length of the opposite
   //edge and the biggest edge adjacent to V in F
@@ -675,8 +706,7 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
   for(auto vi : IntRange(0,n_mesh_vertices))
     {
       if(vi != vmap[vi]){continue;}
-      
-      vertex_els = ma->GetVertexElements(vi);
+      this->GetVertexElements(vi,vertex_els);
       for(auto iel : IntRange(0,vertex_els.Size()))
         {
           HeapReset hr(lh);
@@ -688,7 +718,16 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
             {
               auto face_vertices = ma->GetFacePNums(face);
               //check if the face contains the vertex vi
-              if(face_vertices.Pos(vi) == face_vertices.ILLEGAL_POSITION) continue;
+              if(face_vertices.Pos(vi) == face_vertices.ILLEGAL_POSITION)
+                {
+                  bool found = false;
+                  for(auto sl_v : per_verts[vi])
+                    {
+                      if(face_vertices.Pos(sl_v) == face_vertices.ILLEGAL_POSITION)
+                        { found = true;}
+                    }
+                  if(!found) {continue;}
+                }
               
               auto face_edges = ma->GetFaceEdges(face);
               double opposite_edge = -1;
@@ -696,7 +735,7 @@ Table<double> VolumeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Tab
               for(auto edge : face_edges)
                 {
                   auto pnts = ma->GetEdgePNums(edge);
-                  if(pnts[0] != vi && pnts[1] != vi)
+                  if(vmap[pnts[0]] != vi && vmap[pnts[1]] != vi)
                     {
                       opposite_edge = edge_len[edge];
                     }
@@ -776,7 +815,8 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
         {
           //gets the elements that have this edge as a side
           edge_els.SetSize(0);
-          ma->GetEdgeElements(edge, edge_els);
+          
+          this->GetEdgeElements(edge, edge_els);
           double val = std::numeric_limits<double>::max();
           //gets the vertices belonging to the edge
           auto pnts = ma->GetEdgePNums(edge);
@@ -793,10 +833,33 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
               ElementTransformation &trafo = this->ma->GetTrafo(ei, lh);
               MappedIntegrationPoint<DIM,DIM> mip(ir[0],trafo);
               my_fel.CalcMappedDShape(mip,gradphi);
+              //let us test for periodicity support
+              auto FindVertexInEl = [el,this](const int v)
+              {
+                auto &per_vs = this->per_verts[v];
+                if(el.Points().Pos(v) != el.Points().ILLEGAL_POSITION)
+                  { return el.Points().Pos(v);}
+                else
+                  {
+                    for (const auto &p_v : per_vs)
+                      {
+                        if(el.Points().Pos(p_v) != el.Points().ILLEGAL_POSITION)
+                          { return el.Points().Pos(p_v);}
+                      }
+
+                    //we really should not hit this point
+                    //it is probably something related to periodicity.
+                    throw Exception ("\nngstents error:"
+                                     " node numbering inconsistency.\n"
+                                     "Please open an issue copying "
+                                     "this message.\n");
+                    return el.Points().ILLEGAL_POSITION;
+                  }
+              };
               /*the inner products gradphi.edgevec are identically equal to one so
                 there is no need to calculate them*/
-              const auto v1_local = el.Points().Pos(v1);
-              const auto v2_local = el.Points().Pos(v2);
+              const auto v1_local = FindVertexInEl(vmap[v1]);
+              const auto v2_local = FindVertexInEl(vmap[v2]);
 
               /*
                 splitting 2d and 3d code. there is no need to generate that much
@@ -1142,7 +1205,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
                 {
                   auto pos = fnums.Pos(facet2);
                   if(pos != size_t(-1))
-                    fnr = facet2; // change facet nr to slave
+                    fnr = facet2; // change facet nr to periodic
                 }
               for (int k : Range(fnums.Size()))
                 if (fnums[k] == fnr) loc_facetnr[j] = k;
