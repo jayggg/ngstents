@@ -1,27 +1,34 @@
 #include "conservationlaw.hpp"
 #include <python_ngstd.hpp>
 
-shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<TentPitchedSlab> & tps, const int & order);shared_ptr<ConservationLaw> CreateEuler(const shared_ptr<TentPitchedSlab> & tps, const int & order);
-shared_ptr<ConservationLaw> CreateWave(const shared_ptr<TentPitchedSlab> & tps, const int & order);
-shared_ptr<ConservationLaw> CreateAdvection(const shared_ptr<TentPitchedSlab> & tps, const int & order);
-shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<TentPitchedSlab> & tps, const int & order);
+shared_ptr<ConservationLaw> CreateBurgers(const shared_ptr<GridFunction> & gfu,
+					  const shared_ptr<TentPitchedSlab> & tps);
+shared_ptr<ConservationLaw> CreateEuler(const shared_ptr<GridFunction> & gfu,
+					const shared_ptr<TentPitchedSlab> & tps);
+shared_ptr<ConservationLaw> CreateWave(const shared_ptr<GridFunction> & gfu,
+				       const shared_ptr<TentPitchedSlab> & tps);
+shared_ptr<ConservationLaw> CreateAdvection(const shared_ptr<GridFunction> & gfu,
+					    const shared_ptr<TentPitchedSlab> & tps);
+shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<GridFunction> & gfu,
+					  const shared_ptr<TentPitchedSlab> & tps);
 
 typedef ConservationLaw CL;
 
-shared_ptr<CL> CreateConsLaw(const shared_ptr<TentPitchedSlab> & tps,
-			     const string & eqn, const int & order)
+shared_ptr<CL> CreateConsLaw(const shared_ptr<GridFunction> & gfu,
+			     const shared_ptr<TentPitchedSlab> & tps,
+			     const string & eqn)
 {
   shared_ptr<CL> cl = nullptr;
   if (eqn=="burgers")
-    cl = CreateBurgers(tps,order);
+    cl = CreateBurgers(gfu, tps);
   else if(eqn=="euler")
-    cl = CreateEuler(tps,order);
+    cl = CreateEuler(gfu, tps);
   else if(eqn=="wave")
-    cl = CreateWave(tps,order);
+    cl = CreateWave(gfu, tps);
   else if(eqn=="advection")
-    cl = CreateAdvection(tps,order);
+    cl = CreateAdvection(gfu, tps);
   else if(eqn=="maxwell")
-    cl = CreateMaxwell(tps,order);
+    cl = CreateMaxwell(gfu, tps);
   else
     throw Exception(string("unknown equation '"+eqn+"'"));
   return cl;
@@ -32,17 +39,18 @@ void ExportConsLaw(py::module & m)
 {
   py::class_<CL, shared_ptr<CL>>
     (m,"ConservationLaw", "Conservation Law")
-    .def(py::init([](const shared_ptr<TentPitchedSlab> & tps,
-  		     const string & eqn, const int & order)
+    .def(py::init([](const shared_ptr<GridFunction> & gfu,
+		     const shared_ptr<TentPitchedSlab> & tps,
+  		     const string & eqn)
   		  -> shared_ptr<CL>
                   {
-                    auto cl = CreateConsLaw(tps, eqn, order);
+                    auto cl = CreateConsLaw(gfu, tps, eqn);
                     cl->SetBC(); //use old style bc numbers for now
                     return cl;
                   }),
-         py::arg("tentslab"),
-  	 py::arg("equation"),
-         py::arg("order"))
+         py::arg("gridfunction"),
+  	 py::arg("tentslab"),
+         py::arg("equation"))
     .def_property_readonly("tentslab", [](shared_ptr<CL> self)
                            {
   			     return self->tps;
@@ -73,10 +81,10 @@ void ExportConsLaw(py::module & m)
            self->uinit->Set(1.0,*(self->u)); // set data used for b.c.
          })
     // Set flux field
-    .def("SetFluxField",
+    .def("SetVectorField",
          [](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
          {
-           self->SetFluxField(cf);
+           self->SetVectorField(cf);
          })
     .def("SetMaterialParameters",
          [](shared_ptr<CL> self,
@@ -85,16 +93,16 @@ void ExportConsLaw(py::module & m)
 	 {
 	   self->SetMaterialParameters(cf_mu,cf_eps);
 	 }, py::arg("mu"), py::arg("eps"))
-    .def("PropagateSAT",
-         [](shared_ptr<CL> self, shared_ptr<BaseVector> vecu, int stages, int substeps)
+    .def("SetTentSolver",
+         [](shared_ptr<CL> self, string method, int stages, int substeps)
          {
-           self->PropagateSAT(stages, substeps,*vecu,*(self->uinit),*(self->pylh));
-         }, py::arg("vec"), py::arg("stages") = 2, py::arg("substeps") = 1)
-    .def("PropagateSARK",
-         [](shared_ptr<CL> self, shared_ptr<BaseVector> vecu, int stages, int substeps)
+           self->SetTentSolver(method, stages, substeps);
+         }, py::arg("method") = "SAT", py::arg("stages") = 2, py::arg("substeps") = 1)
+    .def("Propagate",
+         [](shared_ptr<CL> self)
          {
-           self->PropagateSARK(stages, substeps,*vecu,*(self->uinit),*(self->pylh));
-         }, py::arg("vec"), py::arg("stages") = 2, py::arg("substeps") = 1)
+           self->Propagate(*(self->pylh));
+         })
     ;
 }
 

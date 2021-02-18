@@ -32,15 +32,15 @@ ts.PitchTents(dt)
 print("max slope", ts.MaxSlope())
 
 order = 4
-burg = Burgers(ts, order=order)
-
-sol = burg.sol
+V = L2(mesh, order=order)
+u = GridFunction(V,"u")
+burg = Burgers(u, ts)
+burg.SetTentSolver("SARK",substeps=order*order)
 
 cf = CoefficientFunction(exp(-50*((x-0.3)*(x-0.3)+(y-0.3)*(y-0.3))))
-
 burg.SetInitial(cf)
 
-Draw(sol)  # ,sd=5,autoscale=False)
+Draw(u)
 
 tend = 10*dt
 t = 0
@@ -54,7 +54,7 @@ if vtk_tents:
 input('start')
 with TaskManager():
     while t < tend - dt/2:
-        burg.PropagateSARK(sol.vec, substeps=order*order)
+        burg.Propagate()
         t += dt
         cnt += 1
         if cnt % 1 == 0:

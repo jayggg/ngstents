@@ -33,15 +33,18 @@ print("n tents", ts.GetNTents())
 
 # setting the approximation space order
 order = 2
-wave = Wave(ts, order)
+V = L2(mesh, order=order, dim=mesh.dim+1)
+u = GridFunction(V,"u")
+wave = Wave(u, ts)
+wave.SetTentSolver("SAT", stages=order+1, substeps=4*order)
 
-p = CoefficientFunction(cos(x)*cos(y))
-u = CoefficientFunction((0, 0))
-cf = CoefficientFunction((u, p))
+mu0 = CoefficientFunction(cos(x)*cos(y))
+q0 = CoefficientFunction((0, 0))
+cf = CoefficientFunction((q0, mu0))
 wave.SetInitial(cf)
-sol = wave.sol
-Draw(sol)
-visoptions.scalfunction = "u:4"
+
+Draw(u)
+visoptions.scalfunction = "u:3"
 
 t = 0
 cnt = 0
@@ -52,7 +55,7 @@ t1 = time.time()
 with TaskManager():
     print("starting...")
     while t < t_end - dt/2:
-        wave.PropagateSAT(sol.vec, stages=order+1, substeps=4*order)
+        wave.Propagate()
         t += dt
         cnt += 1
         if cnt % redraw == 0:
@@ -65,6 +68,5 @@ exsol = CoefficientFunction((sin(x)*cos(y)*sin(sqrt(2)*t_end)/sqrt(2),
                              cos(x)*sin(y)*sin(sqrt(2)*t_end)/sqrt(2),
                              cos(x)*cos(y)*cos(sqrt(2)*t_end)))
 Draw(exsol, mesh, 'exact')
-l2error = sqrt(Integrate(InnerProduct(
-    sol-exsol, sol-exsol), mesh, order=3*order))
+l2error = sqrt(Integrate(InnerProduct(u-exsol, u-exsol), mesh, order=3*order))
 print("l2error = ", l2error)

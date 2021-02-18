@@ -11,15 +11,16 @@ class Advection : public T_ConservationLaw<Advection<D>, D, 1, 0>
   typedef T_ConservationLaw<Advection<D>, D, 1, 0> BASE;
   
 public:
-  Advection (const shared_ptr<TentPitchedSlab> & atps, const int & order)
-    : BASE (atps, "advection", order)
+  Advection (const shared_ptr<GridFunction> & agfu,
+	     const shared_ptr<TentPitchedSlab> & atps)
+    : BASE (agfu, atps, "advection")
   { };
 
   using BASE::Flux;
   using BASE::NumFlux;
   using BASE::InverseMap;
 
-  void SetFluxField(shared_ptr<CoefficientFunction> cf) { bfield = cf; }
+  void SetVectorField(shared_ptr<CoefficientFunction> cf) { bfield = cf; }
   
   // solve for û: Û = ĝ(x̂, t̂, û) - ∇̂ φ(x̂, t̂) ⋅ f̂(x̂, t̂, û)
   // at all points in an integration rule
@@ -72,16 +73,17 @@ public:
 
 /////////////////////////////////////////////////////////////////////////
 
-shared_ptr<ConservationLaw> CreateAdvection (const shared_ptr<TentPitchedSlab> & tps, const int & order)
+shared_ptr<ConservationLaw> CreateAdvection (const shared_ptr<GridFunction> & gfu,
+					     const shared_ptr<TentPitchedSlab> & tps)
 {
   const int dim = tps->ma->GetDimension();
   switch(dim){
   case 1:
-    return make_shared<Advection<1>>(tps,order);
+    return make_shared<Advection<1>>(gfu, tps);
   case 2:
-    return make_shared<Advection<2>>(tps,order);
+    return make_shared<Advection<2>>(gfu, tps);
   case 3:
-    return make_shared<Advection<3>>(tps,order);
+    return make_shared<Advection<3>>(gfu, tps);
   }
   throw Exception ("Illegal dimension for Advection");
 }

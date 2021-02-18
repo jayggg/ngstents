@@ -6,28 +6,18 @@ using namespace ngsolve;
 template <int D>
 class Maxwell : public T_ConservationLaw<Maxwell<D>, D, 2*D, 0> 
 {
-  // shared_ptr<GridFunction> gfE;
-  // shared_ptr<GridFunction> gfH;
   typedef T_ConservationLaw<Maxwell<D>, D, 2*D, 0> BASE;
   
 public:
-  Maxwell (const shared_ptr<TentPitchedSlab> & atps, const int & order)
-    : BASE (atps, "maxwell", order)
-  { 
-    // shared_ptr<FESpace> fesD =
-    //   CreateFESpace("l2ho", ma, Flags().SetFlag("order",order).SetFlag("dim",D).SetFlag("all_dofs_together"));
-    // fesD->Update();
-    // fesD->FinalizeUpdate();
-    // gfE = CreateGridFunction(fesD,"E",Flags());
-    // gfE->Update();
-    // gfH = CreateGridFunction(fesD,"H",Flags());
-    // gfH->Update();
-  }
-  
+  Maxwell (const shared_ptr<GridFunction> & agfu,
+	   const shared_ptr<TentPitchedSlab> & atps)
+    : BASE (agfu, atps, "maxwell")
+  { };
+
   using BASE::Flux;
   using BASE::NumFlux;
   using BASE::InverseMap;
-  
+
   template<typename T>
   INLINE auto skew (T vec) const
   {
@@ -59,20 +49,6 @@ public:
 	  for(size_t k : Range(2*D))
 	    flux(l++,i) = fluxmat(k,j);
       }
-  }
-
-  Vec<2*D> Flux (const FlatVec<2*D> & ul, const FlatVec<2*D> & ur, const Vec<D> & nv) const
-  {
-    Vec<2*D> flux = 0.5*(Flux(ul)+Flux(ur))*nv;
-    // double N2 = L2Norm2(nv);
-    // flux.Range(0,D) += 1/N2 * InnerProduct(ul.Range(0,D)-ur.Range(0,D), nv) * nv;
-    // flux.Range(D,2*D) += 1/N2 * InnerProduct(ul.Range(0,D)-ur.Range(0,D), nv) * nv;
-
-    //// alternating flux
-    // Vec<2*D> flux;
-    // flux.Rows(0,D) = Flux(ur).Rows(0,D)*nv;
-    // flux.Rows(D,2*D) = Flux(ul).Rows(D,2*D)*nv;
-    return flux;
   }
 
   auto NumFlux (const Vec<6,SIMD<double>> & ul,
@@ -112,21 +88,7 @@ public:
     for (size_t i = 0; i < ul.Width(); i++)
       fna.Col(i) = NumFlux(ul.Col(i), ur.Col(i), normals.Col(i));
   }
-  
-  void TransformBack(const BaseMappedIntegrationPoint & mip,
-		     const Vec<D> & gradphi,
-		     const FlatVec<2*D> u) const
-  {
-    Mat<2*D> mat;
-    mat.Rows(0,D).Cols(0,D) = Id<D>();
-    mat.Rows(0,D).Cols(D,2*D) = skew(gradphi);
-    mat.Rows(D,2*D).Cols(0,D) = -skew(gradphi);
-    mat.Rows(D,2*D).Cols(D,2*D) = Id<D>();
-    CalcInverse(mat);
-    u = mat * u;
-  }
 
-  
   void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
 		  FlatMatrix<SIMD<double>> grad, FlatMatrix<SIMD<double>> u) const
   {
@@ -172,26 +134,16 @@ public:
     u_refl.Rows(0,D) = -u.Rows(0,D);
     u_refl.Rows(D,2*D) = u.Rows(D,2*D);
   }
-
-//   virtual void UpdateVisualisation(const BaseVector & hu, LocalHeap & lh) const
-//   {
-//     HeapReset hr(lh);
-//     int n = gfE->GetVector().FVDouble().Size()/D;
-//     FlatMatrixFixWidth<2*D> u(n, &hu.FV<double>()(0));
-//     FlatMatrixFixWidth<D> E(n,&gfE->GetVector().FVDouble()(0));
-//     FlatMatrixFixWidth<D> H(n,&gfH->GetVector().FVDouble()(0));
-//     E = u.Cols(0,D);
-//     H = u.Cols(D,2*D);
-//   }
 }; 
 
 /////////////////////////////////////////////////////////////////////////
 
-shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<TentPitchedSlab> & tps, const int & order)
+shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<GridFunction> & gfu,
+					  const shared_ptr<TentPitchedSlab> & tps)
 {
   const int dim = tps->ma->GetDimension();
   if(dim == 3)
-    return make_shared<Maxwell<3>>(tps,order);
+    return make_shared<Maxwell<3>>(gfu, tps);
   else
     throw Exception("Maxwell equations not implemented for D != 3");
 }

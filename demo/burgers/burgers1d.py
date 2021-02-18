@@ -15,7 +15,7 @@ from ngsolve.internal import viewoptions
 # Options
 cfnum = 0
 draw_tents = False  # Plot tents.  Don't set this in Netgen context.
-step_sol = True     # Step through the solution
+step_sol = False     # Step through the solution
 spec = True         # Use a non-uniform mesh for more interesting tent plot
 dt = 0.05           # Tent slab height
 c = 4.0             # Characteristic speed
@@ -27,7 +27,7 @@ if spec:
              0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0,]
     mesh = Make1DMeshSpecified(pts, bc=[1, 3])
 else:
-    mesh = Make1DMesh([[0, 1]], [20], bc=[1, 3])
+    mesh = Make1DMesh([[0, 1]], [100], bc=[1, 3])
 mesh = Mesh(mesh)
 
 ts = TentSlab(mesh)
@@ -38,17 +38,19 @@ print("Max Slope: ", ts.MaxSlope())
 if draw_tents:
     ts.DrawPitchedTentsPlt()
 
-burg = Burgers(ts, order)
-sol = burg.sol
+V = L2(mesh, order=order)
+u = GridFunction(V,"u")
+burg = Burgers(u, ts)
+burg.SetTentSolver("SARK",substeps=order*order)
 
-cf = CoefficientFunction(exp(-50*(x-0.3)*(x-0.3))) if cfnum == 0 \
+cf = CoefficientFunction(0.5*exp(-100*(x-0.2)*(x-0.2))) if cfnum == 0 \
     else CoefficientFunction(x) if cfnum == 1 \
     else CoefficientFunction(1)
 
 burg.SetInitial(cf)
-Draw(sol)
+Draw(u)
 
-tend = 10
+tend = 4
 t = 0
 cnt = 0
 
@@ -58,7 +60,7 @@ viewoptions.drawcolorbar = 0
 input('start')
 with TaskManager():
     while t < tend:
-        burg.PropagateSARK(sol.vec, substeps=order*order)
+        burg.Propagate()
         t += dt
         cnt += 1
         if cnt % 5 == 0:

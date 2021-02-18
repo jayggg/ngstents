@@ -34,14 +34,17 @@ print("n tents", ts.GetNTents())
 
 # setting the approximation space order
 order = 2
-wave = Wave(ts, order)
+V = L2(mesh, order=order, dim=mesh.dim+1)
+u = GridFunction(V,"u")
+wave = Wave(u, ts)
+wave.SetTentSolver("SAT", stages=order+1, substeps=4*order)
 
-p = CoefficientFunction(cos(x)*cos(y)*cos(z))
-u = CoefficientFunction((0, 0, 0))
-cf = CoefficientFunction((u, p))
+mu0 = CoefficientFunction(cos(x)*cos(y)*cos(z))
+q0 = CoefficientFunction((0, 0, 0))
+cf = CoefficientFunction((q0, mu0))
 wave.SetInitial(cf)
-sol = wave.sol
-Draw(sol, sd=5)
+
+Draw(u)
 visoptions.scalfunction = "u:4"
 viewoptions.clipping.enable = 1
 visoptions.clipsolution = 'scal'
@@ -49,7 +52,6 @@ viewoptions.clipping.dist = 0.5
 
 t = 0
 cnt = 0
-# cl.DrawTents()
 
 redraw = 1
 input('start')
@@ -57,7 +59,7 @@ t1 = time.time()
 with TaskManager():
     print("starting...")
     while t < t_end - dt/2:
-        wave.PropagateSARK(sol.vec, substeps=order*order)
+        wave.Propagate()
         t += dt
         cnt += 1
         if cnt % redraw == 0:
@@ -70,6 +72,5 @@ exsol = CoefficientFunction((sin(x)*cos(y)*cos(z)*sin(sqrt(3)*t_end)/sqrt(3),
                              cos(x)*cos(y)*sin(z)*sin(sqrt(3)*t_end)/sqrt(3),
                              cos(x)*cos(y)*cos(z)*cos(sqrt(3)*t_end)))
 Draw(exsol, mesh, 'exact')
-l2error = sqrt(Integrate(InnerProduct(
-    sol-exsol, sol-exsol), mesh, order=3*order))
+l2error = sqrt(Integrate(InnerProduct(u-exsol, u-exsol), mesh, order=3*order))
 print("l2error = ", l2error)

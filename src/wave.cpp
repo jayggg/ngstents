@@ -14,20 +14,15 @@ class Wave : public T_ConservationLaw<Wave<D>, D, D+1, 0>
   typedef T_ConservationLaw<Wave<D>, D, D+1, 0> BASE;
   
 public:
-  Wave (const shared_ptr<TentPitchedSlab> & atps, const int & order)
-    : BASE (atps, "wave", order)
+  Wave (const shared_ptr<GridFunction> & agfu,
+	const shared_ptr<TentPitchedSlab> & atps)
+    : BASE (agfu, atps, "wave")
   { };
-
-  // these two were private
-  using BASE::gfnu;
-  using BASE::gfres;
 
   using BASE::Flux;
   using BASE::NumFlux;
   using BASE::u_reflect;
   using BASE::u_transparent;
-  using BASE::CalcEntropy;
-  using BASE::CalcViscCoeffEl;
   
   void SetMaterialParameters(shared_ptr<CoefficientFunction> mu,
 			     shared_ptr<CoefficientFunction> eps)
@@ -173,16 +168,17 @@ public:
 
 /////////////////////////////////////////////////////////////////////////
 
-shared_ptr<ConservationLaw> CreateWave(const shared_ptr<TentPitchedSlab> & tps, const int & order)
+shared_ptr<ConservationLaw> CreateWave(const shared_ptr<GridFunction> & gfu,
+				       const shared_ptr<TentPitchedSlab> & tps)
 {
   const int dim = tps->ma->GetDimension();
   switch(dim){
   case 1:
-    return make_shared<Wave<1>>(tps,order);
+    return make_shared<Wave<1>>(gfu, tps);
   case 2:
-    return make_shared<Wave<2>>(tps,order);
+    return make_shared<Wave<2>>(gfu, tps);
   case 3:
-    return make_shared<Wave<3>>(tps,order);
+    return make_shared<Wave<3>>(gfu, tps);
   }
   throw Exception ("Illegal dimension for Wave");
 }
