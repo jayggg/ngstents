@@ -103,16 +103,6 @@ void ExportConsLaw(py::module & m)
          {
            self->Propagate(*(self->pylh));
          })
-    .def("PropagateSAT",
-         [](shared_ptr<CL> self, int stages, int substeps)
-         {
-           self->PropagateSAT(stages, substeps, self->gfu->GetVector(), *(self->uinit), *(self->pylh));
-         }, py::arg("stages") = 2, py::arg("substeps") = 1)
-    .def("PropagateSARK",
-         [](shared_ptr<CL> self, int stages, int substeps)
-         {
-           self->PropagateSARK(stages, substeps, self->gfu->GetVector(), *(self->uinit), *(self->pylh));
-         }, py::arg("stages") = 2, py::arg("substeps") = 1)
     ;
 }
 

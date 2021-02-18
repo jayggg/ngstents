@@ -65,6 +65,7 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
 
   tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), *(tcl->ma), lh);
+  //tent.InitTent(gftau);
 
   const int ndof = tent.fedata->nd;
   FlatMatrixFixWidth<COMP> local_u0(ndof,lh);
@@ -190,7 +191,8 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   //   *testout << "bot, top : " << norm_bot << ", " << norm_top << endl;
 
   hu.SetIndirect(tent.fedata->dofs, AsFV(local_Gu0));
-  tent.fedata = nullptr; 
+  tent.fedata = nullptr;
+  //tent.SetFinalTime();
 };
 
 

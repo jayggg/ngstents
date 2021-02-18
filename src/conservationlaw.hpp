@@ -48,14 +48,6 @@ public:
 
   virtual void Propagate(LocalHeap & lh) = 0;
 
-  virtual void PropagateSAT(int stages, int substeps,
-			    BaseVector & hu, BaseVector & hu_init,
-			    LocalHeap & lh) = 0;
-
-  virtual void PropagateSARK(int stages, int substeps,
-			     BaseVector & hu, BaseVector & hu_init,
-			     LocalHeap & lh) = 0;
-  
 };
 
 
@@ -96,11 +88,10 @@ public:
 		     const string & eqn)
     : ConservationLaw(gfu, tps, eqn)
   {
-    // TODO: do I need that
     size_t heapsize = 10*1000000;
     pylh = make_shared<LocalHeap>(heapsize,"ConsLaw - py main heap",true);
 
-    // TODO: set boundaries later
+    // TODO: named boundaries
     // store boundary condition numbers
     bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
@@ -393,16 +384,6 @@ public:
   }
   
   void Propagate(LocalHeap & lh);
-
-  [[deprecated("use Propagate after setting up a TentSolver")]]
-  void PropagateSAT(int stages, int substeps,
-		    BaseVector & hu, BaseVector & hu_init,
-		    LocalHeap & lh);
-
-  [[deprecated("use Propagate after setting up a TentSolver")]]
-  void PropagateSARK(int stages, int substeps,
-		     BaseVector & hu, BaseVector & hu_init,
-		     LocalHeap & lh);
 
 };
 
