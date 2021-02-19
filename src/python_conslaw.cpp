@@ -65,6 +65,10 @@ void ExportConsLaw(py::module & m)
   			   {
   			     return self->gfu;
   			   })
+    .def_property_readonly("tau", [](shared_ptr<CL> self)
+			   {
+			     return self->gftau;
+			   })
     .def_property_readonly("res", [](shared_ptr<CL> self)
   			   {
   			     return self->gfres;
@@ -85,6 +89,10 @@ void ExportConsLaw(py::module & m)
          [](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
          {
            self->SetVectorField(cf);
+         })
+    .def("SetBoundaryCF",[](shared_ptr<CL> self, int bcnr, shared_ptr<CoefficientFunction> cf)
+         {
+	   self->SetBoundaryCF(bcnr-1,cf); // 1-based to 0-based
          })
     .def("SetMaterialParameters",
          [](shared_ptr<CL> self,

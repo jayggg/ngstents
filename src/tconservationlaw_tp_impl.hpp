@@ -18,7 +18,7 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
   if (!fedata) throw Exception("fedata not set");
 
   // these variables no longer exist
-  //*(tent->time) = tent.timebot + tstar*(tent.ttop-tent.tbot);
+  *(tent.time) = tent.timebot + tstar*(tent.ttop-tent.tbot);
 
   flux = 0.0;
   {
@@ -130,9 +130,16 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
               Cast().u_transparent(simd_mir, u1, fedata->anormals[i], u2);
             }
           else
-            throw Exception(string("no implementation for your") +
-                  string(" chosen boundary condition number ") +
-                  ToString(bc+1));
+	    {
+	      if(cf_bnd[bc])
+                {
+                  cf_bnd[bc]->Evaluate(simd_mir,u2);
+                }
+              else
+		throw Exception(string("no implementation for your") +
+				string(" chosen boundary condition number ") +
+				ToString(bc+1));
+	    }
 
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
 	  Cast().NumFlux (simd_mir, u1, u2, fedata->anormals[i], fn);

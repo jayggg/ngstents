@@ -17,6 +17,7 @@ void SAT<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
 
   tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), *(tcl->ma), lh);
+  tent.InitTent(tcl->gftau);
 
   int ndof = tent.fedata->nd;
   FlatMatrixFixWidth<COMP> local_uhat(ndof,lh);
@@ -53,7 +54,8 @@ void SAT<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   	}
     }
   hu.SetIndirect(tent.fedata->dofs, AsFV(local_uhat));
-  tent.fedata = nullptr; 
+  tent.fedata = nullptr;
+  tent.SetFinalTime();
 };
 
 ////// structure-aware Runge-Kutta time stepping //////
@@ -65,7 +67,7 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
 
   tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), *(tcl->ma), lh);
-  //tent.InitTent(gftau);
+  tent.InitTent(tcl->gftau);
 
   const int ndof = tent.fedata->nd;
   FlatMatrixFixWidth<COMP> local_u0(ndof,lh);
@@ -192,7 +194,7 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
 
   hu.SetIndirect(tent.fedata->dofs, AsFV(local_Gu0));
   tent.fedata = nullptr;
-  //tent.SetFinalTime();
+  tent.SetFinalTime();
 };
 
 

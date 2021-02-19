@@ -27,6 +27,9 @@ public:
   shared_ptr<BaseVector> uinit = nullptr; // initial data, also used for bc
 
   shared_ptr<TentSolver> tentsolver;
+
+  shared_ptr<GridFunction> gftau = nullptr;  // advancing front (used for time-dependent bc)
+
 public:
   ConservationLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
@@ -39,6 +42,8 @@ public:
   
   virtual void SetBC() = 0;
 
+  virtual void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf) = 0;
+  
   virtual void SetVectorField(shared_ptr<CoefficientFunction> cf) = 0;
 
   virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
@@ -70,6 +75,7 @@ protected:
   bool def_bcnr = false; // check if the array below is properly set
   int maxbcnr = 4;
   Array<int> bcnr; // array of boundary condition numbers
+  Array<shared_ptr<CoefficientFunction>> cf_bnd; // cf_bnd[i] used for boundary values on bc=i
 
   // collection of tents in timeslab
   Table<int> & tent_dependency = tps->tent_dependency;
@@ -79,9 +85,6 @@ protected:
 public:
   enum { NCOMP = COMP };
   enum { NECOMP = ECOMP };
-
-  // advancing front (used for time-dependent bc)
-  shared_ptr<GridFunction> gftau = nullptr;
 
   T_ConservationLaw (const shared_ptr<GridFunction> & gfu,
 		     const shared_ptr<TentPitchedSlab> & tps,
@@ -95,7 +98,9 @@ public:
     // store boundary condition numbers
     bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
-
+    cf_bnd.SetSize(maxbcnr);
+    cf_bnd = nullptr;
+    
     // check dimension of space
     shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(fes);
     if(fes_check && (fes->GetDimension() != COMP) )
@@ -139,7 +144,7 @@ public:
   }
 
   virtual ~T_ConservationLaw() { ; }
-  
+
   // Set the boundary condition numbers from the mesh boundary elements indices
   // These indices are 0-based here and 1-based in Python. 
   //  0: outflow, 1: wall, 2: inflow, 3: transparent 
@@ -153,6 +158,26 @@ public:
           bcnr[fnums[0]] = ma->GetElIndex(sel);
         }
   }
+
+  virtual void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf)
+  {
+    if(bcnr < 4)
+      throw Exception("tried to use a predefined bc number (1-4)");
+    else
+      {
+        if( bcnr < cf_bnd.Size() )
+          cf_bnd[bcnr] = cf;
+        else
+          {
+            int oldsize = cf_bnd.Size();
+            maxbcnr = bcnr+1;
+            cf_bnd.SetSize(maxbcnr);
+            for(int i = oldsize; i < maxbcnr-1; i++)
+              cf_bnd[i] = nullptr;
+            cf_bnd[bcnr] = cf;
+          }
+      }
+  };
 
   virtual void SetVectorField(shared_ptr<CoefficientFunction> cf)
   {
