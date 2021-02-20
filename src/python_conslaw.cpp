@@ -109,7 +109,9 @@ void ExportConsLaw(py::module & m)
 // Just for initial proof of concept (we need to move from DG -> MTP)
 extern void ExportSymbolicDG (py::module & m); 
 
-PYBIND11_MODULE(conslaw, m) {
+PYBIND11_MODULE(_pyconslaw, m) {
+  m.attr("__name__") = "ngstents.conslaw";
+  m.attr("__package__") = "ngstents";
   ExportConsLaw(m);
   ExportSymbolicDG(m);
 }

@@ -1,5 +1,5 @@
-from .conslaw import ConservationLaw
-from .conslaw import ApplyDG
+from ._pyconslaw import ConservationLaw
+from ._pyconslaw import ApplyDG
 
 class Burgers(ConservationLaw):
     def __init__(self, gfu, tentslab):
@@ -50,6 +50,3 @@ class Maxwell(ConservationLaw):
         tentslab : TentSlab
         """
         ConservationLaw.__init__(self, gfu, tentslab, "maxwell")
-        
-# clean up
-del conslaw
