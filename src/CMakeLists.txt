@@ -40,9 +40,7 @@ for better autocompletion support install it with pip.")
     set(FOUND_STUBGEN ON)
   endif()
    message(STATUS
-      "\n========================================
-this project is only compatible with\npybind11-stubgen==0.5
-========================================")
+      "This project is only compatible with\n\t\tpybind11-stubgen==0.5")
 endif(BUILD_STUB_FILES)
 
 message("With 'make install' the python package will be installed to: ${CMAKE_INSTALL_PREFIX}")
