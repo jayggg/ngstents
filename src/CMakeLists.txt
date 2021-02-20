@@ -51,7 +51,7 @@ endif(BUILD_STUB_FILES)
 
 install(FILES
   ../py/__init__.py
-  ../py/tentslab.py
+  ../py/_importtents.py
   DESTINATION ngstents)
 
 install(FILES

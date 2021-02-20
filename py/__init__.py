@@ -1,6 +1,5 @@
 __all__ = ["TentSlab"]
-
-from .tentslab import TentSlab
+from ._importtents import TentSlab, Tent
 from . import conslaw
 from . import utils
 
