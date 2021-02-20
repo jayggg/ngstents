@@ -131,6 +131,7 @@ void ExportTents(py::module & m) {
 
 
 PYBIND11_MODULE(_pytents, m) {
+  py::module_::import("ngsolve");
   m.attr("__name__") = "ngstents";
   m.attr("__package__") = "ngstents";
   ExportTents(m);
