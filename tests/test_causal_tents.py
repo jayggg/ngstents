@@ -1,5 +1,5 @@
 """
-module test_causal_tents
+Module test_causal_tents
 
 Tests edge-based and volume-based methods in 1D, 2D and 3D
 
@@ -11,8 +11,10 @@ from ngsolve import Mesh
 from ngstents import TentSlab
 from ngstents.utils import Make1DMesh
 
+
 def Get1DMesh():
-    return Mesh(Make1DMesh([[0,1]], [10], bcname=['left', 'right']))
+    return Mesh(Make1DMesh([[0, 1]], [10], bcname=['left', 'right']))
+
 
 def Get2DMesh():
     from netgen.geom2d import unit_square
@@ -20,11 +22,13 @@ def Get2DMesh():
     mesh.Refine()
     return mesh
 
+
 def Get3DMesh():
     from netgen.csg import unit_cube
     mesh = Mesh(unit_cube.GenerateMesh(maxh=.5))
     mesh.Refine()
     return mesh
+
 
 def test_1D_vol_causal():
     mesh = Get1DMesh()
@@ -37,11 +41,11 @@ def test_1D_vol_causal():
     tentslab.SetWavespeed(c)
     success = tentslab.PitchTents(dt, global_ct=global_ct)
     assert success, "Slab could not be pitched"
-    ntents = tentslab.GetNTents()
     maxslope = tentslab.MaxSlope()
     expected = 1.0/c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
+
 
 def test_1D_edge_causal():
     mesh = Get1DMesh()
@@ -54,11 +58,11 @@ def test_1D_edge_causal():
     tentslab.SetWavespeed(c)
     success = tentslab.PitchTents(dt, global_ct=global_ct)
     assert success, "Slab could not be pitched"
-    ntents = tentslab.GetNTents()
     maxslope = tentslab.MaxSlope()
     expected = 1.0/c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
+
 
 def test_2D_vol_causal():
     mesh = Get2DMesh()
@@ -71,11 +75,11 @@ def test_2D_vol_causal():
     tentslab.SetWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
-    ntents = tentslab.GetNTents()
     maxslope = tentslab.MaxSlope()
     expected = 1.0/c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
+
 
 def test_2D_edge_causal():
     mesh = Get2DMesh()
@@ -88,11 +92,11 @@ def test_2D_edge_causal():
     tentslab.SetWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
-    ntents = tentslab.GetNTents()
     maxslope = tentslab.MaxSlope()
     expected = 1.0/c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
+
 
 def test_3D_vol_causal():
     mesh = Get2DMesh()
@@ -105,11 +109,11 @@ def test_3D_vol_causal():
     tentslab.SetWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
-    ntents = tentslab.GetNTents()
     maxslope = tentslab.MaxSlope()
     expected = 1.0/c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
+
 
 def test_3D_edge_causal():
     mesh = Get2DMesh()
@@ -122,9 +126,7 @@ def test_3D_edge_causal():
     tentslab.SetWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
-    ntents = tentslab.GetNTents()
     maxslope = tentslab.MaxSlope()
     expected = 1.0/c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
-

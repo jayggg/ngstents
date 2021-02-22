@@ -5,12 +5,11 @@ import numpy as np
 
 
 def test_tent_height():
-    """Partial test for tents' height
-
-
-    Check if the tents' height are not bigger than any of the neighbouring
-    edges. Passing this test does NOT imply the fulfillment of causality
-    conditions."""
+    """
+    Check that the edge slopes do not exceed 1/wavespeed.
+    Passing this test does NOT imply the fulfillment of causality
+    conditions.
+    """
 
     mesh = Mesh(unit_square.GenerateMesh(maxh=.5))
     nref = 2
@@ -24,7 +23,6 @@ def test_tent_height():
     tentslab = TentSlab(mesh, method, 10**7)
     tentslab.SetWavespeed(c)
     assert tentslab.PitchTents(dt), "Slab could not be pitched"
-    ntents = tentslab.GetNTents()
     for i in range(tentslab.GetNTents()):
         tent = tentslab.GetTent(i)
         tent_v = tent.vertex
@@ -44,4 +42,3 @@ def test_tent_height():
             time_node = tent.nbtime[edge_pt_local_id]
             diff_t = time_center - time_node
             assert dist/c >= diff_t - tol, "Tent slope exceeds 1/c along edge!"
-

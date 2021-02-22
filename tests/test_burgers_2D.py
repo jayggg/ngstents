@@ -1,5 +1,6 @@
 from netgen.geom2d import SplineGeometry
-from ngsolve import Mesh, L2, GridFunction, CoefficientFunction, exp, x, y, TaskManager
+from ngsolve import (Mesh, L2, GridFunction, CoefficientFunction,
+                     exp, x, y, TaskManager)
 from ngstents import TentSlab
 from ngstents.conslaw import Burgers
 
@@ -26,9 +27,9 @@ def test_burgers2D():
     cf = CoefficientFunction(exp(-50*((x-0.3)*(x-0.3)+(y-0.3)*(y-0.3))))
 
     V = L2(mesh, order=order)
-    u = GridFunction(V,"u")
+    u = GridFunction(V, "u")
     burg = Burgers(u, ts)
-    burg.SetTentSolver("SARK",substeps=order*order)
+    burg.SetTentSolver("SARK", substeps=order*order)
     burg.SetInitial(cf)
 
     t = 0
