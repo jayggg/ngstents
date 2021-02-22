@@ -12,7 +12,7 @@ def test_tent_height():
     edges. Passing this test does NOT imply the fulfillment of causality
     conditions."""
 
-    mesh = Mesh(unit_square.GenerateMesh(maxh=.2))
+    mesh = Mesh(unit_square.GenerateMesh(maxh=.5))
     nref = 2
     for i in range(nref):
         mesh.Refine()
@@ -23,71 +23,25 @@ def test_tent_height():
     # Tent slab tests
     tentslab = TentSlab(mesh, method, 10**7)
     tentslab.SetWavespeed(c)
-    success = tentslab.PitchTents(dt)
-    try:
-        assert success is True
-    except AssertionError as e:
-        msg = "Slab could not be pitched"
-        e.args += ("Failed to pitch slab", msg)
-        raise
+    assert tentslab.PitchTents(dt), "Slab could not be pitched"
     ntents = tentslab.GetNTents()
-    for itent in range(ntents):
-        tent = tentslab.GetTent(itent)
+    for i in range(tentslab.GetNTents()):
+        tent = tentslab.GetTent(i)
         tent_v = tent.vertex
         tent_pt = mesh[NodeId(VERTEX, tent_v)].point
         time_center = tent.ttop
         tent_facets = tent.internal_facets
         for edge_nr in tent_facets:
             edge = mesh[NodeId(FACET, edge_nr)]
-            edge_v = edge.vertices[1].nr \
-                if edge.vertices[0].nr == tent_v  \
-                else edge.vertices[0].nr
-            other_v = edge.vertices[0].nr \
-                if edge.vertices[0].nr == tent_v \
-                else edge.vertices[1].nr
-            try:
-                assert (tent_v == other_v)
-            except AssertionError as e:
-                msg = "edge_v = "+str(edge_v)+" tent_v = "+str(tent_v)
-                msg += " edge.v[0] = " + str(edge.vertices[0].nr)
-                msg += " edge.v[1] = " + str(edge.vertices[1].nr)
-                e.args += ("ERROR on tent data structure", msg)
-                raise
+            if edge.vertices[1].nr == tent_v:
+                edge_v, other_v = edge.vertices[0].nr, edge.vertices[1].nr
+            else:
+                edge_v, other_v = edge.vertices[1].nr, edge.vertices[0].nr
+            assert tent_v == other_v, "Error in tent structure"
             edge_pt = mesh[NodeId(VERTEX, edge_v)].point
-            edge_pt_local_id = np.where(tent.nbv.NumPy() == edge_v)[0][0]
+            edge_pt_local_id = np.where(np.array(tent.nbv) == edge_v)[0][0]
             dist = np.linalg.norm(np.subtract(tent_pt, edge_pt))
             time_node = tent.nbtime[edge_pt_local_id]
             diff_t = time_center - time_node
+            assert dist/c >= diff_t - tol, "Tent slope exceeds 1/c along edge!"
 
-            try:
-
-                assert (dist/c >= diff_t - tol)
-
-            except AssertionError as e:
-                msg = "tent id = " + str(itent)+" tent_v = " + str(tent_v)
-                msg += " edge_v = " + str(edge_v) + \
-                    " time_center = " + str(time_center)
-                msg += " time_node = "+str(tent.nbtime[edge_pt_local_id])
-                msg += " coord center = " + str(tent_pt)
-                msg += " coord node = " + str(edge_pt)
-                msg += " edge length = " + str(dist)
-                for iv in range(len(tent.nbtime)):
-                    msg += " vertex = " + \
-                        str(tent.nbv[iv]) + " time = " + str(tent.nbtime[iv])
-                e.args += ("ERROR: tent has slope bigger than velocity" +
-                           " along edge!", msg)
-                raise
-        try:
-
-            assert (1.0/c >= tent.MaxSlope())
-
-        except AssertionError as e:
-            msg = "tent id = " + str(itent)+" tent_v = " + str(tent_v)
-            msg += "max slope = " + str(tent.MaxSlope())
-            msg += "1/c = " + str(1.0/c)
-            e.args += ("ERROR: tent has slope bigger than velocity!", msg)
-            raise
-
-
-if __name__ == "__main__":
-    test_tent_height()
