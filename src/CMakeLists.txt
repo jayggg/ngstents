@@ -50,7 +50,7 @@ install(TARGETS _pyconslaw DESTINATION ngstents/conslaw)
 
 install(FILES
   ../py/__init__.py
-  ../py/_importtents.py
+  ../py/_drawtents.py
   DESTINATION ngstents)
 
 install(FILES
