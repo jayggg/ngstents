@@ -8,7 +8,7 @@
 template <typename EQUATION, int DIM, int COMP, int ECOMP>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
 CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u0,
-	      FlatMatrixFixWidth<COMP> flux, double tstar, LocalHeap & lh)
+	      FlatMatrixFixWidth<COMP> flux, double tstar, int derive_cf_bnd, LocalHeap & lh)
 {
   static Timer tflux ("CalcFluxTent", 2);
   ThreadRegionTimer reg(tflux, TaskManager::GetThreadId());
@@ -18,7 +18,7 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
   if (!fedata) throw Exception("fedata not set");
 
   // these variables no longer exist
-  //*(tent->time) = tent.timebot + tstar*(tent.ttop-tent.tbot);
+  *(tent.time) = tent.timebot + tstar*(tent.ttop-tent.tbot);
 
   flux = 0.0;
   {
@@ -111,6 +111,7 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
           fel1.Evaluate(simd_ir_facet_vol1,u.Rows(dn1),u1);
           auto & simd_mir = *fedata->mfiri1[i];
 
+	  FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           // check for boundary condition number
           int bc = bcnr[tent.internal_facets[i]];
           if (bc == 0) // outflow, use same values as on the inside
@@ -130,14 +131,23 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
               Cast().u_transparent(simd_mir, u1, fedata->anormals[i], u2);
             }
           else
-            throw Exception(string("no implementation for your") +
-                  string(" chosen boundary condition number ") +
-                  ToString(bc+1));
+	    {
+	      if(cf_bnd.EntrySize(bc))
+	      	{
+		  cf_bnd.Get(bc,derive_cf_bnd)->Evaluate(simd_mir,u2);
+		  if(derive_cf_bnd > 0)
+		    for (size_t j : Range(simd_nipt))
+		      u2.Col(j) *= pow(di(j),derive_cf_bnd);
+	      	}
+              else
+		throw Exception(string("no implementation for your \
+				chosen boundary condition number ") +
+				ToString(bc+1));
+	    }
 
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
 	  Cast().NumFlux (simd_mir, u1, u2, fedata->anormals[i], fn);
 
-          FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))
             {
               auto fac = -1.0 * di(j) * simd_mir[j].GetWeight();

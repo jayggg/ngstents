@@ -27,6 +27,10 @@ public:
   shared_ptr<BaseVector> uinit = nullptr; // initial data, also used for bc
 
   shared_ptr<TentSolver> tentsolver;
+
+  shared_ptr<GridFunction> gftau = nullptr;  // advancing front (used for time-dependent bc)
+  shared_ptr<CoefficientFunction> cftau = nullptr;  // CF representing gftau
+
 public:
   ConservationLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
@@ -37,8 +41,14 @@ public:
   
   virtual ~ConservationLaw() { ; }
   
-  virtual void SetBC() = 0;
+  virtual void SetBC(int bcnr, const BitArray & region) = 0;
 
+  virtual void CheckBC() = 0;
+
+  virtual double GetMaxBCNr() = 0;
+
+  virtual void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf) = 0;
+  
   virtual void SetVectorField(shared_ptr<CoefficientFunction> cf) = 0;
 
   virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
@@ -68,8 +78,9 @@ protected:
   FlatVector<> nu;  // viscosity coefficient
 
   bool def_bcnr = false; // check if the array below is properly set
-  int maxbcnr = 4;
-  Array<int> bcnr; // array of boundary condition numbers
+  Array<int> bcnr;       // array of boundary condition numbers
+  DynamicTable<shared_ptr<CoefficientFunction>> cf_bnd; // cf_bnd[i] used for boundary values on bc=i
+  bool cf_bnd_deriv = false;
 
   // collection of tents in timeslab
   Table<int> & tent_dependency = tps->tent_dependency;
@@ -80,9 +91,6 @@ public:
   enum { NCOMP = COMP };
   enum { NECOMP = ECOMP };
 
-  // advancing front (used for time-dependent bc)
-  shared_ptr<GridFunction> gftau = nullptr;
-
   T_ConservationLaw (const shared_ptr<GridFunction> & gfu,
 		     const shared_ptr<TentPitchedSlab> & tps,
 		     const string & eqn)
@@ -91,11 +99,11 @@ public:
     size_t heapsize = 10*1000000;
     pylh = make_shared<LocalHeap>(heapsize,"ConsLaw - py main heap",true);
 
-    // TODO: named boundaries
     // store boundary condition numbers
     bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
-
+    cf_bnd.SetSize(4);
+    
     // check dimension of space
     shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(fes);
     if(fes_check && (fes->GetDimension() != COMP) )
@@ -136,17 +144,31 @@ public:
     gftau = CreateGridFunction(fesh1,"tau",Flags().SetFlag("novisual"));
     gftau->Update();
     gftau->GetVector() = 0.0;
+    cftau = make_shared<GridFunctionCoefficientFunction>(gftau);
   }
 
   virtual ~T_ConservationLaw() { ; }
-  
-  // Set the boundary condition numbers from the mesh boundary elements indices
+
+  // set boundary boundary condition numbers for given region
+  void SetBC(int bc, const BitArray & region)
+  {
+    def_bcnr = true;
+    for(auto i : Range(ma->GetNSE()))
+      {
+        auto sel = ElementId(BND,i);
+        auto fnums = ma->GetElFacets(sel);
+        if(region.Test(ma->GetElIndex(sel)))
+          bcnr[fnums[0]] = bc;
+      }
+  }
+
+  // Set old style boundary condition numbers from the mesh boundary elements indices.
   // These indices are 0-based here and 1-based in Python. 
-  //  0: outflow, 1: wall, 2: inflow, 3: transparent 
-  void SetBC()
+  // 0: outflow, 1: wall, 2: inflow, 3: transparent 
+  void CheckBC()
   {
     if(!def_bcnr)
-      for(int i : Range(ma->GetNSE()))
+      for(auto i : Range(ma->GetNSE()))
         {
           auto sel = ElementId(BND,i);
           auto fnums = ma->GetElFacets(sel);
@@ -154,6 +176,47 @@ public:
         }
   }
 
+  double GetMaxBCNr() { return cf_bnd.Size(); }
+
+  void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf)
+  {
+    if(bcnr < 4)
+      throw Exception("tried to use a predefined bc number (1-4)");
+    else
+      {
+        if( bcnr < cf_bnd.Size() )
+	  {
+	    if(cf_bnd.EntrySize(bcnr))
+	      throw Exception("CoefficientFunction for bc number "\
+			      +ToString(bcnr)+" already set!");
+	    else
+	      cf_bnd.Add(bcnr, cf);
+	  }
+        else
+          {
+	    cf_bnd.ChangeSize(bcnr+1);
+	    cf_bnd.Add(bcnr,cf);
+          }
+      }
+  }
+
+  // derive boundary coefficient functions
+  // fill table with 1/j! * cf^(j)
+  void DeriveBoundaryCF(int stages)
+  {
+    if(cf_bnd_deriv)
+      return;
+
+    for(size_t i : Range(cf_bnd.Size()))
+      if(cf_bnd.EntrySize(i))
+	for(size_t j : Range(stages-1))
+	  {
+	    auto cf = cf_bnd.Get(i,j);
+	    cf_bnd.Add(i,cf->Diff(cftau.get(), make_shared<ConstantCoefficientFunction>(1.0/(j+1))));
+	  }
+    cf_bnd_deriv = true;
+  }
+  
   virtual void SetVectorField(shared_ptr<CoefficientFunction> cf)
   {
     throw Exception("SetVectorField just available for Advection equation");
@@ -294,7 +357,7 @@ public:
 
   void CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                      FlatMatrixFixWidth<COMP> u0, FlatMatrixFixWidth<COMP> flux,
-                     double tstar, LocalHeap & lh);
+                     double tstar, int derive_cf_bnd, LocalHeap & lh);
 
   ////////////////////////////////////////////////////////////////
   // entropy viscosity for nonlinear conservation laws

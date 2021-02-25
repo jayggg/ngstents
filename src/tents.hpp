@@ -45,6 +45,18 @@ public:
   Array<int> dependent_tents;  // these tents depend on me
 
   double MaxSlope() const;
+
+  // global physical times
+  mutable double * time;     // global physical time at vertex, stored in ConservationLaw::gftau
+  mutable double timebot;    // global physical bottom time at vertex
+
+  void InitTent(shared_ptr<GridFunction> gftau) const
+  {
+    time = &(gftau->GetVector().FVDouble()(vertex));
+    timebot = *time;
+  }
+
+  void SetFinalTime() const { *time = timebot + (ttop - tbot); }
 };
 
 ostream & operator<< (ostream & ost, const Tent & tent);
