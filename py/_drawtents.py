@@ -1,8 +1,6 @@
-import matplotlib.pyplot as plt
-import ngsolve as ng
-import numpy as np
-
-from .tents import TentSlab
+import matplotlib.pyplot
+import ngsolve
+import numpy
 
 def DrawPitchedTentsPlt(self):
     """
@@ -30,11 +28,11 @@ def DrawPitchedTentsPlt(self):
                 tvals = [tent[1][1], tent[0][1]]
                 xpos = 0.5*(pnts[tent[1][0]]+pnts[tent[0][0]])
                 tpos = 0.5*(tent[1][1]+tent[0][1])
-            plt.plot(xvals, tvals, color=colors[layer])
-            plt.text(xpos, tpos, str(i), horizontalalignment='center',
+            matplotlib.pyplot.plot(xvals, tvals, color=colors[layer])
+            matplotlib.pyplot.text(xpos, tpos, str(i), horizontalalignment='center',
                      verticalalignment='center')
-        plt.ylim([0, self.GetSlabHeight()*1.1])
-        plt.show()
+        matplotlib.pyplot.ylim([0, self.GetSlabHeight()*1.1])
+        matplotlib.pyplot.show()
 
 def Draw3DTentPlt(self, tentnr):
     """
@@ -52,12 +50,12 @@ def Draw3DTentPlt(self, tentnr):
     tb = tent.tbot
     nbtime = list(tent.nbtime)
 
-    mvs = [mesh[ng.NodeId(ng.VERTEX, v)] for v in [vtx]+nbv]
-    mels = [mesh[ng.ElementId(ng.VOL, e)] for e in tent.els]
-    pts = np.array([v.point for v in mvs])
+    mvs = [mesh[ngsolve.NodeId(ngsolve.VERTEX, v)] for v in [vtx]+nbv]
+    mels = [mesh[ngsolve.ElementId(ngsolve.VOL, e)] for e in tent.els]
+    pts = numpy.array([v.point for v in mvs])
     facetvs = [[mvs.index(v) for v in el.vertices if v != mvs[0]]
                for el in mels]
-    fig = plt.figure()
+    fig = matplotlib.pyplot.figure()
     fig.suptitle('Tent {} at level {}'.format(tentnr, tent.level))
     ax = fig.add_subplot(111, projection='3d')
     # edges from central vertex to neighbors
@@ -81,8 +79,10 @@ def Draw3DTentPlt(self, tentnr):
                        loc="lower left", title="Times")
     ax.add_artist(legend)
     print("Tent pole top: {:.3f}, bottom: {:.3f}, height: {:.3f}"
-          .format(tb, tt, tt-tb))
+          .format(tt, tb, tt-tb))
     return ax
 
-TentSlab.DrawPitchedTentsPlt = DrawPitchedTentsPlt
-TentSlab.Draw3DTentPlt = Draw3DTentPlt
+# TentSlab.DrawPitchedTentsPlt = DrawPitchedTentsPlt
+# TentSlab.Draw3DTentPlt = Draw3DTentPlt
+# del DrawPitchedTentsPlt
+# del Draw3DTentPlt

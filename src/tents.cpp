@@ -1,5 +1,4 @@
 #include "tents.hpp"
-#include <python_ngstd.hpp>
 #include <limits>
 
 

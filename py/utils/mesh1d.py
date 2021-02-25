@@ -1,6 +1,5 @@
 from netgen.meshing import Mesh, MeshPoint, Element0D, Element1D
 from netgen.csg import Pnt
-import matplotlib.pyplot as plt
 
 def Make1DMeshSimple(nels, save=False, filename="mesh1d.vol"):
     """
@@ -18,7 +17,7 @@ def Make1DMeshSimple(nels, save=False, filename="mesh1d.vol"):
         m.Add(Element1D([pnums[i], pnums[i+1]], index=1))
 
     m.Add(Element0D(pnums[0], index=1))
-    m.Add(Element0D(pnums[nel], index=3))
+    m.Add(Element0D(pnums[nels], index=3))
     if(save):
         m.Save(filename)
     else:
