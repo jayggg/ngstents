@@ -19,6 +19,8 @@ void SAT<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), *(tcl->ma), lh);
   tent.InitTent(tcl->gftau);
 
+  tcl->DeriveBoundaryCF(stages);
+
   int ndof = tent.fedata->nd;
   FlatMatrixFixWidth<COMP> local_uhat(ndof,lh);
   FlatMatrixFixWidth<COMP> local_u0(ndof,lh);
@@ -37,15 +39,15 @@ void SAT<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
       local_uhat1 = local_uhat;
       double fac = 1.0;
       local_u0 = local_u0temp;
-      for(int k : Range(1,stages+1))
+      for(int k : Range(stages))
   	{
   	  tcl->Cyl2Tent(tent, j*taustar, local_uhat1, local_u, lh);
-  	  tcl->CalcFluxTent(tent, local_u, local_u0, local_uhat1, j*taustar, lh);
-  	  local_uhat1 *= 1.0/k;
+  	  tcl->CalcFluxTent(tent, local_u, local_u0, local_uhat1, j*taustar, k, lh);
+  	  local_uhat1 *= 1.0/(k+1);
   	  fac *= taustar;
   	  local_uhat += fac*local_uhat1;           
   
-  	  if(k < stages)
+  	  if(k < stages-1)
   	    {
   	      tcl->ApplyM1(tent, j*taustar, local_u, local_help, lh);
   	      local_uhat1 += local_help;
@@ -128,16 +130,16 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
       U0 = local_Gu0;
       tcl->Cyl2Tent (tent, j*taustar, U0, u0, lh);
       tcl->ApplyM1(tent, j*taustar, u0, M1u0, lh);
-      tcl->CalcFluxTent(tent, u0, local_init, fu0, j*taustar, lh);
+      tcl->CalcFluxTent(tent, u0, local_init, fu0, j*taustar, 0, lh);
       U1 = U0 + 0.5*taustar*(M1u0+fu0);
 
       tcl->Cyl2Tent (tent, j*taustar, U1, u1, lh);
       tcl->ApplyM1(tent, j*taustar, u1, M1u1, lh);
-      tcl->CalcFluxTent(tent, u1, local_init, fu1, (j+0.5)*taustar, lh);
+      tcl->CalcFluxTent(tent, u1, local_init, fu1, (j+0.5)*taustar, 0, lh);
       U2 = U0 + taustar*(4*M1u1-3*M1u0+2*fu1-fu0);
 
       tcl->Cyl2Tent (tent, j*taustar, U2, u2, lh);
-      tcl->CalcFluxTent(tent, u2, local_init, fu2, (j+1)*taustar, lh);
+      tcl->CalcFluxTent(tent, u2, local_init, fu2, (j+1)*taustar, 0, lh);
 
       Uhat = U0 + taustar * (1.0/6.0 * fu0 + 2.0/3.0 * fu1 + 1.0/6.0 * fu2);
       local_Gu0 = Uhat;
@@ -149,7 +151,7 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
 	  // U0 = local_Gu0;
 	  // tcl->Cyl2Tent (tent, (j+1)*taustar, local_Gu0, local_help, lh);
 	  // tcl->CalcFluxTent(tent, local_help, local_init, dUhatdt,
-	  //              (j+1)*taustar, lh);
+	  //              (j+1)*taustar, 0, lh);
 	  // tcl->CalcEntropyResidualTent(tent, U0, dUhatdt, res, local_init,
 	  //                         (j+1)*taustar, lh);
 	  // hres->SetIndirect(tent.dofs,AsFV(res));

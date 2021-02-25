@@ -67,7 +67,7 @@ void ExportConsLaw(py::module & m)
   			   })
     .def_property_readonly("tau", [](shared_ptr<CL> self)
 			   {
-			     return self->gftau;
+			     return self->cftau;
 			   })
     .def_property_readonly("res", [](shared_ptr<CL> self)
   			   {

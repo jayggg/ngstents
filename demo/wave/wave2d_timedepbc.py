@@ -30,8 +30,8 @@ order = 2
 V = L2(mesh, order=order, dim=mesh.dim+1)
 u = GridFunction(V,"u")
 wave = Wave(u, ts)
-# wave.SetTentSolver("SAT", stages=order+1, substeps=4*order)
-wave.SetTentSolver("SARK", substeps=4*order)
+wave.SetTentSolver("SAT", stages=order+1, substeps=4*order)
+# wave.SetTentSolver("SARK", substeps=4*order)
 
 def f(s):
     return (exp(-10*(s-1)*(s-1))-exp(-10))/(1-exp(-10)) * IfPos(s,IfPos(2-s,1,0),0)
@@ -47,8 +47,7 @@ cf = CoefficientFunction((q0, mu0))
 wave.SetInitial(cf)
 
 tau = wave.tau # advancing front
-ubnd = uex(tau)
-wave.SetBoundaryCF(5,ubnd)
+wave.SetBoundaryCF(5,uex(tau))
 
 Draw(u)
 visoptions.scalfunction = "u:3"

@@ -29,6 +29,7 @@ public:
   shared_ptr<TentSolver> tentsolver;
 
   shared_ptr<GridFunction> gftau = nullptr;  // advancing front (used for time-dependent bc)
+  shared_ptr<CoefficientFunction> cftau = nullptr;  // CF representing gftau
 
 public:
   ConservationLaw (const shared_ptr<GridFunction> & agfu,
@@ -75,7 +76,8 @@ protected:
   bool def_bcnr = false; // check if the array below is properly set
   int maxbcnr = 4;
   Array<int> bcnr; // array of boundary condition numbers
-  Array<shared_ptr<CoefficientFunction>> cf_bnd; // cf_bnd[i] used for boundary values on bc=i
+  DynamicTable<shared_ptr<CoefficientFunction>> cf_bnd; // cf_bnd[i] used for boundary values on bc=i
+  bool cf_bnd_deriv = false;
 
   // collection of tents in timeslab
   Table<int> & tent_dependency = tps->tent_dependency;
@@ -99,7 +101,6 @@ public:
     bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
     cf_bnd.SetSize(maxbcnr);
-    cf_bnd = nullptr;
     
     // check dimension of space
     shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(fes);
@@ -141,6 +142,7 @@ public:
     gftau = CreateGridFunction(fesh1,"tau",Flags().SetFlag("novisual"));
     gftau->Update();
     gftau->GetVector() = 0.0;
+    cftau = make_shared<GridFunctionCoefficientFunction>(gftau);
   }
 
   virtual ~T_ConservationLaw() { ; }
@@ -166,19 +168,38 @@ public:
     else
       {
         if( bcnr < cf_bnd.Size() )
-          cf_bnd[bcnr] = cf;
+	  {
+	    if(cf_bnd.EntrySize(bcnr))
+	      throw Exception("CoefficientFunction for bc number "\
+			      +ToString(bcnr)+" already set!");
+	    else
+	      cf_bnd.Add(bcnr, cf);
+	  }
         else
           {
-            int oldsize = cf_bnd.Size();
-            maxbcnr = bcnr+1;
-            cf_bnd.SetSize(maxbcnr);
-            for(int i = oldsize; i < maxbcnr-1; i++)
-              cf_bnd[i] = nullptr;
-            cf_bnd[bcnr] = cf;
+	    cf_bnd.ChangeSize(bcnr+1);
+	    cf_bnd.Add(bcnr,cf);
           }
       }
   };
 
+  // derive boundary coefficient functions
+  // fill table with 1/j! * cf^(j)
+  void DeriveBoundaryCF(int stages)
+  {
+    if(cf_bnd_deriv)
+      return;
+
+    for(size_t i : Range(cf_bnd.Size()))
+      if(cf_bnd.EntrySize(i))
+	for(size_t j : Range(stages-1))
+	  {
+	    auto cf = cf_bnd.Get(i,j);
+	    cf_bnd.Add(i,cf->Diff(cftau.get(), make_shared<ConstantCoefficientFunction>(1.0/(j+1))));
+	  }
+    cf_bnd_deriv = true;
+  }
+  
   virtual void SetVectorField(shared_ptr<CoefficientFunction> cf)
   {
     throw Exception("SetVectorField just available for Advection equation");
@@ -319,7 +340,7 @@ public:
 
   void CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                      FlatMatrixFixWidth<COMP> u0, FlatMatrixFixWidth<COMP> flux,
-                     double tstar, LocalHeap & lh);
+                     double tstar, int derive_cf_bnd, LocalHeap & lh);
 
   ////////////////////////////////////////////////////////////////
   // entropy viscosity for nonlinear conservation laws
