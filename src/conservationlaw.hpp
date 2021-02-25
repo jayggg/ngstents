@@ -41,7 +41,11 @@ public:
   
   virtual ~ConservationLaw() { ; }
   
-  virtual void SetBC() = 0;
+  virtual void SetBC(int bcnr, const BitArray & region) = 0;
+
+  virtual void CheckBC() = 0;
+
+  virtual double GetMaxBCNr() = 0;
 
   virtual void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf) = 0;
   
@@ -74,8 +78,7 @@ protected:
   FlatVector<> nu;  // viscosity coefficient
 
   bool def_bcnr = false; // check if the array below is properly set
-  int maxbcnr = 4;
-  Array<int> bcnr; // array of boundary condition numbers
+  Array<int> bcnr;       // array of boundary condition numbers
   DynamicTable<shared_ptr<CoefficientFunction>> cf_bnd; // cf_bnd[i] used for boundary values on bc=i
   bool cf_bnd_deriv = false;
 
@@ -96,11 +99,10 @@ public:
     size_t heapsize = 10*1000000;
     pylh = make_shared<LocalHeap>(heapsize,"ConsLaw - py main heap",true);
 
-    // TODO: named boundaries
     // store boundary condition numbers
     bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
-    cf_bnd.SetSize(maxbcnr);
+    cf_bnd.SetSize(4);
     
     // check dimension of space
     shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(fes);
@@ -147,13 +149,26 @@ public:
 
   virtual ~T_ConservationLaw() { ; }
 
-  // Set the boundary condition numbers from the mesh boundary elements indices
+  // set boundary boundary condition numbers for given region
+  void SetBC(int bc, const BitArray & region)
+  {
+    def_bcnr = true;
+    for(auto i : Range(ma->GetNSE()))
+      {
+        auto sel = ElementId(BND,i);
+        auto fnums = ma->GetElFacets(sel);
+        if(region.Test(ma->GetElIndex(sel)))
+          bcnr[fnums[0]] = bc;
+      }
+  }
+
+  // Set old style boundary condition numbers from the mesh boundary elements indices.
   // These indices are 0-based here and 1-based in Python. 
-  //  0: outflow, 1: wall, 2: inflow, 3: transparent 
-  void SetBC()
+  // 0: outflow, 1: wall, 2: inflow, 3: transparent 
+  void CheckBC()
   {
     if(!def_bcnr)
-      for(int i : Range(ma->GetNSE()))
+      for(auto i : Range(ma->GetNSE()))
         {
           auto sel = ElementId(BND,i);
           auto fnums = ma->GetElFacets(sel);
@@ -161,7 +176,9 @@ public:
         }
   }
 
-  virtual void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf)
+  double GetMaxBCNr() { return cf_bnd.Size(); }
+
+  void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf)
   {
     if(bcnr < 4)
       throw Exception("tried to use a predefined bc number (1-4)");
@@ -181,7 +198,7 @@ public:
 	    cf_bnd.Add(bcnr,cf);
           }
       }
-  };
+  }
 
   // derive boundary coefficient functions
   // fill table with 1/j! * cf^(j)

@@ -41,16 +41,32 @@ void ExportConsLaw(py::module & m)
     (m,"ConservationLaw", "Conservation Law")
     .def(py::init([](const shared_ptr<GridFunction> & gfu,
 		     const shared_ptr<TentPitchedSlab> & tps,
-  		     const string & eqn)
+  		     const string & eqn,
+		     optional<Region> outflow, optional<Region> inflow,
+		     optional<Region> reflect, optional<Region> transparent)
   		  -> shared_ptr<CL>
                   {
                     auto cl = CreateConsLaw(gfu, tps, eqn);
-                    cl->SetBC(); //use old style bc numbers for now
+		    // set boundary data
+                    if(outflow.has_value())
+                      cl->SetBC(0,outflow.value().Mask());
+                    if(reflect.has_value())
+                      cl->SetBC(1,reflect.value().Mask());
+                    if(inflow.has_value())
+                      cl->SetBC(2,inflow.value().Mask());
+                    if(transparent.has_value())
+                      {
+                        if (eqn=="wave")
+                          cl->SetBC(3,transparent.value().Mask());
+                        else
+                          throw Exception ("Transparent boundary just available for wave equation!");
+                      }
+                    cl->CheckBC(); //use old style bc numbers if no regions set
                     return cl;
                   }),
-         py::arg("gridfunction"),
-  	 py::arg("tentslab"),
-         py::arg("equation"))
+         py::arg("gridfunction"), py::arg("tentslab"), py::arg("equation"),
+	 py::arg("outflow")=nullptr, py::arg("inflow")=nullptr,
+         py::arg("reflect")=nullptr, py::arg("transparent")=nullptr)
     .def_property_readonly("tentslab", [](shared_ptr<CL> self)
                            {
   			     return self->tps;
@@ -90,9 +106,11 @@ void ExportConsLaw(py::module & m)
          {
            self->SetVectorField(cf);
          })
-    .def("SetBoundaryCF",[](shared_ptr<CL> self, int bcnr, shared_ptr<CoefficientFunction> cf)
+    .def("SetBoundaryCF",[](shared_ptr<CL> self, Region region, shared_ptr<CoefficientFunction> cf)
          {
-	   self->SetBoundaryCF(bcnr-1,cf); // 1-based to 0-based
+	   auto maxbcnr = self->GetMaxBCNr();
+	   self->SetBC(maxbcnr, region);
+           self->SetBoundaryCF(maxbcnr, cf);
          })
     .def("SetMaterialParameters",
          [](shared_ptr<CL> self,

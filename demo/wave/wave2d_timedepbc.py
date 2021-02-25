@@ -7,7 +7,7 @@ from ngstents.conslaw import Wave
 import time
 
 geom = SplineGeometry()
-geom.AddRectangle(p1=(0, 0), p2=(2, 2), bc=5)
+geom.AddRectangle(p1=(0, 0), p2=(2, 2), bc="square")
 mesh = geom.GenerateMesh(maxh=0.25)
 mesh = Mesh(mesh)
 
@@ -47,7 +47,7 @@ cf = CoefficientFunction((q0, mu0))
 wave.SetInitial(cf)
 
 tau = wave.tau # advancing front
-wave.SetBoundaryCF(5,uex(tau))
+wave.SetBoundaryCF(mesh.Boundaries("square"),uex(tau))
 
 Draw(u)
 visoptions.scalfunction = "u:3"
