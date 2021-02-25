@@ -84,9 +84,5 @@ def Draw3DTentPlt(self, tentnr):
 
 # TentSlab.DrawPitchedTentsPlt = DrawPitchedTentsPlt
 # TentSlab.Draw3DTentPlt = Draw3DTentPlt
-
-del matplotlib
-del numpy
-del ngsolve
 # del DrawPitchedTentsPlt
 # del Draw3DTentPlt
