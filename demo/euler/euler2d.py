@@ -1,13 +1,12 @@
-from netgen.geom2d import SplineGeometry
-from ngsolve import Mesh, Draw, Redraw, CoefficientFunction, sqrt, x, y, TaskManager
+from netgen.geom2d import unit_square
+from ngsolve import (Mesh, Draw, Redraw, CoefficientFunction, sqrt, x, y, exp,
+                     L2, GridFunction, TaskManager)
 from ngsolve.internal import visoptions
 from ngstents import TentSlab
 from ngstents.conslaw import Euler
 
 maxh = 0.05
-geom = SplineGeometry()
-geom.AddRectangle((0,0),(1,1), bc=2)
-mesh = Mesh(geom.GenerateMesh(maxh=maxh))
+mesh = Mesh(unit_square.GenerateMesh(maxh=maxh))
 
 dt = 0.05
 tend = 0.25
@@ -25,7 +24,7 @@ print("n tents", ts.GetNTents())
 order = 4
 V = L2(mesh, order=order, dim=mesh.dim+2)
 u = GridFunction(V,"u")
-cl = Euler(u, ts)
+cl = Euler(u, ts, reflect=mesh.Boundaries("left|bottom|right|top"))
 cl.SetTentSolver("SARK",substeps=2*order)
 
 d = 5
