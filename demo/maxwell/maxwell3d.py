@@ -3,10 +3,10 @@ from ngstents import TentSlab
 from ngsolve.internal import visoptions, viewoptions
 from netgen.csg import CSGeometry, OrthoBrick, Pnt
 from ngsolve import (Mesh, Draw, Redraw, CoefficientFunction, sqrt, sin, cos,
-                     x, y, z, TaskManager)
+                     exp, x, y, z, TaskManager, L2, GridFunction)
 
 geom = CSGeometry()
-brick = OrthoBrick(Pnt(0, 0, 0), Pnt(1, 1, 1)).bc(2)
+brick = OrthoBrick(Pnt(0, 0, 0), Pnt(1, 1, 1)).bc("reflect")
 geom.Add(brick)
 mesh = geom.GenerateMesh(maxh=0.1)
 mesh = Mesh(mesh)
@@ -19,7 +19,7 @@ wavespeed = 1
 # using causality constant
 local_ctau = True
 global_ctau = 1/2
-ts = TentSlab(mesh, method="edge")#, heapsize=heapsize)
+ts = TentSlab(mesh, method="edge")
 ts.SetWavespeed(wavespeed)
 ts.PitchTents(dt=dt, local_ct=local_ctau, global_ct=global_ctau)
 print("max slope", ts.MaxSlope())
@@ -29,7 +29,7 @@ print("n tents", ts.GetNTents())
 order = 2
 V = L2(mesh, order=order, dim=2*mesh.dim)
 u = GridFunction(V,"u")
-cl = Maxwell(u, ts)
+cl = Maxwell(u, ts, reflect=mesh.Boundaries("reflect"))
 cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)
 
 # initial data
@@ -47,7 +47,6 @@ Draw(cfE, mesh, name="E")
 Draw(cfH, mesh, name="H")
 
 visoptions.scalfunction = "E:3"
-# visoptions.scalfunction = "u:2"
 viewoptions.clipping.enable = 1
 visoptions.clipsolution = 'scal'
 viewoptions.clipping.ny = 0

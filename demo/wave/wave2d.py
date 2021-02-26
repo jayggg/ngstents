@@ -1,18 +1,15 @@
 from netgen.geom2d import SplineGeometry
 from ngsolve import (Mesh, Draw, Redraw, CoefficientFunction, sqrt, sin, cos,
-                     x, y, TaskManager, Integrate, InnerProduct)
+                     x, y, TaskManager, L2, GridFunction, Integrate, InnerProduct)
 from ngsolve.internal import visoptions
 from ngstents import TentSlab
 from ngstents.conslaw import Wave
 from math import pi
 import time
 
-
 geom = SplineGeometry()
-geom.AddRectangle(p1=(0, 0), p2=(pi, pi), bc=2)
-mesh = geom.GenerateMesh(maxh=0.25)
-mesh = Mesh(mesh)
-
+geom.AddRectangle(p1=(0, 0), p2=(pi, pi), bc="reflect")
+mesh = Mesh(geom.GenerateMesh(maxh=0.25))
 
 # setting the problem
 period = sqrt(2)*pi
@@ -35,7 +32,7 @@ print("n tents", ts.GetNTents())
 order = 2
 V = L2(mesh, order=order, dim=mesh.dim+1)
 u = GridFunction(V,"u")
-wave = Wave(u, ts)
+wave = Wave(u, ts, reflect=mesh.Boundaries("reflect"))
 wave.SetTentSolver("SAT", stages=order+1, substeps=4*order)
 
 mu0 = CoefficientFunction(cos(x)*cos(y))

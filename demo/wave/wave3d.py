@@ -5,15 +5,14 @@ from ngstents import TentSlab
 from ngsolve.internal import visoptions, viewoptions
 from netgen.csg import CSGeometry, OrthoBrick, Pnt
 from ngsolve import (Mesh, Draw, Redraw, CoefficientFunction, sqrt, sin, cos,
-                     x, y, z, TaskManager, Integrate, InnerProduct)
+                     x, y, z, TaskManager, L2, GridFunction, Integrate, InnerProduct)
 
 
 geom = CSGeometry()
-brick = OrthoBrick(Pnt(0, 0, 0), Pnt(pi, pi, pi)).bc(2)
+brick = OrthoBrick(Pnt(0, 0, 0), Pnt(pi, pi, pi)).bc("reflect")
 geom.Add(brick)
 mesh = geom.GenerateMesh(maxh=0.5)
 mesh = Mesh(mesh)
-
 
 # setting the problem
 period = sqrt(3)*pi
@@ -36,7 +35,7 @@ print("n tents", ts.GetNTents())
 order = 2
 V = L2(mesh, order=order, dim=mesh.dim+1)
 u = GridFunction(V,"u")
-wave = Wave(u, ts)
+wave = Wave(u, ts, reflect=mesh.Boundaries("reflect"))
 wave.SetTentSolver("SAT", stages=order+1, substeps=4*order)
 
 mu0 = CoefficientFunction(cos(x)*cos(y)*cos(z))
