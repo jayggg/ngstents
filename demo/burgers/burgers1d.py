@@ -1,14 +1,13 @@
 """
 Solve the Burgers equation in 1-D
 
-Notes:
-1. zoom in Netgen to see solution for cfnum = 2
-2. boundary condition numbers 1 = inflow, 3 = outflow
+Note: zoom in Netgen to see solution for cfnum = 2
 """
 from ngstents import TentSlab
 from ngstents.utils import Make1DMesh, Make1DMeshSpecified
 from ngstents.conslaw import Burgers
 from ngsolve import Mesh, CoefficientFunction, x, exp, Draw, Redraw
+from ngsolve import L2, GridFunction
 from ngsolve import TaskManager, SetNumThreads
 from ngsolve.internal import viewoptions
 
@@ -16,18 +15,17 @@ from ngsolve.internal import viewoptions
 cfnum = 0
 draw_tents = False  # Plot tents.  Don't set this in Netgen context.
 step_sol = False     # Step through the solution
-spec = True         # Use a non-uniform mesh for more interesting tent plot
+spec = False         # Use a non-uniform mesh for more interesting tent plot
 dt = 0.05           # Tent slab height
 c = 4.0             # Characteristic speed
 order = 4           # Order of L2 space for solution
 
-SetNumThreads(1)
 if spec:
     pts =[0, 0.04, 0.08, 0.12, 0.18, 0.24, 0.30, 0.35, 0.40, 0.45, 0.50,
              0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0,]
-    mesh = Make1DMeshSpecified(pts, bc=[1, 3])
+    mesh = Make1DMeshSpecified(pts, bcname=["left","right"])
 else:
-    mesh = Make1DMesh([[0, 1]], [100], bc=[1, 3])
+    mesh = Make1DMesh([[0, 1]], [20], bcname=["left","right"])
 mesh = Mesh(mesh)
 
 ts = TentSlab(mesh)
@@ -40,7 +38,7 @@ if draw_tents:
 
 V = L2(mesh, order=order)
 u = GridFunction(V,"u")
-burg = Burgers(u, ts)
+burg = Burgers(u, ts, inflow=mesh.Boundaries("left"), outflow=mesh.Boundaries("right"))
 burg.SetTentSolver("SARK",substeps=order*order)
 
 cf = CoefficientFunction(0.5*exp(-100*(x-0.2)*(x-0.2))) if cfnum == 0 \

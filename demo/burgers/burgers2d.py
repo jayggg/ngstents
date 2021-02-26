@@ -1,27 +1,21 @@
 """
 Burgers equation in 2-D
 """
-from netgen.geom2d import SplineGeometry
+from netgen.geom2d import unit_square
 from ngsolve import Mesh, CoefficientFunction, x, y, exp, Draw, Redraw
+from ngsolve import L2, GridFunction
 from ngsolve import TaskManager, SetNumThreads
 from ngstents import TentSlab
 from ngstents.conslaw import Burgers
 
 # options
-saved_mesh = False
 step_sol = False
 sol_vec = False
 vtk_tents = False
 ngs_gui = False
 
-SetNumThreads(1)
-if saved_mesh:
-    mesh = Mesh("../mesh_geom/square_outflow.vol.gz")
-else:
-    maxh = 0.05
-    geom = SplineGeometry()
-    geom.AddRectangle((0, 0), (1, 1), bc=1)
-    mesh = Mesh(geom.GenerateMesh(maxh=maxh))
+maxh = 0.05
+mesh = Mesh(unit_square.GenerateMesh(maxh=maxh))
 
 heapsize = 10*1000*1000
 dt = 0.05
@@ -34,7 +28,7 @@ print("max slope", ts.MaxSlope())
 order = 4
 V = L2(mesh, order=order)
 u = GridFunction(V,"u")
-burg = Burgers(u, ts)
+burg = Burgers(u, ts, outflow=mesh.Boundaries("left|bottom|right|top"))
 burg.SetTentSolver("SARK",substeps=order*order)
 
 cf = CoefficientFunction(exp(-50*((x-0.3)*(x-0.3)+(y-0.3)*(y-0.3))))

@@ -3,8 +3,8 @@ from netgen.csg import Pnt
 
 def Make1DMeshSimple(nels, save=False, filename="mesh1d.vol"):
     """
-    Create a uniform 1D mesh of the interval [0, 1] with inflow and
-    outflow boundary conditions with the specified number of elements
+    Create a uniform 1D mesh of the interval [0, 1] with inflow (3) and
+    outflow (1) boundary conditions with the specified number of elements
     """
     m = Mesh()
     m.dim = 1
@@ -16,8 +16,8 @@ def Make1DMeshSimple(nels, save=False, filename="mesh1d.vol"):
     for i in range(0, nels):
         m.Add(Element1D([pnums[i], pnums[i+1]], index=1))
 
-    m.Add(Element0D(pnums[0], index=1))
-    m.Add(Element0D(pnums[nels], index=3))
+    m.Add(Element0D(pnums[0], index=3))
+    m.Add(Element0D(pnums[nels], index=1))
     if(save):
         m.Save(filename)
     else:
@@ -82,8 +82,8 @@ def Make1DMesh(domains, nels, bc=[1, 3], bcname=None,
             start = 1
 
     if(bcname):
-        m.Add(Element0D(pnums[0], index=bc[0]))
-        m.Add(Element0D(pnums[-1], index=bc[1]))
+        m.Add(Element0D(pnums[0], index=1))
+        m.Add(Element0D(pnums[-1], index=2))
         if(isinstance(bcname, list)):
             m.SetBCName(0, bcname[0])
             m.SetBCName(1, bcname[1])
