@@ -2,15 +2,16 @@ from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, Draw, Redraw
 from ngsolve import Integrate
 from ngsolve import CoefficientFunction, exp, sqrt, sin, cos, x, y, z
+from ngsolve import L2, GridFunction
 from ngsolve import TaskManager
-from ngsolve.internal import visoptions, viewoptions
+from ngsolve.internal import visoptions
 from ngstents import TentSlab
 from ngstents.conslaw import Advection
 from math import pi
 import time
 
 geom = SplineGeometry()
-geom.AddCircle(c=(0,0),r=1,bc=3)
+geom.AddCircle(c=(0,0),r=1,bc="circle")
 mesh = geom.GenerateMesh(maxh=0.15)
 mesh = Mesh(mesh)
 
@@ -31,7 +32,7 @@ print("n tents", ts.GetNTents())
 order = 4
 V = L2(mesh, order=order)
 u = GridFunction(V,"u")
-cl = Advection(u, ts)
+cl = Advection(u, ts, inflow=mesh.Boundaries("circle"))
 cl.SetVectorField( CoefficientFunction((y,-x)) )
 cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)
 
@@ -71,7 +72,6 @@ error = cl.sol - exsol
 Draw(error,mesh,'error')
 visoptions.scalfunction = 'u:'
 
-# 
 l2error = Integrate(error*error,mesh,order=3*order)
 print("l2error = ",sqrt(l2error))
-print("nodf = ",cl.space.ndof)
+print("ndof = ",cl.space.ndof)

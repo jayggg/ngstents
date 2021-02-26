@@ -2,51 +2,68 @@ from ._pyconslaw import ConservationLaw
 from ._pyconslaw import ApplyDG
 
 class Burgers(ConservationLaw):
-    def __init__(self, gfu, tentslab):
+    def __init__(self, gfu, tentslab, **kwargs):
         """
         INPUTS:
         
-        gfu      : GridFunction
-        tentslab : TentSlab
+        gridfunction : GridFunction
+        tentslab     : TentSlab
+        outflow      : Optional[Region]
+        inflow       : Optional[Region]
+        reflect      : Optional[Region]
         """
-        ConservationLaw.__init__(self, gfu, tentslab, "burgers")
+        ConservationLaw.__init__(self, gfu, tentslab, "burgers", **kwargs)
 
 class Euler(ConservationLaw):
-    def __init__(self, gfu, tentslab):
+    def __init__(self, gfu, tentslab, **kwargs):
         """
         INPUTS:
         
-        gfu      : GridFunction
-        tentslab : TentSlab
+        gridfunction : GridFunction
+        tentslab     : TentSlab
+        outflow      : Optional[Region]
+        inflow       : Optional[Region]
+        reflect      : Optional[Region]
         """
-        ConservationLaw.__init__(self, gfu, tentslab, "euler")
+        ConservationLaw.__init__(self, gfu, tentslab, "euler", **kwargs)
 
 class Wave(ConservationLaw):
-    def __init__(self, gfu, tentslab):
+    def __init__(self, gfu, tentslab, **kwargs):
         """
         INPUTS:
         
-        gfu      : GridFunction
-        tentslab : TentSlab
+        gridfunction : GridFunction
+        tentslab     : TentSlab
+        outflow      : Optional[Region]
+        inflow       : Optional[Region]
+        reflect      : Optional[Region]
+        transparent  : Optional[Region]
         """
-        ConservationLaw.__init__(self, gfu, tentslab, "wave")
+        ConservationLaw.__init__(self, gfu, tentslab, "wave", **kwargs)
 
 class Advection(ConservationLaw):
-    def __init__(self, gfu, tentslab):
+    def __init__(self, gfu, tentslab, **kwargs):
         """
         INPUTS:
         
-        gfu      : GridFunction
-        tentslab : TentSlab
+        gridfunction : GridFunction
+        tentslab     : TentSlab
+        outflow      : Optional[Region]
+        inflow       : Optional[Region]
+        reflect      : Optional[Region]
+        transparent  : Optional[Region]
         """
-        ConservationLaw.__init__(self, gfu, tentslab, "advection")
+        ConservationLaw.__init__(self, gfu, tentslab, "advection", **kwargs)
 
 class Maxwell(ConservationLaw):
-    def __init__(self, gfu, tentslab):
+    def __init__(self, gfu, tentslab, **kwargs):
         """
         INPUTS:
         
-        gfu      : GridFunction
-        tentslab : TentSlab
+        gridfunction : GridFunction
+        tentslab     : TentSlab
+        outflow      : Optional[Region]
+        inflow       : Optional[Region]
+        reflect      : Optional[Region]
         """
-        ConservationLaw.__init__(self, gfu, tentslab, "maxwell")
+        ConservationLaw.__init__(self, gfu, tentslab, "maxwell", **kwargs)

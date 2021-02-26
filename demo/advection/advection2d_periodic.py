@@ -1,5 +1,6 @@
 from ngsolve import Mesh, Draw, Redraw
 from ngsolve import CoefficientFunction, exp, sqrt, sin, cos, x, y, z
+from ngsolve import L2, GridFunction
 from ngsolve import TaskManager
 from ngsolve.internal import visoptions
 from ngstents import TentSlab
