@@ -1,7 +1,7 @@
 #ifndef TENTSOLVER_HPP
 #define TENTSOLVER_HPP
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP> class T_ConservationLaw;
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC> class T_ConservationLaw;
 
 class TentSolver
 {

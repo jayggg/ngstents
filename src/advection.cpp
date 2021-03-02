@@ -19,7 +19,6 @@ public:
   using BASE::Flux;
   using BASE::NumFlux;
   using BASE::InverseMap;
-  using BASE::IsSymbolic;
 
   void SetVectorField(shared_ptr<CoefficientFunction> cf) { bfield = cf; }
   
