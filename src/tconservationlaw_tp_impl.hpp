@@ -39,17 +39,14 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 
       if constexpr(SYMBOLIC)
 	{
-	  // ProxyUserData
 	  ProxyUserData ud(Cast().flux_proxies.Size(), lh);
 	  auto & trafo = *fedata->trafoi[i];
 	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
 	  ud.fel = &fel;
 	  for (ProxyFunction * proxy : Cast().flux_proxies)
 	    ud.AssignMemory (proxy, u_iptsa);
-	  // ud.AssignMemory (proxy, simd_ir.GetNIP(), proxy->Dimension(), lh);
 	  for (ProxyFunction * proxy : Cast().flux_proxies)
 	    proxy->Evaluator()->Apply(fel, simd_mir, AsFV(u.Rows(dn)), u_iptsa);
-	  // proxy->Evaluator()->Apply(fel, simd_mir, AsFV(u.Rows(dn)), ud.GetAMemory(proxy));
 	}
       else
 	fel.Evaluate (simd_ir, u.Rows(dn), u_iptsa);
@@ -96,7 +93,6 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
           auto & simd_mir1 = *fedata->mfiri1[i];
 	  if constexpr(SYMBOLIC)
 	    {
-	      // ProxyUserData
 	      ProxyUserData ud(Cast().numflux_proxies.Size(), lh);
 	      auto & trafo1 = *fedata->trafoi[elnr1];
 	      const_cast<ElementTransformation&>(trafo1).userdata = &ud;
@@ -412,8 +408,10 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
             gradphi_mat(k,l).Value() = (1-tstar)*gradbot(k,l) + tstar*gradtop(k,l);
             gradphi_mat(k,l).DValue(0) = gradtop(k,l) - gradbot(k,l);
           }
-
-      Cast().InverseMap(simd_mir, gradphi_mat, adu);
+      if constexpr(SYMBOLIC)
+	{ throw Exception("Entropy viscosity not supported for symbolic equations"); }
+      else
+	Cast().InverseMap(simd_mir, gradphi_mat, adu);
       FlatMatrix<SIMD<double>> Ei(ECOMP,simd_ir.Size(),lh),
                                Fi(DIM*ECOMP,simd_ir.Size(),lh);
       Cast().CalcEntropy(adu, gradphi_mat, Ei, Fi);
@@ -584,7 +582,10 @@ CalcViscosityCoefficientTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
       gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
                     tstar*fedata->agradphi_top[i];
 
-      Cast().InverseMap(simd_mir, gradphi_mat, ui);
+      if constexpr(SYMBOLIC)
+	{ throw Exception("Entropy viscosity not supported for symbolic equations"); }
+      else
+	Cast().InverseMap(simd_mir, gradphi_mat, ui);
       Cast().CalcViscCoeffEl(simd_mir, ui, resi, hi, nu(ei.Nr()));
 
       if(nu(ei.Nr()) > nu_tent)
@@ -619,12 +620,21 @@ Cyl2Tent (const Tent & tent, double tstar,
       IntRange dn = fedata->ranges[i];
 
       FlatMatrix<SIMD<double>> u_ipts(COMP, simd_mir.Size(),lh);
-      for(size_t k = 0; k < COMP; k++)
-        fel.Evaluate (simd_mir.IR(), uhat.Col(k).Range(dn), u_ipts.Row(k));
-
       FlatMatrix<SIMD<double>> gradphi_mat(DIM, simd_mir.Size(), lh);
       gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
                     tstar*fedata->agradphi_top[i];
+      if constexpr(SYMBOLIC)
+	{
+	  MTP_UserData ud(Cast().flux_proxies.Size(), lh);
+	  auto & trafo = *fedata->trafoi[i];
+	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
+	  ud.fel = &fel;
+	  ud.gradphi.Assign(gradphi_mat);
+	  ud.AssignMemory (Cast().invmap_proxy, u_ipts);
+	  Cast().invmap_proxy->Evaluator()->Apply(fel, simd_mir, AsFV(uhat.Rows(dn)), u_ipts);
+	}
+      else
+	fel.Evaluate (simd_mir.IR(), uhat.Rows(dn), u_ipts);
 
       Cast().InverseMap(simd_mir, gradphi_mat, u_ipts);
 
@@ -669,17 +679,14 @@ ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
       auto & simd_mir = *fedata->miri[i];
       if constexpr(SYMBOLIC)
 	{
-	  // ProxyUserData
 	  ProxyUserData ud(Cast().flux_proxies.Size(), lh);
 	  auto & trafo = *fedata->trafoi[i];
 	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
 	  ud.fel = &fel;
 	  for (ProxyFunction * proxy : Cast().flux_proxies)
 	    ud.AssignMemory (proxy, u_ipts);
-	  // ud.AssignMemory (proxy, simd_ir.GetNIP(), proxy->Dimension(), lh);
 	  for (ProxyFunction * proxy : Cast().flux_proxies)
 	    proxy->Evaluator()->Apply(fel, simd_mir, AsFV(u.Rows(dn)), u_ipts);
-	  // proxy->Evaluator()->Apply(fel, simd_mir, AsFV(u.Rows(dn)), ud.GetAMemory(proxy));
 	}
       else
 	fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
@@ -735,17 +742,14 @@ Tent2Cyl (const Tent & tent, double tstar,
       auto & simd_mir = *fedata->miri[i];
       if constexpr(SYMBOLIC)
 	{
-	  // ProxyUserData
 	  ProxyUserData ud(Cast().flux_proxies.Size(), lh);
 	  auto & trafo = *fedata->trafoi[i];
 	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
 	  ud.fel = &fel;
 	  for (ProxyFunction * proxy : Cast().flux_proxies)
 	    ud.AssignMemory (proxy, u_ipts);
-	  // ud.AssignMemory (proxy, simd_ir.GetNIP(), proxy->Dimension(), lh);
 	  for (ProxyFunction * proxy : Cast().flux_proxies)
 	    proxy->Evaluator()->Apply(fel, simd_mir, AsFV(u.Rows(dn)), u_ipts);
-	  // proxy->Evaluator()->Apply(fel, simd_mir, AsFV(u.Rows(dn)), ud.GetAMemory(proxy));
 	}
       else
 	fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);

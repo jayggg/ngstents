@@ -14,7 +14,8 @@ shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<GridFunction> & gfu,
 shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction> & gfu,
 						   const shared_ptr<TentPitchedSlab> & tps,
 						   const shared_ptr<CoefficientFunction> & flux,
-						   const shared_ptr<CoefficientFunction> & numflux);
+						   const shared_ptr<CoefficientFunction> & numflux,
+						   const shared_ptr<CoefficientFunction> & invmap);
 
 typedef ConservationLaw CL;
 
@@ -74,12 +75,14 @@ void ExportConsLaw(py::module & m)
     .def(py::init([](const shared_ptr<GridFunction> & gfu,
      		     const shared_ptr<TentPitchedSlab> & tps,
      		     py::object Flux,
-		     py::object NumFlux)
+		     py::object NumFlux,
+		     py::object InverseMap)
      		  -> shared_ptr<CL>
 		  {
      		    py::object u = py::cast (gfu->GetFESpace()).attr("TrialFunction")();
      		    py::object flux_u = Flux( u );
      		    py::object numflux_u = NumFlux( u, u.attr("Other")() );
+		    py::object invmap = InverseMap( u );
 
      		    shared_ptr<CoefficientFunction> cpp_flux_u =
      		      py::extract<shared_ptr<CoefficientFunction>> (flux_u)();
@@ -89,14 +92,19 @@ void ExportConsLaw(py::module & m)
 		      py::extract<shared_ptr<CoefficientFunction>> (numflux_u)();
 		    cpp_numflux_u = Compile(cpp_numflux_u);
 
-		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u, cpp_numflux_u);
+		    shared_ptr<CoefficientFunction> cpp_invmap =
+		      py::extract<shared_ptr<CoefficientFunction>> (invmap)();
+		    cpp_invmap = Compile(cpp_invmap);
+
+		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u, cpp_numflux_u, cpp_invmap);
 		    cl->CheckBC(); //use old style bc numbers for now
 		    return cl;
 		  }),
 	 py::arg("gridfunction"),
 	 py::arg("tentslab"),
      	 py::arg("flux"),
-	 py::arg("numflux"))
+	 py::arg("numflux"),
+	 py::arg("inversemap"))
     .def_property_readonly("tentslab", [](shared_ptr<CL> self)
                            {
   			     return self->tps;

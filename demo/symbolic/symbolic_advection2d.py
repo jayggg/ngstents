@@ -65,7 +65,13 @@ def NumFlux(um, up):
     bn = b*n
     return IfPos(bn, bn*um, bn*up)
 
-cl = ConservationLaw(u, ts, flux=Flux, numflux=NumFlux)
+def InverseMap(y):
+    """
+    solves "y = u - (b*u,gradphi)" for u
+    """
+    return y/(1-InnerProduct(b,ts.gradphi))
+
+cl = ConservationLaw(u, ts, flux=Flux, numflux=NumFlux, inversemap=InverseMap)
 cl.SetVectorField(b)
 
 cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)

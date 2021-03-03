@@ -117,6 +117,36 @@ public:
 	     const MeshAccess & ma, LocalHeap & lh);
 };
 
+// derived ProxyUserData storing the gradient of the advancing front
+class MTP_UserData : public ProxyUserData
+{
+public:
+  FlatMatrix<SIMD<double>> gradphi;
+  using ProxyUserData::ProxyUserData;
+};
+
+class GradPhiCoefficientFunction : public CoefficientFunction
+{
+public:
+  GradPhiCoefficientFunction (int adim)
+    : CoefficientFunction(adim)
+  { }
+
+  virtual double Evaluate (const BaseMappedIntegrationPoint & ip) const
+  {
+    throw Exception ("Evaluate not implemented for BaseMappedIntegrationPoint!");
+  }
+
+  virtual void Evaluate (const SIMD_BaseMappedIntegrationRule & ir,
+			 BareSliceMatrix<SIMD<double>> values) const
+  {
+    MTP_UserData * ud = static_cast<MTP_UserData*>(ir.GetTransformation().userdata);
+    if(ud)
+      values.AddSize(ud->gradphi.Height(),ud->gradphi.Width()) = ud->gradphi;
+    else
+      throw Exception("MTP_UserData not set");
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////
 namespace ngstents{
