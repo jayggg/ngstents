@@ -1,5 +1,5 @@
 from ngsolve import Mesh, Draw, Redraw
-from ngsolve import CoefficientFunction, sqrt, sin, cos, x, y, z
+from ngsolve import CoefficientFunction, IfPos, sqrt, sin, cos, exp, x, y, z, InnerProduct
 from ngsolve import L2, GridFunction, TaskManager, SetNumThreads
 from ngsolve import specialcf as scf
 from ngsolve.internal import visoptions

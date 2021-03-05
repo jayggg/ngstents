@@ -134,6 +134,7 @@ public:
   virtual void Evaluate (const SIMD_BaseMappedIntegrationRule & mir,
 			 BareSliceMatrix<SIMD<double>> values) const
   {
+    // loads values of grad(phi) from ProxyUserData, assuming it is properly set
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     values.AddSize(Dimension(), mir.Size()) = BareSliceMatrix<SIMD<double>> (ud.GetAMemory (this));
   }
@@ -173,7 +174,7 @@ public:
   };
   
   //uses a gradient based method for pitching the tent
-  //calc_local_ct will indicate wether to use a local mesh-dependent
+  //calc_local_ct will indicate whether to use a local mesh-dependent
   //constant for the algorithm
   //global_ct is a globalwise constant that can be independently used
   //its return value will indicate whether the slab was successfully pitched.
