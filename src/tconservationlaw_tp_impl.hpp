@@ -13,11 +13,9 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
   static Timer tflux ("CalcFluxTent", 2);
   ThreadRegionTimer reg(tflux, TaskManager::GetThreadId());
 
-  // note: tstar is not used
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
 
-  // these variables no longer exist
   *(tent.time) = tent.timebot + tstar*(tent.ttop-tent.tbot);
 
   flux = 0.0;
@@ -38,19 +36,14 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
       FlatMatrix<SIMD<double>> u_iptsa(COMP, simd_ir.Size(),lh);
 
       if constexpr(SYMBOLIC)
-	{
-	  ProxyUserData ud(Cast().flux_proxies.Size(), lh);
-	  auto & trafo = *fedata->trafoi[i];
-	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
-	  ud.fel = &fel;
-	  for (ProxyFunction * proxy : Cast().flux_proxies)
-	    ud.AssignMemory (proxy, u_iptsa);
-	  for (ProxyFunction * proxy : Cast().flux_proxies)
-	    proxy->Evaluator()->Apply(fel, simd_mir, AsFV(u.Rows(dn)), u_iptsa);
-	}
-      else
-	fel.Evaluate (simd_ir, u.Rows(dn), u_iptsa);
-
+      	{
+      	  ProxyUserData ud(1, lh);
+      	  auto & trafo = *fedata->trafoi[i];
+      	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
+      	  ud.fel = &fel;
+	  ud.AssignMemory (Cast().flux_proxy, simd_ir.GetNIP(), COMP, lh);
+      	}
+      fel.Evaluate (simd_ir, u.Rows(dn), u_iptsa);
       Cast().Flux(simd_mir, u_iptsa, flux_iptsa);
 
       FlatVector<SIMD<double>> di = fedata->adelta[i];
@@ -93,29 +86,19 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
           auto & simd_mir1 = *fedata->mfiri1[i];
 	  if constexpr(SYMBOLIC)
 	    {
-	      ProxyUserData ud(Cast().numflux_proxies.Size(), lh);
+	      ProxyUserData ud(2, lh);
 	      auto & trafo1 = *fedata->trafoi[elnr1];
 	      const_cast<ElementTransformation&>(trafo1).userdata = &ud;
 	      ud.fel = &fel1;
 	      for (ProxyFunction * proxy : Cast().numflux_proxies)
 		{
-		  if (proxy->IsOther())
-		    {
-		      ud.AssignMemory (proxy, u2);
-		      proxy->Evaluator()->Apply(fel2, *fedata->mfiri2[i], AsFV(u.Rows(dn2)), u2);
-		    }
-		  else
-		    {
-		      ud.AssignMemory (proxy, u1);
-		      proxy->Evaluator()->Apply(fel1, simd_mir1, AsFV(u.Rows(dn1)), u1);
-		    }
+		  // assume IR's have the same size
+		  ud.AssignMemory (proxy, simd_ir_facet_vol1.GetNIP(), COMP, lh);
 		}		    
 	    }
-	  else
-	    {
-	      fel1.Evaluate(simd_ir_facet_vol1, u.Rows(dn1), u1);
-	      fel2.Evaluate(simd_ir_facet_vol2, u.Rows(dn2), u2);
-	    }
+	  fel1.Evaluate(simd_ir_facet_vol1, u.Rows(dn1), u1);
+	  fel2.Evaluate(simd_ir_facet_vol2, u.Rows(dn2), u2);
+
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
 	  Cast().NumFlux (simd_mir1, u1, u2, fedata->anormals[i], fn);
 
@@ -140,7 +123,7 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
           int simd_nipt = simd_ir_facet_vol1.Size(); // IR's have the same size
           FlatMatrix<SIMD<double>> u1(COMP, simd_nipt, lh),
                                    u2(COMP, simd_nipt, lh);
-	  // TODO: support symbolic on boundaries
+
           fel1.Evaluate(simd_ir_facet_vol1,u.Rows(dn1),u1);
           auto & simd_mir = *fedata->mfiri1[i];
 
@@ -173,11 +156,19 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 		      u2.Col(j) *= pow(di(j),derive_cf_bnd);
 	      	}
               else
-		throw Exception(string("no implementation for your \
-				chosen boundary condition number ") +
+		throw Exception(string("no implementation for your ")+
+				string("chosen boundary condition number ")+
 				ToString(bc+1));
 	    }
-
+	  if constexpr(SYMBOLIC)
+	    {
+	      ProxyUserData ud(Cast().numflux_proxies.Size(), lh);
+	      auto & trafo1 = *fedata->trafoi[elnr1];
+	      const_cast<ElementTransformation&>(trafo1).userdata = &ud;
+	      ud.fel = &fel1;
+	      for (ProxyFunction * proxy : Cast().numflux_proxies)
+		ud.AssignMemory (proxy, simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	    }
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
 	  Cast().NumFlux (simd_mir, u1, u2, fedata->anormals[i], fn);
 
@@ -625,17 +616,15 @@ Cyl2Tent (const Tent & tent, double tstar,
                     tstar*fedata->agradphi_top[i];
       if constexpr(SYMBOLIC)
 	{
-	  MTP_UserData ud(Cast().flux_proxies.Size(), lh);
+	  ProxyUserData ud(1, 1, lh); //ntrial = 1, ncf = 1
 	  auto & trafo = *fedata->trafoi[i];
 	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
 	  ud.fel = &fel;
-	  ud.gradphi.Assign(gradphi_mat);
-	  ud.AssignMemory (Cast().invmap_proxy, u_ipts);
-	  Cast().invmap_proxy->Evaluator()->Apply(fel, simd_mir, AsFV(uhat.Rows(dn)), u_ipts);
+	  auto nip = simd_mir.IR().GetNIP();
+	  ud.AssignMemory (Cast().invmap_proxy, nip, COMP, lh);
+	  ud.AssignMemory (tps->cfgradphi.get(), nip, DIM, lh);
 	}
-      else
-	fel.Evaluate (simd_mir.IR(), uhat.Rows(dn), u_ipts);
-
+      fel.Evaluate (simd_mir.IR(), uhat.Rows(dn), u_ipts);
       Cast().InverseMap(simd_mir, gradphi_mat, u_ipts);
 
       for(size_t k = 0; k < simd_mir.Size(); k++)
@@ -679,18 +668,13 @@ ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
       auto & simd_mir = *fedata->miri[i];
       if constexpr(SYMBOLIC)
 	{
-	  ProxyUserData ud(Cast().flux_proxies.Size(), lh);
+	  ProxyUserData ud(1, lh);
 	  auto & trafo = *fedata->trafoi[i];
 	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
 	  ud.fel = &fel;
-	  for (ProxyFunction * proxy : Cast().flux_proxies)
-	    ud.AssignMemory (proxy, u_ipts);
-	  for (ProxyFunction * proxy : Cast().flux_proxies)
-	    proxy->Evaluator()->Apply(fel, simd_mir, AsFV(u.Rows(dn)), u_ipts);
+	  ud.AssignMemory (Cast().flux_proxy, simd_ir.GetNIP(), COMP, lh);
 	}
-      else
-	fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
-
+      fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
       Cast().Flux(simd_mir,u_ipts,flux);
 
       for(size_t j : Range(simd_ir.Size()))
@@ -742,18 +726,13 @@ Tent2Cyl (const Tent & tent, double tstar,
       auto & simd_mir = *fedata->miri[i];
       if constexpr(SYMBOLIC)
 	{
-	  ProxyUserData ud(Cast().flux_proxies.Size(), lh);
+	  ProxyUserData ud(1, lh);
 	  auto & trafo = *fedata->trafoi[i];
 	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
 	  ud.fel = &fel;
-	  for (ProxyFunction * proxy : Cast().flux_proxies)
-	    ud.AssignMemory (proxy, u_ipts);
-	  for (ProxyFunction * proxy : Cast().flux_proxies)
-	    proxy->Evaluator()->Apply(fel, simd_mir, AsFV(u.Rows(dn)), u_ipts);
+	  ud.AssignMemory (Cast().flux_proxy, simd_ir.GetNIP(), COMP, lh);
 	}
-      else
-	fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
-
+      fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
       Cast().Flux(simd_mir,u_ipts,flux);
 
       for(size_t j : Range(simd_ir.Size()))

@@ -30,7 +30,7 @@ auto ExportTimeSlab(py::module &m)
     .def_readonly("mesh", &TentPitchedSlab::ma)
     .def_property_readonly("gradphi",[](shared_ptr<TentPitchedSlab> self) -> shared_ptr<CF>
 			   {
-			     return make_shared<GradPhiCoefficientFunction>(self->ma->GetDimension());
+			     return self->cfgradphi;
 			   })
     .def("SetWavespeed", [](shared_ptr<TentPitchedSlab> self, py::object wavespeed)
 	 {

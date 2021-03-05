@@ -14,7 +14,7 @@ class SymbolicConsLaw : public T_ConservationLaw<SymbolicConsLaw<D>, D, 1, 0, tr
   shared_ptr<CoefficientFunction> cf_numflux = nullptr;
   shared_ptr<CoefficientFunction> cf_invmap = nullptr;
 public:
-  Array<ProxyFunction*> flux_proxies;
+  ProxyFunction * flux_proxy;
   Array<ProxyFunction*> numflux_proxies;
   ProxyFunction * invmap_proxy;
 public:
@@ -35,11 +35,10 @@ public:
 	      if (proxy)
 		{
 		  if (!proxy->IsTestFunction())
-		    if (!flux_proxies.Contains(proxy))
-		      flux_proxies.Append (proxy);
+		    flux_proxy = proxy;
 		}
 	    });
-	cout << "flux_proxies: " << flux_proxies << endl;
+	cout << "flux_proxy: " << flux_proxy << endl;
       }
     if(cf_numflux)
       {
@@ -80,33 +79,21 @@ public:
   
   // solve for û: Û = ĝ(x̂, t̂, û) - ∇̂ φ(x̂, t̂) ⋅ f̂(x̂, t̂, û)
   // at all points in an integration rule
-  //
-  // in this case, û = Û / [ 1 - b̂ ⋅∇̂ φ(x̂, t̂) ]
   void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
 		  FlatMatrix<SIMD<double>> grad, FlatMatrix<SIMD<double>> u) const
   {
-    // STACK_ARRAY(SIMD<double>, mem, D*mir.Size());
-    // FlatMatrix<SIMD<double>> bmat(D, mir.Size(), mem);
-    // 
-    // bfield->Evaluate (mir, bmat);
-    // for (size_t i : Range(mir))
-    //   {
-    //     SIMD<double> ip = 1.0;
-    //     for (size_t j : Range(D))
-    //       ip -= grad(j,i) * bmat(j,i);
-    //     u(0,i) *= (1/ip);
-    //   }
-    // cout << "grad_phi = " << endl << grad << endl;
+    ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
+    ud.GetAMemory(invmap_proxy) = u;                  // set values for u
+    ud.GetAMemory(BASE::tps->cfgradphi.get()) = grad; // set values for grad(phi)
     cf_invmap->Evaluate(mir, u);
   }
 
-  // Flux f(u) = b*u on element 
+  // flux f(u)
   void Flux (const SIMD_BaseMappedIntegrationRule & mir,
              FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> flux) const
   {
-    // bfield->Evaluate(mir, flux);
-    // for (size_t i : Range(mir))
-    //   flux.Col(i) *= u(0,i);
+    ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
+    ud.GetAMemory(flux_proxy) = u; // set values for u
     cf_flux->Evaluate(mir, flux);
   }
 
@@ -115,18 +102,9 @@ public:
 	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
-    // STACK_ARRAY(SIMD<double>, mem, D*mir.Size());
-    // FlatMatrix<SIMD<double>> bmat(D, mir.Size(), mem);
-    // bfield->Evaluate(mir, bmat);
-    // 
-    // for(size_t i : Range(mir))
-    //   {
-    //     SIMD<double> bn = 0.0;
-    //     for(size_t j : Range(D))
-    //       bn += bmat(j,i)*normals(j,i);
-    // 
-    //     fna(0,i) = IfPos(bn, bn*ul(0,i), bn*ur(0,i));
-    //   }
+    ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
+    ud.GetAMemory(numflux_proxies[0]) = ul; // set values for ul
+    ud.GetAMemory(numflux_proxies[1]) = ur; // set values for ur
     cf_numflux->Evaluate(mir,fna);
   }
 };
