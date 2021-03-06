@@ -156,7 +156,7 @@ public:
   
   // Get object features
   int GetNTents() { return tents.Size(); }
-  int GetNLayers() { return nlayers; }
+  int GetNLayers() { return nlayers + 1; }
 
   void SetWavespeed(const double c){cmax =  make_shared<ConstantCoefficientFunction>(c);}
   void SetWavespeed(shared_ptr<CoefficientFunction> c){ cmax = c;}
