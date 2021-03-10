@@ -100,10 +100,7 @@ public:
     for(int i : Range(u.Width()))
       {
         Mat<D+2,D,SIMD<double>> fluxmat = Flux(u.Col(i));
-        size_t l = 0;
-        for(size_t j : Range(D))
-          for(size_t k : Range(D+2))
-            flux(l++,i) = fluxmat(k,j);
+	flux.Col(i) = fluxmat.AsVector();
       }
   }
 

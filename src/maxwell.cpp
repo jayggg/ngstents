@@ -43,11 +43,7 @@ public:
 	Mat<2*D,D,SIMD<double>> fluxmat;
         fluxmat.Rows(0,D) = skew(u.Col(i).Range(D,2*D));
 	fluxmat.Rows(D,2*D) = -skew(u.Col(i).Range(0,D));
-
-        size_t l = 0;
-	for(size_t j : Range(D))
-	  for(size_t k : Range(2*D))
-	    flux(l++,i) = fluxmat(k,j);
+	flux.Col(i) = fluxmat.AsVector();
       }
   }
 

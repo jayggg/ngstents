@@ -49,13 +49,7 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
       FlatVector<SIMD<double>> di = fedata->adelta[i];
       for (auto k : Range(simd_ir.Size()))
         flux_iptsa.Col(k) *= simd_mir[k].GetWeight() * di(k);
-      {
-        for (size_t i = 0; i < COMP; i++)
-          for (size_t j = 0; j < DIM; j++)
-            flux_iptsa2.Row(i*DIM+j) = flux_iptsa.Row(j*COMP+i);
-
-        fel.AddGradTrans (simd_mir, flux_iptsa2, flux.Rows(dn));
-      }
+      fel.AddGradTrans (simd_mir, flux_iptsa, flux.Rows(dn));
     }
   }
 
@@ -684,7 +678,7 @@ ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
             for(size_t k : Range(DIM))
               {
                 auto graddelta = graddelta_mat(k,j) * simd_mir[j].GetWeight();
-                hsum += graddelta * flux(COMP*k+l,j);
+		hsum += graddelta * flux(DIM*l+k,j);
               }
             temp(l,j) = hsum;
           }
@@ -742,7 +736,7 @@ Tent2Cyl (const Tent & tent, double tstar,
             for(size_t k : Range(DIM))
               {
                 auto gradphi = gradphi_mat(k,j) * simd_mir[j].GetWeight();
-                hsum += gradphi * flux(COMP*k+l,j);
+		hsum += gradphi * flux(DIM*l+k,j);
               }
             res(l,j) = u_ipts(l,j) * simd_mir[j].GetWeight() - hsum;
           }
