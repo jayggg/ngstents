@@ -76,7 +76,8 @@ void ExportConsLaw(py::module & m)
      		     const shared_ptr<TentPitchedSlab> & tps,
      		     py::object Flux,
 		     py::object NumFlux,
-		     py::object InverseMap)
+		     py::object InverseMap,
+		     const bool compile)
      		  -> shared_ptr<CL>
 		  {
      		    py::object u = py::cast (gfu->GetFESpace()).attr("TrialFunction")();
@@ -86,15 +87,15 @@ void ExportConsLaw(py::module & m)
 
      		    shared_ptr<CoefficientFunction> cpp_flux_u =
      		      py::extract<shared_ptr<CoefficientFunction>> (flux_u)();
-     		    cpp_flux_u = Compile(cpp_flux_u);
+     		    cpp_flux_u = Compile(cpp_flux_u, compile);
 
 		    shared_ptr<CoefficientFunction> cpp_numflux_u =
 		      py::extract<shared_ptr<CoefficientFunction>> (numflux_u)();
-		    cpp_numflux_u = Compile(cpp_numflux_u);
+		    cpp_numflux_u = Compile(cpp_numflux_u, compile);
 
 		    shared_ptr<CoefficientFunction> cpp_invmap =
 		      py::extract<shared_ptr<CoefficientFunction>> (invmap)();
-		    cpp_invmap = Compile(cpp_invmap);
+		    cpp_invmap = Compile(cpp_invmap, compile);
 
 		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u, cpp_numflux_u, cpp_invmap);
 		    cl->CheckBC(); //use old style bc numbers for now
@@ -104,7 +105,8 @@ void ExportConsLaw(py::module & m)
 	 py::arg("tentslab"),
      	 py::arg("flux"),
 	 py::arg("numflux"),
-	 py::arg("inversemap"))
+	 py::arg("inversemap"),
+	 py::arg("compile")=false)
     .def_property_readonly("tentslab", [](shared_ptr<CL> self)
                            {
   			     return self->tps;

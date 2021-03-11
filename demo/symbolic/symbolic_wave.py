@@ -1,7 +1,7 @@
 from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, Draw, Redraw
 from ngsolve import (CoefficientFunction, IfPos, sqrt, sin, cos, exp, x, y, z,
-                     InnerProduct, Norm, OuterProduct)
+                     InnerProduct, Norm, OuterProduct, Id)
 from ngsolve import L2, GridFunction, TaskManager, SetNumThreads
 from ngsolve import specialcf as scf
 from ngsolve.internal import visoptions, viewoptions
@@ -60,11 +60,10 @@ def NumFlux(um, up):
     """
     # upwind flux
     flux = 0.5 * (Flux(um) + Flux(up))*n
-    nn = Norm(n)
     qm = CoefficientFunction(tuple([um[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
     qp = CoefficientFunction(tuple([up[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
-    flux_vec = 0.5/nn * OuterProduct(n,n) * (qm - qp)
-    flux_scal = 0.5*nn * (um[mesh.dim]-up[mesh.dim])
+    flux_vec = 0.5 * OuterProduct(n,n) * (qm - qp)
+    flux_scal = 0.5 * (um[mesh.dim]-up[mesh.dim])
     return flux + CoefficientFunction((flux_vec,flux_scal))
 
 def InverseMap(y):
@@ -79,7 +78,7 @@ def InverseMap(y):
     q = y_q + mu*ts.gradphi
     return CoefficientFunction((q,mu))
 
-cl = ConservationLaw(gfu, ts, flux=Flux, numflux=NumFlux, inversemap=InverseMap)
+cl = ConservationLaw(gfu, ts, flux=Flux, numflux=NumFlux, inversemap=InverseMap, compile=True)
 cl.SetTentSolver("SAT",stages=order+1, substeps=4*order)
 
 if(dim == 1):
