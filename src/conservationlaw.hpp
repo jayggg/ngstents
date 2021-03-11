@@ -345,7 +345,7 @@ public:
                  FlatMatrix<SIMD<double>> u_refl) const
   {
     throw Exception ("reflecting boundary conditions not implemented for "
-		     + ToString(this->equation) + "equation!");
+		     + ToString(this->equation) + " equation!");
   }
 
   void u_transparent(const SIMD_BaseMappedIntegrationRule & mir,

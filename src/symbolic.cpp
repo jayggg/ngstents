@@ -3,12 +3,12 @@ using namespace ngsolve;
 
 #include "tconservationlaw_tp_impl.hpp"
 
-template <int D>
-class SymbolicConsLaw : public T_ConservationLaw<SymbolicConsLaw<D>, D, 1, 0, true>
+template <int D, int COMP>
+class SymbolicConsLaw : public T_ConservationLaw<SymbolicConsLaw<D,COMP>, D, COMP, 0, true>
 {
   shared_ptr<CoefficientFunction> bfield = nullptr;
 
-  typedef T_ConservationLaw<SymbolicConsLaw<D>, D, 1, 0, true> BASE;
+  typedef T_ConservationLaw<SymbolicConsLaw<D, COMP>, D, COMP, 0, true> BASE;
 
   shared_ptr<CoefficientFunction> cf_flux = nullptr;
   shared_ptr<CoefficientFunction> cf_numflux = nullptr;
@@ -120,11 +120,23 @@ shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction
   const int dim = tps->ma->GetDimension();
   switch(dim){
   case 1:
-    return make_shared<SymbolicConsLaw<1>>(gfu, tps, flux, numflux, invmap);
+    Switch<MAXCOMP>(comp_space, [&](auto COMP) {
+	cl = make_shared<SymbolicConsLaw<1, COMP>>(gfu, tps, flux, numflux, invmap);
+      });
+    break;
   case 2:
-    return make_shared<SymbolicConsLaw<2>>(gfu, tps, flux, numflux, invmap);
+    Switch<MAXCOMP>(comp_space, [&](auto COMP) {
+	cl = make_shared<SymbolicConsLaw<2, COMP>>(gfu, tps, flux, numflux, invmap);
+      });
+    break;
   case 3:
-    return make_shared<SymbolicConsLaw<3>>(gfu, tps, flux, numflux, invmap);
+    Switch<MAXCOMP>(comp_space, [&](auto COMP) {
+	cl = make_shared<SymbolicConsLaw<3, COMP>>(gfu, tps, flux, numflux, invmap);
+      });
+    break;
   }
-  throw Exception ("Illegal dimension for SymbolicConsLaw");
+  if(cl)
+    return cl;
+  else
+    throw Exception ("Illegal dimension for SymbolicConsLaw");
 }
