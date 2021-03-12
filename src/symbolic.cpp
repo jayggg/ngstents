@@ -13,18 +13,21 @@ class SymbolicConsLaw : public T_ConservationLaw<SymbolicConsLaw<D,COMP>, D, COM
   shared_ptr<CoefficientFunction> cf_flux = nullptr;
   shared_ptr<CoefficientFunction> cf_numflux = nullptr;
   shared_ptr<CoefficientFunction> cf_invmap = nullptr;
+  shared_ptr<CoefficientFunction> cf_reflect = nullptr;
 public:
   ProxyFunction * flux_proxy;
   Array<ProxyFunction*> numflux_proxies;
   ProxyFunction * invmap_proxy;
+  // TODO: simplify to proxy_u and proxy_uother
 public:
   SymbolicConsLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
 		   const shared_ptr<CoefficientFunction> & acf_flux,
 		   const shared_ptr<CoefficientFunction> & acf_numflux,
-		   const shared_ptr<CoefficientFunction> & acf_invmap)
+		   const shared_ptr<CoefficientFunction> & acf_invmap,
+		   const shared_ptr<CoefficientFunction> & acf_reflect)
     : BASE (agfu, atps, "symbolic"),
-      cf_flux{acf_flux}, cf_numflux{acf_numflux}, cf_invmap{acf_invmap}
+      cf_flux{acf_flux}, cf_numflux{acf_numflux}, cf_invmap{acf_invmap}, cf_reflect{acf_reflect}
   {
     if(cf_flux)
       {
@@ -38,7 +41,6 @@ public:
 		    flux_proxy = proxy;
 		}
 	    });
-	cout << "flux_proxy: " << flux_proxy << endl;
       }
     if(cf_numflux)
       {
@@ -53,7 +55,6 @@ public:
 		      numflux_proxies.Append (proxy);
 		}
 	    });
-	cout << "numflux_proxies: " << numflux_proxies << endl;
       }
     if(cf_invmap)
       {
@@ -67,7 +68,6 @@ public:
 		    invmap_proxy = proxy;
 		}
 	    });
-	cout << "invmap_proxy: " << invmap_proxy << endl;
       }
   };
 
@@ -107,6 +107,16 @@ public:
     ud.GetAMemory(numflux_proxies[1]) = ur; // set values for ur
     cf_numflux->Evaluate(mir,fna);
   }
+
+  void u_reflect(const SIMD_BaseMappedIntegrationRule & mir,
+		 FlatMatrix<SIMD<double>> u,
+                 FlatMatrix<SIMD<double>> normals,
+                 FlatMatrix<SIMD<double>> u_refl) const
+  {
+    ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
+    ud.GetAMemory(flux_proxy) = u; // set values for u
+    cf_reflect->Evaluate(mir,u_refl);
+  }
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -115,23 +125,27 @@ shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction
 						   const shared_ptr<TentPitchedSlab> & tps,
 						   const shared_ptr<CoefficientFunction> & flux,
 						   const shared_ptr<CoefficientFunction> & numflux,
-						   const shared_ptr<CoefficientFunction> & invmap)
+						   const shared_ptr<CoefficientFunction> & invmap,
+						   const shared_ptr<CoefficientFunction> & cf_reflect)
 {
   const int dim = tps->ma->GetDimension();
+  constexpr int MAXCOMP = 6;
+  const int comp_space = gfu->GetFESpace()->GetDimension();
+  shared_ptr<ConservationLaw> cl = nullptr;
   switch(dim){
   case 1:
     Switch<MAXCOMP>(comp_space, [&](auto COMP) {
-	cl = make_shared<SymbolicConsLaw<1, COMP>>(gfu, tps, flux, numflux, invmap);
+	cl = make_shared<SymbolicConsLaw<1, COMP>>(gfu, tps, flux, numflux, invmap, cf_reflect);
       });
     break;
   case 2:
     Switch<MAXCOMP>(comp_space, [&](auto COMP) {
-	cl = make_shared<SymbolicConsLaw<2, COMP>>(gfu, tps, flux, numflux, invmap);
+	cl = make_shared<SymbolicConsLaw<2, COMP>>(gfu, tps, flux, numflux, invmap, cf_reflect);
       });
     break;
   case 3:
     Switch<MAXCOMP>(comp_space, [&](auto COMP) {
-	cl = make_shared<SymbolicConsLaw<3, COMP>>(gfu, tps, flux, numflux, invmap);
+	cl = make_shared<SymbolicConsLaw<3, COMP>>(gfu, tps, flux, numflux, invmap, cf_reflect);
       });
     break;
   }

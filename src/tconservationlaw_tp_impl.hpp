@@ -118,6 +118,15 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
           FlatMatrix<SIMD<double>> u1(COMP, simd_nipt, lh),
                                    u2(COMP, simd_nipt, lh);
 
+	  if constexpr(SYMBOLIC)
+	    {
+	      ProxyUserData ud(Cast().numflux_proxies.Size(), lh);
+	      auto & trafo1 = *fedata->trafoi[elnr1];
+	      const_cast<ElementTransformation&>(trafo1).userdata = &ud;
+	      ud.fel = &fel1;
+	      for (ProxyFunction * proxy : Cast().numflux_proxies)
+		ud.AssignMemory (proxy, simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	    }
           fel1.Evaluate(simd_ir_facet_vol1,u.Rows(dn1),u1);
           auto & simd_mir = *fedata->mfiri1[i];
 
@@ -153,15 +162,6 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 		throw Exception(string("no implementation for your ")+
 				string("chosen boundary condition number ")+
 				ToString(bc+1));
-	    }
-	  if constexpr(SYMBOLIC)
-	    {
-	      ProxyUserData ud(Cast().numflux_proxies.Size(), lh);
-	      auto & trafo1 = *fedata->trafoi[elnr1];
-	      const_cast<ElementTransformation&>(trafo1).userdata = &ud;
-	      ud.fel = &fel1;
-	      for (ProxyFunction * proxy : Cast().numflux_proxies)
-		ud.AssignMemory (proxy, simd_ir_facet_vol1.GetNIP(), COMP, lh);
 	    }
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
 	  Cast().NumFlux (simd_mir, u1, u2, fedata->anormals[i], fn);

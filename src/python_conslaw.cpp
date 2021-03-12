@@ -15,7 +15,8 @@ shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction
 						   const shared_ptr<TentPitchedSlab> & tps,
 						   const shared_ptr<CoefficientFunction> & flux,
 						   const shared_ptr<CoefficientFunction> & numflux,
-						   const shared_ptr<CoefficientFunction> & invmap);
+						   const shared_ptr<CoefficientFunction> & invmap,
+						   const shared_ptr<CoefficientFunction> & cf_reflect);
 
 typedef ConservationLaw CL;
 
@@ -77,7 +78,11 @@ void ExportConsLaw(py::module & m)
      		     py::object Flux,
 		     py::object NumFlux,
 		     py::object InverseMap,
-		     const bool compile)
+		     optional<py::object> ReflectBnd,
+		     const bool compile,
+		     optional<Region> outflow,
+		     optional<Region> inflow,
+		     optional<Region> reflect)
      		  -> shared_ptr<CL>
 		  {
      		    py::object u = py::cast (gfu->GetFESpace()).attr("TrialFunction")();
@@ -97,8 +102,25 @@ void ExportConsLaw(py::module & m)
 		      py::extract<shared_ptr<CoefficientFunction>> (invmap)();
 		    cpp_invmap = Compile(cpp_invmap, compile);
 
-		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u, cpp_numflux_u, cpp_invmap);
-		    cl->CheckBC(); //use old style bc numbers for now
+		    // CF for reflecting boundary condition
+		    shared_ptr<CoefficientFunction> cpp_cf_reflect = nullptr;
+		    if(ReflectBnd.has_value())
+		      {
+			py::object cf_reflect = ReflectBnd.value()( u );
+			cpp_cf_reflect = py::extract<shared_ptr<CoefficientFunction>> (cf_reflect)();
+			cpp_cf_reflect = Compile(cpp_cf_reflect, compile);
+		      }
+
+		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u, cpp_numflux_u, cpp_invmap,
+						    cpp_cf_reflect);
+		    // set boundary data
+                    if(outflow.has_value())
+                      cl->SetBC(0,outflow.value().Mask());
+                    if(reflect.has_value())
+                      cl->SetBC(1,reflect.value().Mask());
+                    if(inflow.has_value())
+                      cl->SetBC(2,inflow.value().Mask());
+		    cl->CheckBC(); //use old style bc numbers if no regions set
 		    return cl;
 		  }),
 	 py::arg("gridfunction"),
@@ -106,7 +128,12 @@ void ExportConsLaw(py::module & m)
      	 py::arg("flux"),
 	 py::arg("numflux"),
 	 py::arg("inversemap"),
-	 py::arg("compile")=false)
+	 py::arg("reflectbnd")=nullptr,
+	 py::arg("compile")=false,
+	 py::arg("outflow")=nullptr,
+	 py::arg("inflow")=nullptr,
+         py::arg("reflect")=nullptr
+	 )
     .def_property_readonly("tentslab", [](shared_ptr<CL> self)
                            {
   			     return self->tps;
