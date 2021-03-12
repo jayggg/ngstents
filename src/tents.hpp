@@ -31,11 +31,6 @@ public:
   Table<int> elfnums;         /* elfnums[k] lists all internal facets of
 				 the k-th element of tent */
 
-  // Tent top and bottom are graphs of phi_top, phi_bot, which are
-  // p.w.linear functions on non-curved elements (with p.w.constant gradients).
-  Array<Vector<>> gradphi_bot; // gradphi_bot[l], gradphi_top[l] =
-  Array<Vector<>> gradphi_top; /* gradients of phi_bot/top at some point in the
-				  l-th simplex of the tent */
   const Array<int> &vmap;
   // access to the finite element & dofs
   mutable class TentDataFE * fedata = nullptr;
@@ -44,7 +39,8 @@ public:
   int level;                   // parallel layer number
   Array<int> dependent_tents;  // these tents depend on me
 
-  double MaxSlope() const;
+  double maxslope = 0.0;       // maximal slope of the top advancing front
+  double MaxSlope() const { return maxslope; }
 
   // global physical times
   mutable double * time;     // global physical time at vertex, stored in ConservationLaw::gftau

@@ -1,19 +1,6 @@
 #include "tents.hpp"
 #include <limits>
 
-
-
-/////////////////// Tent methods ////////////////////////////////////////////
-double Tent::MaxSlope() const{
-  double maxgrad = 0.0;
-  for (int j : Range(this->els.Size()))
-    {
-      const auto norm = L2Norm(this->gradphi_top[j]);
-      maxgrad =  max(maxgrad, norm);
-    }
-  return maxgrad;
-}
-
 /////////////////// Tent meshing ///////////////////////////////////////////
 
 constexpr ELEMENT_TYPE EL_TYPE(int DIM)
@@ -263,52 +250,39 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
     }
   tent_dependency = create_dag.MoveTable();
 
-  // set advancing front gradients
+  // calculate slope of tents
   ParallelFor
-    (Range(tents),
-     [&] (int i)     {
-
+    (Range(tents), [&] (int i)
+     {
+       LocalHeap slh = lh.Split();
        Tent & tent = *tents[i];
-       int nels = tent.els.Size();
-       tent.gradphi_bot.SetSize(nels);
-       tent.gradphi_top.SetSize(nels);
 
        constexpr auto el_type = EL_TYPE(DIM);
+       constexpr int n_vertices = DIM+1; // number of vertices of the current element (simplex)
+       ScalarFE<el_type,1> fe; //finite element created for calculating the barycentric coordinates
        IntegrationRule ir(el_type, 0);
-       HeapReset hr(lh);
-       for (int j : Range(nels)) { //  loop over elements in a tent
-
-	 ElementId ej (VOL, tent.els[j]);
-         //number of vertices of the current element (always the simplex associated to DIM)
-         constexpr int n_vertices = DIM+1;
-         //finite element created for calculating the barycentric coordinates
-         ScalarFE<el_type,1> fe;
-	 FlatMatrixFixWidth<DIM,double> dshape_nodal(n_vertices, lh);
-	 Vec<n_vertices> coef_bot(0), coef_top(0); // coefficient of tau (top & bot)
-	 const auto vnums = ma->GetElVertices (ej);
-         const auto nneighbours = tent.nbv.Size();
-	 for (size_t k = 0; k < n_vertices; k++)
-           {
-             if (auto v = vmap[vnums[k]]; v != tent.vertex)
-               {
-                 for (size_t l = 0; l < nneighbours; l++)
-		   if (tent.nbv[l] == v) coef_bot(k) = coef_top(k) = tent.nbtime[l];
-               }
-             else
-               {//central vertex
-                 coef_bot(k) = tent.tbot;
-                 coef_top(k) = tent.ttop;
-               }
-           }
-         
-	 ElementTransformation & trafo = ma->GetTrafo (ej, lh);
-	 MappedIntegrationPoint<DIM, DIM> mip(ir[0], trafo);
-	 tent.gradphi_bot[j].SetSize(DIM);
-	 tent.gradphi_top[j].SetSize(DIM);
-	 fe.CalcMappedDShape(mip, dshape_nodal);
-	 tent.gradphi_bot[j] = Trans(dshape_nodal) * coef_bot;
-	 tent.gradphi_top[j] = Trans(dshape_nodal) * coef_top;
-       }
+       FlatMatrixFixWidth<DIM> dshape_nodal(n_vertices, slh);
+       FlatVector<> gradphi_top(DIM, slh), coef_top(n_vertices, slh);
+       for (int j : Range(tent.els.Size()))
+	 {
+	   ElementId ej (VOL, tent.els[j]);
+	   const auto vnums = ma->GetElVertices (ej);
+	   for (size_t k = 0; k < n_vertices; k++)
+	     {
+	       auto mapped_vnum = vmap[vnums[k]]; // map periodic vertices
+	       auto pos = tent.nbv.Pos(mapped_vnum);
+	       if (pos != tent.nbv.ILLEGAL_POSITION)
+		 coef_top(k) = tent.nbtime[pos];
+	       else
+		 coef_top(k) = tent.ttop;
+	     }
+	   ElementTransformation & trafo = ma->GetTrafo (ej, slh);
+	   MappedIntegrationPoint<DIM, DIM> mip(ir[0], trafo);
+	   fe.CalcMappedDShape(mip, dshape_nodal);
+	   gradphi_top = Trans(dshape_nodal) * coef_top;
+	   if(auto norm = L2Norm(gradphi_top); norm > tent.maxslope)
+	     tent.maxslope = norm;
+	 }
      });
   has_been_pitched = slab_complete;
   return has_been_pitched;
@@ -319,18 +293,13 @@ template bool TentPitchedSlab::PitchTents<2>(const double, const bool, const dou
 template bool TentPitchedSlab::PitchTents<3>(const double, const bool, const double);
 
 
-double TentPitchedSlab::MaxSlope() const{
-
-  // Return  max(|| gradphi_top||, ||gradphi_bot||)
-
+double TentPitchedSlab::MaxSlope() const
+{
   double maxgrad = 0.0;
   ParallelFor
-    (Range(tents),
-     [&] (int i)
-     {
-       Tent & tent = *tents[i];
-       AtomicMax(maxgrad , tent.MaxSlope() );
-     });
+    (Range(tents),[&] (int i){
+      AtomicMax(maxgrad , tents[i]->MaxSlope() );
+    });
   return maxgrad;
 }
 
