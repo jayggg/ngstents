@@ -117,6 +117,28 @@ public:
 	     const MeshAccess & ma, LocalHeap & lh);
 };
 
+////////////////////////////////////////////////////////////////////////////
+
+class GradPhiCoefficientFunction : public CoefficientFunction
+{
+public:
+  GradPhiCoefficientFunction (int adim)
+    : CoefficientFunction(adim)
+  { }
+
+  virtual double Evaluate (const BaseMappedIntegrationPoint & ip) const
+  {
+    throw Exception ("Evaluate not implemented for BaseMappedIntegrationPoint!");
+  }
+
+  virtual void Evaluate (const SIMD_BaseMappedIntegrationRule & mir,
+			 BareSliceMatrix<SIMD<double>> values) const
+  {
+    // loads values of grad(phi) from ProxyUserData, assuming it is properly set
+    ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
+    values.AddSize(Dimension(), mir.Size()) = BareSliceMatrix<SIMD<double>> (ud.GetAMemory (this));
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////
 namespace ngstents{
@@ -140,14 +162,19 @@ public:
   shared_ptr<MeshAccess> ma;
   // Propagate methods need access to DAG of tent dependencies
   Table<int> tent_dependency;
+  // access to grad(phi) coefficient function
+  shared_ptr<CoefficientFunction> cfgradphi = nullptr;
 
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
     dt(0), ma(ama), cmax(nullptr), nlayers(0),
-    has_been_pitched(false), lh(heapsize, "Tents heap") { ; };
+    has_been_pitched(false), lh(heapsize, "Tents heap")
+  {
+    cfgradphi = make_shared<GradPhiCoefficientFunction>(ma->GetDimension());
+  };
   
   //uses a gradient based method for pitching the tent
-  //calc_local_ct will indicate wether to use a local mesh-dependent
+  //calc_local_ct will indicate whether to use a local mesh-dependent
   //constant for the algorithm
   //global_ct is a globalwise constant that can be independently used
   //its return value will indicate whether the slab was successfully pitched.

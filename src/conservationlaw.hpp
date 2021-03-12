@@ -70,9 +70,9 @@ DIM: spatial dimension in which the conservation law is prescribed upon
 COMP: number of state variables/equations
 ECOMP: number of state variables/equations for entropy residual (non-linear eqs)
 */
-template <typename EQUATION, int DIM, int COMP, int ECOMP>
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC=false>
 class T_ConservationLaw : public ConservationLaw,
-			  public enable_shared_from_this<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>>
+			  public enable_shared_from_this<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP,SYMBOLIC>>
 {
 protected:
   FlatVector<> nu;  // viscosity coefficient
@@ -216,7 +216,7 @@ public:
 	  }
     cf_bnd_deriv = true;
   }
-  
+
   virtual void SetVectorField(shared_ptr<CoefficientFunction> cf)
   {
     throw Exception("SetVectorField just available for Advection equation");
@@ -345,7 +345,7 @@ public:
                  FlatMatrix<SIMD<double>> u_refl) const
   {
     throw Exception ("reflecting boundary conditions not implemented for "
-		     + ToString(this->equation) + "equation!");
+		     + ToString(this->equation) + " equation!");
   }
 
   void u_transparent(const SIMD_BaseMappedIntegrationRule & mir,
@@ -437,10 +437,10 @@ public:
   void SetTentSolver(string method, int stages, int substeps)
   {
     if(method == "SAT")
-      tentsolver = make_shared<SAT<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>>>
+      tentsolver = make_shared<SAT<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP,SYMBOLIC>>>
 	(this->shared_from_this(), stages, substeps);
     else if(method == "SARK")
-      tentsolver = make_shared<SARK<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP>>>
+      tentsolver = make_shared<SARK<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP,SYMBOLIC>>>
 	(this->shared_from_this(), stages, substeps);
     else
       throw Exception("unknown TentSolver "+method);

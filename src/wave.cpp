@@ -89,12 +89,8 @@ public:
   {
     for(int i : Range(mir))
       {
-	Mat<D+1,D,SIMD<double>> fluxmat;
-        fluxmat = Flux(u.Col(i));
-	size_t l = 0;
-	for(size_t j : Range(D))
-	  for(size_t k : Range(D+1))
-	    flux(l++,i) = fluxmat(k,j);
+	Mat<D+1,D,SIMD<double>> fluxmat = Flux(u.Col(i));
+	flux.Col(i) = fluxmat.AsVector();
       }
   }
 

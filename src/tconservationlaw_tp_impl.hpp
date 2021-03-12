@@ -5,19 +5,17 @@
 #include "paralleldepend.hpp"
 #include "tentsolver_impl.hpp"
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP>
-void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u0,
 	      FlatMatrixFixWidth<COMP> flux, double tstar, int derive_cf_bnd, LocalHeap & lh)
 {
   static Timer tflux ("CalcFluxTent", 2);
   ThreadRegionTimer reg(tflux, TaskManager::GetThreadId());
 
-  // note: tstar is not used
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
 
-  // these variables no longer exist
   *(tent.time) = tent.timebot + tstar*(tent.ttop-tent.tbot);
 
   flux = 0.0;
@@ -33,24 +31,25 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 
       IntRange dn = fedata->ranges[i];
 
-      FlatMatrix<SIMD<double>> u_iptsa(COMP, simd_ir.Size(),lh);
       FlatMatrix<SIMD<double>> flux_iptsa(DIM*COMP, simd_ir.Size(),lh);
       FlatMatrix<SIMD<double>> flux_iptsa2(DIM*COMP, simd_ir.Size(),lh);
+      FlatMatrix<SIMD<double>> u_iptsa(COMP, simd_ir.Size(),lh);
 
+      if constexpr(SYMBOLIC)
+      	{
+      	  ProxyUserData ud(1, lh);
+      	  auto & trafo = *fedata->trafoi[i];
+      	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
+      	  ud.fel = &fel;
+	  ud.AssignMemory (Cast().flux_proxy, simd_ir.GetNIP(), COMP, lh);
+      	}
       fel.Evaluate (simd_ir, u.Rows(dn), u_iptsa);
-
       Cast().Flux(simd_mir, u_iptsa, flux_iptsa);
 
       FlatVector<SIMD<double>> di = fedata->adelta[i];
       for (auto k : Range(simd_ir.Size()))
         flux_iptsa.Col(k) *= simd_mir[k].GetWeight() * di(k);
-      {
-        for (size_t i = 0; i < COMP; i++)
-          for (size_t j = 0; j < DIM; j++)
-            flux_iptsa2.Row(i*DIM+j) = flux_iptsa.Row(j*COMP+i);
-
-        fel.AddGradTrans (simd_mir, flux_iptsa2, flux.Rows(dn));
-      }
+      fel.AddGradTrans (simd_mir, flux_iptsa, flux.Rows(dn));
     }
   }
 
@@ -78,10 +77,21 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
           FlatMatrix<SIMD<double>> u1(COMP, simd_nipt, lh),
                                    u2(COMP, simd_nipt, lh);
 
-          fel1.Evaluate(simd_ir_facet_vol1, u.Rows(dn1), u1);
-          fel2.Evaluate(simd_ir_facet_vol2, u.Rows(dn2), u2);
-
           auto & simd_mir1 = *fedata->mfiri1[i];
+	  if constexpr(SYMBOLIC)
+	    {
+	      ProxyUserData ud(2, lh);
+	      auto & trafo1 = *fedata->trafoi[elnr1];
+	      const_cast<ElementTransformation&>(trafo1).userdata = &ud;
+	      ud.fel = &fel1;
+	      for (ProxyFunction * proxy : Cast().numflux_proxies)
+		{
+		  // assume IR's have the same size
+		  ud.AssignMemory (proxy, simd_ir_facet_vol1.GetNIP(), COMP, lh);
+		}		    
+	    }
+	  fel1.Evaluate(simd_ir_facet_vol1, u.Rows(dn1), u1);
+	  fel2.Evaluate(simd_ir_facet_vol2, u.Rows(dn2), u2);
 
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
 	  Cast().NumFlux (simd_mir1, u1, u2, fedata->anormals[i], fn);
@@ -108,6 +118,15 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
           FlatMatrix<SIMD<double>> u1(COMP, simd_nipt, lh),
                                    u2(COMP, simd_nipt, lh);
 
+	  if constexpr(SYMBOLIC)
+	    {
+	      ProxyUserData ud(Cast().numflux_proxies.Size(), lh);
+	      auto & trafo1 = *fedata->trafoi[elnr1];
+	      const_cast<ElementTransformation&>(trafo1).userdata = &ud;
+	      ud.fel = &fel1;
+	      for (ProxyFunction * proxy : Cast().numflux_proxies)
+		ud.AssignMemory (proxy, simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	    }
           fel1.Evaluate(simd_ir_facet_vol1,u.Rows(dn1),u1);
           auto & simd_mir = *fedata->mfiri1[i];
 
@@ -140,11 +159,10 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 		      u2.Col(j) *= pow(di(j),derive_cf_bnd);
 	      	}
               else
-		throw Exception(string("no implementation for your \
-				chosen boundary condition number ") +
+		throw Exception(string("no implementation for your ")+
+				string("chosen boundary condition number ")+
 				ToString(bc+1));
 	    }
-
           FlatMatrix<SIMD<double>> fn(COMP, simd_nipt, lh);
 	  Cast().NumFlux (simd_mir, u1, u2, fedata->anormals[i], fn);
 
@@ -164,8 +182,8 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP>
-void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 CalcViscosityTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                    FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
                    FlatMatrixFixWidth<COMP> visc, LocalHeap & lh)
@@ -322,8 +340,8 @@ CalcViscosityTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
     }
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP>
-void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                          FlatMatrixFixWidth<COMP> ut,
                          FlatMatrixFixWidth<ECOMP> res,
@@ -375,8 +393,10 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
             gradphi_mat(k,l).Value() = (1-tstar)*gradbot(k,l) + tstar*gradtop(k,l);
             gradphi_mat(k,l).DValue(0) = gradtop(k,l) - gradbot(k,l);
           }
-
-      Cast().InverseMap(simd_mir, gradphi_mat, adu);
+      if constexpr(SYMBOLIC)
+	{ throw Exception("Entropy viscosity not supported for symbolic equations"); }
+      else
+	Cast().InverseMap(simd_mir, gradphi_mat, adu);
       FlatMatrix<SIMD<double>> Ei(ECOMP,simd_ir.Size(),lh),
                                Fi(DIM*ECOMP,simd_ir.Size(),lh);
       Cast().CalcEntropy(adu, gradphi_mat, Ei, Fi);
@@ -499,8 +519,8 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
     SolveM (tent, i, res.Rows (tent.fedata->ranges[i]), lh);
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP>
-double T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
+double T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 CalcViscosityCoefficientTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                               FlatMatrixFixWidth<ECOMP> res,
 			      double tstar, LocalHeap & lh)
@@ -547,7 +567,10 @@ CalcViscosityCoefficientTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
       gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
                     tstar*fedata->agradphi_top[i];
 
-      Cast().InverseMap(simd_mir, gradphi_mat, ui);
+      if constexpr(SYMBOLIC)
+	{ throw Exception("Entropy viscosity not supported for symbolic equations"); }
+      else
+	Cast().InverseMap(simd_mir, gradphi_mat, ui);
       Cast().CalcViscCoeffEl(simd_mir, ui, resi, hi, nu(ei.Nr()));
 
       if(nu(ei.Nr()) > nu_tent)
@@ -560,8 +583,8 @@ CalcViscosityCoefficientTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
 // implementations of maps 
 ////////////////////////////////////////////////////////////////
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP>
-void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 Cyl2Tent (const Tent & tent, double tstar,
 	  FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
 	  LocalHeap & lh)
@@ -582,13 +605,20 @@ Cyl2Tent (const Tent & tent, double tstar,
       IntRange dn = fedata->ranges[i];
 
       FlatMatrix<SIMD<double>> u_ipts(COMP, simd_mir.Size(),lh);
-      for(size_t k = 0; k < COMP; k++)
-        fel.Evaluate (simd_mir.IR(), uhat.Col(k).Range(dn), u_ipts.Row(k));
-
       FlatMatrix<SIMD<double>> gradphi_mat(DIM, simd_mir.Size(), lh);
       gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
                     tstar*fedata->agradphi_top[i];
-
+      if constexpr(SYMBOLIC)
+	{
+	  ProxyUserData ud(1, 1, lh); //ntrial = 1, ncf = 1
+	  auto & trafo = *fedata->trafoi[i];
+	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
+	  ud.fel = &fel;
+	  auto nip = simd_mir.IR().GetNIP();
+	  ud.AssignMemory (Cast().invmap_proxy, nip, COMP, lh);
+	  ud.AssignMemory (tps->cfgradphi.get(), nip, DIM, lh);
+	}
+      fel.Evaluate (simd_mir.IR(), uhat.Rows(dn), u_ipts);
       Cast().InverseMap(simd_mir, gradphi_mat, u_ipts);
 
       for(size_t k = 0; k < simd_mir.Size(); k++)
@@ -602,8 +632,8 @@ Cyl2Tent (const Tent & tent, double tstar,
     }
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP>
-void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
          FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
 {
@@ -629,11 +659,18 @@ ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
       FlatMatrix<SIMD<double>> graddelta_mat(DIM, simd_ir.Size(), lh);
       graddelta_mat = fedata->agradphi_top[i] - fedata->agradphi_bot[i];
 
-      fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
-
       auto & simd_mir = *fedata->miri[i];
-
+      if constexpr(SYMBOLIC)
+	{
+	  ProxyUserData ud(1, lh);
+	  auto & trafo = *fedata->trafoi[i];
+	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
+	  ud.fel = &fel;
+	  ud.AssignMemory (Cast().flux_proxy, simd_ir.GetNIP(), COMP, lh);
+	}
+      fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
       Cast().Flux(simd_mir,u_ipts,flux);
+
       for(size_t j : Range(simd_ir.Size()))
         for(size_t l : Range(COMP))
           {
@@ -641,7 +678,7 @@ ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
             for(size_t k : Range(DIM))
               {
                 auto graddelta = graddelta_mat(k,j) * simd_mir[j].GetWeight();
-                hsum += graddelta * flux(COMP*k+l,j);
+		hsum += graddelta * flux(DIM*l+k,j);
               }
             temp(l,j) = hsum;
           }
@@ -651,8 +688,8 @@ ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
     }
 }
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP>
-void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 Tent2Cyl (const Tent & tent, double tstar,
 	  FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
           bool solvemass, LocalHeap & lh)
@@ -680,9 +717,16 @@ Tent2Cyl (const Tent & tent, double tstar,
       gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
                     tstar*fedata->agradphi_top[i];
 
-      fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
-
       auto & simd_mir = *fedata->miri[i];
+      if constexpr(SYMBOLIC)
+	{
+	  ProxyUserData ud(1, lh);
+	  auto & trafo = *fedata->trafoi[i];
+	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
+	  ud.fel = &fel;
+	  ud.AssignMemory (Cast().flux_proxy, simd_ir.GetNIP(), COMP, lh);
+	}
+      fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
       Cast().Flux(simd_mir,u_ipts,flux);
 
       for(size_t j : Range(simd_ir.Size()))
@@ -692,7 +736,7 @@ Tent2Cyl (const Tent & tent, double tstar,
             for(size_t k : Range(DIM))
               {
                 auto gradphi = gradphi_mat(k,j) * simd_mir[j].GetWeight();
-                hsum += gradphi * flux(COMP*k+l,j);
+		hsum += gradphi * flux(DIM*l+k,j);
               }
             res(l,j) = u_ipts(l,j) * simd_mir[j].GetWeight() - hsum;
           }
@@ -707,8 +751,8 @@ Tent2Cyl (const Tent & tent, double tstar,
 // time stepping methods 
 ////////////////////////////////////////////////////////////////
 
-template <typename EQUATION, int DIM, int COMP, int ECOMP>
-void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP>::
+template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
+void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 Propagate(LocalHeap & lh)
 {
   static Timer tprop ("Propagate", 2); RegionTimer reg(tprop);

@@ -21,6 +21,7 @@ add_ngsolve_python_module(_pyconslaw
   wave.cpp
   advection.cpp
   maxwell.cpp
+  symbolic.cpp
   )
 target_link_libraries(_pyconslaw PRIVATE _pytents)
 

@@ -28,6 +28,10 @@ auto ExportTimeSlab(py::module &m)
 	 py::arg("mesh"), py::arg("method") = "edge", py::arg("heapsize") = 1000000
 	 )
     .def_readonly("mesh", &TentPitchedSlab::ma)
+    .def_property_readonly("gradphi",[](shared_ptr<TentPitchedSlab> self) -> shared_ptr<CF>
+			   {
+			     return self->cfgradphi;
+			   })
     .def("SetWavespeed", [](shared_ptr<TentPitchedSlab> self, py::object wavespeed)
 	 {
 	   if (auto ws = py::extract<double> (wavespeed); ws.check())
