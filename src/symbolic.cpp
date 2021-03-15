@@ -15,10 +15,8 @@ class SymbolicConsLaw : public T_ConservationLaw<SymbolicConsLaw<D,COMP>, D, COM
   shared_ptr<CoefficientFunction> cf_invmap = nullptr;
   shared_ptr<CoefficientFunction> cf_reflect = nullptr;
 public:
-  ProxyFunction * flux_proxy;
-  Array<ProxyFunction*> numflux_proxies;
-  ProxyFunction * invmap_proxy;
-  // TODO: simplify to proxy_u and proxy_uother
+  ProxyFunction * proxy_u = nullptr;
+  ProxyFunction * proxy_uother = nullptr;
 public:
   SymbolicConsLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
@@ -36,12 +34,13 @@ public:
 	    {
 	      auto proxy = dynamic_cast<ProxyFunction*> (&nodecf);
 	      if (proxy)
-		{
-		  if (!proxy->IsTestFunction())
-		    flux_proxy = proxy;
-		}
+		if (!proxy->IsTestFunction())
+		  if(!proxy_u) {
+		    proxy_u = proxy;
+		  }
 	    });
       }
+
     if(cf_numflux)
       {
 	cf_numflux->TraverseTree
@@ -49,24 +48,10 @@ public:
 	    {
 	      auto proxy = dynamic_cast<ProxyFunction*> (&nodecf);
 	      if (proxy)
-		{
-		  if (!proxy->IsTestFunction())
-		    if (!numflux_proxies.Contains(proxy))
-		      numflux_proxies.Append (proxy);
-		}
-	    });
-      }
-    if(cf_invmap)
-      {
-	cf_invmap->TraverseTree
-	  ( [&] (CoefficientFunction & nodecf)
-	    {
-	      auto proxy = dynamic_cast<ProxyFunction*> (&nodecf);
-	      if (proxy)
-		{
-		  if (!proxy->IsTestFunction())
-		    invmap_proxy = proxy;
-		}
+		if (!proxy->IsTestFunction())
+		  if (proxy->IsOther() && !proxy_uother) {
+		    proxy_uother = proxy;
+		  }
 	    });
       }
   };
@@ -83,7 +68,7 @@ public:
 		  FlatMatrix<SIMD<double>> grad, FlatMatrix<SIMD<double>> u) const
   {
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
-    ud.GetAMemory(invmap_proxy) = u;                  // set values for u
+    ud.GetAMemory(proxy_u) = u;                  // set values for u
     ud.GetAMemory(BASE::tps->cfgradphi.get()) = grad; // set values for grad(phi)
     cf_invmap->Evaluate(mir, u);
   }
@@ -93,7 +78,7 @@ public:
              FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> flux) const
   {
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
-    ud.GetAMemory(flux_proxy) = u; // set values for u
+    ud.GetAMemory(proxy_u) = u; // set values for u
     cf_flux->Evaluate(mir, flux);
   }
 
@@ -103,8 +88,8 @@ public:
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
-    ud.GetAMemory(numflux_proxies[0]) = ul; // set values for ul
-    ud.GetAMemory(numflux_proxies[1]) = ur; // set values for ur
+    ud.GetAMemory(proxy_u) = ul; // set values for ul
+    ud.GetAMemory(proxy_uother) = ur; // set values for ur
     cf_numflux->Evaluate(mir,fna);
   }
 
@@ -114,7 +99,7 @@ public:
                  FlatMatrix<SIMD<double>> u_refl) const
   {
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
-    ud.GetAMemory(flux_proxy) = u; // set values for u
+    ud.GetAMemory(proxy_u) = u; // set values for u
     cf_reflect->Evaluate(mir,u_refl);
   }
 };

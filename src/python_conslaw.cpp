@@ -85,19 +85,24 @@ void ExportConsLaw(py::module & m)
 		     optional<Region> reflect)
      		  -> shared_ptr<CL>
 		  {
+		    // proxies for u and u.Other()
      		    py::object u = py::cast (gfu->GetFESpace()).attr("TrialFunction")();
-     		    py::object flux_u = Flux( u );
-     		    py::object numflux_u = NumFlux( u, u.attr("Other")() );
-		    py::object invmap = InverseMap( u );
+		    py::object uother = u.attr("Other")();
 
+		    // CF for flux
+		    py::object flux_u = Flux( u );
      		    shared_ptr<CoefficientFunction> cpp_flux_u =
      		      py::extract<shared_ptr<CoefficientFunction>> (flux_u)();
      		    cpp_flux_u = Compile(cpp_flux_u, compile);
 
+		    //  CF for numerical flux
+		    py::object numflux_u = NumFlux( u, uother );
 		    shared_ptr<CoefficientFunction> cpp_numflux_u =
 		      py::extract<shared_ptr<CoefficientFunction>> (numflux_u)();
 		    cpp_numflux_u = Compile(cpp_numflux_u, compile);
 
+		    // CF for inverse map
+		    py::object invmap = InverseMap( u );
 		    shared_ptr<CoefficientFunction> cpp_invmap =
 		      py::extract<shared_ptr<CoefficientFunction>> (invmap)();
 		    cpp_invmap = Compile(cpp_invmap, compile);
@@ -113,6 +118,7 @@ void ExportConsLaw(py::module & m)
 
 		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u, cpp_numflux_u, cpp_invmap,
 						    cpp_cf_reflect);
+
 		    // set boundary data
                     if(outflow.has_value())
                       cl->SetBC(0,outflow.value().Mask());
@@ -120,7 +126,9 @@ void ExportConsLaw(py::module & m)
                       cl->SetBC(1,reflect.value().Mask());
                     if(inflow.has_value())
                       cl->SetBC(2,inflow.value().Mask());
-		    cl->CheckBC(); //use old style bc numbers if no regions set
+		    //use old style bc numbers if no regions set
+		    cl->CheckBC();
+
 		    return cl;
 		  }),
 	 py::arg("gridfunction"),
