@@ -16,7 +16,7 @@ void SAT<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   static Timer tproptent ("SAT::Propagate Tent", 2);
   ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
 
-  tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), *(tcl->ma), lh);
+  tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), lh);
   tent.InitTent(tcl->gftau);
 
   tcl->DeriveBoundaryCF(stages);
@@ -68,7 +68,7 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   static Timer tproptent ("SARK::Propagate Tent", 2);
   ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
 
-  tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), *(tcl->ma), lh);
+  tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), lh);
   tent.InitTent(tcl->gftau);
 
   const int ndof = tent.fedata->nd;

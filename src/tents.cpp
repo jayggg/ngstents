@@ -1044,8 +1044,7 @@ ostream & operator<< (ostream & ost, const Tent & tent)
 ///////////// TentDataFE ///////////////////////////////////////////////////
 
 
-TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
-		       const MeshAccess & ma, LocalHeap & lh)
+TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
   : fei(tent.els.Size(), lh),
     iri(tent.els.Size(), lh),
     miri(tent.els.Size(), lh),
@@ -1065,7 +1064,8 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
     anormals(tent.internal_facets.Size(), lh),
     adelta_facet(tent.internal_facets.Size(), lh)
 {
-  int dim = ma.GetDimension();
+  auto & ma = fes.GetMeshAccess();
+  int dim = ma->GetDimension();
 
   FlatArray<BaseScalarFiniteElement*> fe_nodal(tent.els.Size(),lh);
   FlatArray<FlatVector<double>> coef_delta(tent.els.Size(),lh);
@@ -1084,7 +1084,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
       fei[i] = &fes.GetFE (ei, lh);
       iri[i] = new (lh) SIMD_IntegrationRule(fei[i]->ElementType(),
 					     2*fei[i]->Order());
-      trafoi[i] = &ma.GetTrafo (ei, lh);
+      trafoi[i] = &ma->GetTrafo (ei, lh);
       miri[i] =  &(*trafoi[i]) (*iri[i], lh);
 
       mesh_size[i] = pow(fabs((*miri[i])[0].GetJacobiDet()[0]),
@@ -1104,7 +1104,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
 
       coef_top[i].AssignMemory(fe_nodal[i]->GetNDof(), lh);
       coef_bot[i].AssignMemory(fe_nodal[i]->GetNDof(), lh);
-      auto vnums = ma.GetElVertices(ei);
+      auto vnums = ma->GetElVertices(ei);
       auto &vmap = tent.vmap;
       for (size_t k = 0; k < vnums.Size(); k++)
         {
@@ -1136,16 +1136,16 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
 
       ArrayMem<int,2> elnums;
       ArrayMem<int,2> elnums_per;
-      ma.GetFacetElements(tent.internal_facets[i],elnums);
+      ma->GetFacetElements(tent.internal_facets[i],elnums);
 
       bool periodic_facet = false;
       int facet2;
       if(elnums.Size() < 2)
         {
-          facet2 = ma.GetPeriodicFacet(tent.internal_facets[i]);
+          facet2 = ma->GetPeriodicFacet(tent.internal_facets[i]);
           if(facet2 != tent.internal_facets[i])
             {
-              ma.GetFacetElements (facet2, elnums_per);
+              ma->GetFacetElements (facet2, elnums_per);
               if (elnums_per.Size())
                 {
                   periodic_facet = true;
@@ -1167,7 +1167,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
               int elorder = fei[felpos[i][j]]->Order();
               if(elorder > order) order = elorder;
 
-              auto fnums = ma.GetElFacets (elnums[j]);
+              auto fnums = ma->GetElFacets (elnums[j]);
               int fnr = tent.internal_facets[i];
               if(periodic_facet)
                 {
@@ -1180,7 +1180,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes,
 
               auto & trafo = *trafoi[felpos[i][j]];
 
-              auto vnums = ma.GetElVertices (elnums[j]);
+              auto vnums = ma->GetElVertices (elnums[j]);
               Facet2ElementTrafo transform(trafo.GetElementType(), vnums);
 
               auto etfacet = ElementTopology::GetFacetType (

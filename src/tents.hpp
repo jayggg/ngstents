@@ -106,11 +106,7 @@ public:
   // height of the tent in the IP's
   Array<FlatVector<SIMD<double>>> adelta_facet;
 
-  TentDataFE(int n, LocalHeap & lh)
-    : fei(n, lh), iri(n, lh), miri(n, lh), trafoi(n, lh) { ; }
-
-  TentDataFE(const Tent & tent, const FESpace & fes,
-	     const MeshAccess & ma, LocalHeap & lh);
+  TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh);
 };
 
 ////////////////////////////////////////////////////////////////////////////
