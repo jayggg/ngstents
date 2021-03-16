@@ -1066,31 +1066,32 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
 {
   auto & ma = fes.GetMeshAccess();
   int dim = ma->GetDimension();
+  int order = fes.GetOrder();
 
-  FlatArray<BaseScalarFiniteElement*> fe_nodal(tent.els.Size(),lh);
-  FlatArray<FlatVector<double>> coef_delta(tent.els.Size(),lh);
-  FlatArray<FlatVector<double>> coef_top(tent.els.Size(),lh);
-  FlatArray<FlatVector<double>> coef_bot(tent.els.Size(),lh);
+  size_t ntents = tent.els.Size();
+  FlatArray<BaseScalarFiniteElement*> fe_nodal(ntents, lh);
+  FlatArray<FlatVector<double>> coef_delta(ntents, lh);
+  FlatArray<FlatVector<double>> coef_top(ntents, lh);
+  FlatArray<FlatVector<double>> coef_bot(ntents, lh);
 
-  for (size_t i = 0; i < tent.els.Size(); i++)
+  // precompute element data for given tent
+  for (size_t i = 0; i < ntents; i++)
     {
       ElementId ei(VOL, tent.els[i]);
-      // ranges and dofs were previously members of tent
       Array<int> dnums;
       fes.GetDofNrs (ei, dnums);
       ranges.Append(IntRange(dnums.Size()) + dofs.Size());
       dofs += dnums;
 
       fei[i] = &fes.GetFE (ei, lh);
-      iri[i] = new (lh) SIMD_IntegrationRule(fei[i]->ElementType(),
-					     2*fei[i]->Order());
+      iri[i] = new (lh) SIMD_IntegrationRule(fei[i]->ElementType(),2*order);
       trafoi[i] = &ma->GetTrafo (ei, lh);
       miri[i] =  &(*trafoi[i]) (*iri[i], lh);
 
       mesh_size[i] = pow(fabs((*miri[i])[0].GetJacobiDet()[0]),
                          1.0/miri[i]->DimElement());
 
-      int nipt = miri[i]->Size();
+      auto nipt = miri[i]->Size();
       agradphi_bot[i].AssignMemory(dim, nipt, lh);
       agradphi_top[i].AssignMemory(dim, nipt, lh);
       adelta[i].AssignMemory(nipt, lh);
@@ -1102,8 +1103,9 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
         default: fe_nodal[i] = new (lh) ScalarFE<ET_TET,1>();
         }
 
-      coef_top[i].AssignMemory(fe_nodal[i]->GetNDof(), lh);
-      coef_bot[i].AssignMemory(fe_nodal[i]->GetNDof(), lh);
+      auto ndof = fe_nodal[i]->GetNDof();
+      coef_top[i].AssignMemory(ndof, lh);
+      coef_bot[i].AssignMemory(ndof, lh);
       auto vnums = ma->GetElVertices(ei);
       auto &vmap = tent.vmap;
       for (size_t k = 0; k < vnums.Size(); k++)
@@ -1111,11 +1113,8 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
           auto mapped_vnum = vmap[vnums[k]]; // map periodic vertices
           auto pos = tent.nbv.Pos(mapped_vnum);
           if (pos != tent.nbv.ILLEGAL_POSITION)
-
             coef_bot[i](k) = coef_top[i](k) = tent.nbtime[pos];
-
           else {
-
 	    coef_bot[i](k) = tent.tbot;
 	    coef_top[i](k) = tent.ttop;
 	  }
@@ -1123,20 +1122,20 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
       fe_nodal[i]->EvaluateGrad(*miri[i], coef_top[i], agradphi_top[i]);
       fe_nodal[i]->EvaluateGrad(*miri[i], coef_bot[i], agradphi_bot[i]);
 
-      coef_delta[i].AssignMemory(fe_nodal[i]->GetNDof(), lh);
-      coef_delta[i] = coef_top[i]-coef_bot[i];
+      coef_delta[i].AssignMemory(ndof, lh);
+      coef_delta[i] = coef_top[i] - coef_bot[i];
       fe_nodal[i]->Evaluate(*iri[i], coef_delta[i], adelta[i]);
     }
-    nd = dofs.Size();
+  nd = dofs.Size();
 
+  // precompute facet data for given tent
   for (size_t i = 0; i < tent.internal_facets.Size(); i++)
     {
-      int order = 0;
       INT<2> loc_facetnr;
 
       ArrayMem<int,2> elnums;
       ArrayMem<int,2> elnums_per;
-      ma->GetFacetElements(tent.internal_facets[i],elnums);
+      ma->GetFacetElements(tent.internal_facets[i], elnums);
 
       bool periodic_facet = false;
       int facet2;
@@ -1155,18 +1154,12 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
         }
       SIMD_IntegrationRule * simd_ir_facet;
 
-      // Note: size_t(-1) = 18446744073709551615 = ar.ILLEGAL_POSITION
-      // Is it OK to rely on this cast/conversion?  Is there a better way
-      // to check for the condition that an element is not in the array?
       felpos[i] = INT<2,size_t>(size_t(-1));
       for(int j : Range(elnums.Size()))
         {
           felpos[i][j] = tent.els.Pos(elnums[j]);
           if(felpos[i][j] != size_t(-1))
             {
-              int elorder = fei[felpos[i][j]]->Order();
-              if(elorder > order) order = elorder;
-
               auto fnums = ma->GetElFacets (elnums[j]);
               int fnr = tent.internal_facets[i];
               if(periodic_facet)
@@ -1183,8 +1176,8 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
               auto vnums = ma->GetElVertices (elnums[j]);
               Facet2ElementTrafo transform(trafo.GetElementType(), vnums);
 
-              auto etfacet = ElementTopology::GetFacetType (
-                  trafo.GetElementType(), loc_facetnr[j]);
+              auto etfacet = ElementTopology::
+		GetFacetType (trafo.GetElementType(), loc_facetnr[j]);
               if(j == 0)
                 {
                   simd_ir_facet = new (lh)
@@ -1194,55 +1187,36 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
                   simd_ir_facet->SetIRX(nullptr);
                 }
 
-              firi[i][j] = &transform(loc_facetnr[j],*simd_ir_facet, lh);
+              firi[i][j] = &transform(loc_facetnr[j], *simd_ir_facet, lh);
+	      auto nipt = firi[i][j]->Size();
               if(j == 0)
                 {
                   mfiri1[i] = &trafo(*firi[i][j], lh);
                   mfiri1[i]->ComputeNormalsAndMeasure(trafo.GetElementType(),
                                                       loc_facetnr[j]);
+                  anormals[i].AssignMemory(dim, nipt, lh);
+                  adelta_facet[i].AssignMemory(nipt, lh);
+                  agradphi_botf1[i].AssignMemory(dim, nipt, lh);
+                  agradphi_topf1[i].AssignMemory(dim, nipt, lh);
+		  anormals[i] = Trans(mfiri1[i]->GetNormals());
 
-                  anormals[i].AssignMemory(dim,mfiri1[i]->Size(),lh);
-                  adelta_facet[i].AssignMemory(mfiri1[i]->Size(),lh);
-                  agradphi_botf1[i].AssignMemory(dim, mfiri1[i]->Size(), lh);
-                  agradphi_topf1[i].AssignMemory(dim, mfiri1[i]->Size(), lh);
-
-                  for (size_t k : Range(mfiri1[i]->Size()))
-                    {
-                      switch(dim)
-                        {
-                        case 1:
-                          anormals[i].Col(k) =
-                            static_cast<const SIMD<DimMappedIntegrationPoint<1>>&>
-                              ((*mfiri1[i])[k]).GetNV(); break;
-                        case 2:
-                          anormals[i].Col(k) =
-                            static_cast<const SIMD<DimMappedIntegrationPoint<2>>&>
-                              ((*mfiri1[i])[k]).GetNV(); break;
-                        default:
-                          anormals[i].Col(k) =
-                            static_cast<const SIMD<DimMappedIntegrationPoint<3>>&>
-                              ((*mfiri1[i])[k]).GetNV();
-                        }
-                    }
                   size_t elpos = felpos[i][j];
-                  fe_nodal[elpos]->Evaluate(*firi[i][j],coef_delta[elpos],
+                  fe_nodal[elpos]->Evaluate(*firi[i][j], coef_delta[elpos],
                                             adelta_facet[i]);
-                  fe_nodal[elpos]->EvaluateGrad(*mfiri1[i],coef_bot[elpos],
-                                            agradphi_botf1[i]);
-                  fe_nodal[elpos]->EvaluateGrad(*mfiri1[i],coef_top[elpos],
-                                            agradphi_topf1[i]);
+                  fe_nodal[elpos]->EvaluateGrad(*mfiri1[i], coef_bot[elpos],
+						agradphi_botf1[i]);
+                  fe_nodal[elpos]->EvaluateGrad(*mfiri1[i], coef_top[elpos],
+						agradphi_topf1[i]);
                 }
               else
                 {
                   mfiri2[i] = &trafo(*firi[i][j], lh);
-                  mfiri2[i]->ComputeNormalsAndMeasure(trafo.GetElementType(),
-                                                      loc_facetnr[j]);
-                  agradphi_botf2[i].AssignMemory(dim, mfiri2[i]->Size(), lh);
-                  agradphi_topf2[i].AssignMemory(dim, mfiri2[i]->Size(), lh);
+		  agradphi_botf2[i].AssignMemory(dim, nipt, lh);
+                  agradphi_topf2[i].AssignMemory(dim, nipt, lh);
                   size_t elpos = felpos[i][j];
-                  fe_nodal[elpos]->EvaluateGrad(*mfiri2[i],coef_bot[elpos],
+                  fe_nodal[elpos]->EvaluateGrad(*mfiri2[i], coef_bot[elpos],
                                                 agradphi_botf2[i]);
-                  fe_nodal[elpos]->EvaluateGrad(*mfiri2[i],coef_top[elpos],
+                  fe_nodal[elpos]->EvaluateGrad(*mfiri2[i], coef_top[elpos],
                                                 agradphi_topf2[i]);
                 }
             }
