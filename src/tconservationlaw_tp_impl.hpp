@@ -152,9 +152,12 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 	      if(cf_bnd.EntrySize(bc))
 	      	{
 		  cf_bnd.Get(bc,derive_cf_bnd)->Evaluate(simd_mir,u2);
-		  if(derive_cf_bnd > 0)
+		  // if(derive_cf_bnd > 0)
+		  //   for (size_t j : Range(simd_nipt))
+		  //     u2.Col(j) *= pow(di(j),derive_cf_bnd);
+		  for(auto k : Range(derive_cf_bnd))
 		    for (size_t j : Range(simd_nipt))
-		      u2.Col(j) *= pow(di(j),derive_cf_bnd);
+		      u2.Col(j) *= di(j);
 	      	}
               else
 		throw Exception(string("no implementation for your ")+
