@@ -1,6 +1,6 @@
 from ngsolve import Mesh, Draw, Redraw
 from ngsolve import CoefficientFunction, IfPos, sqrt, sin, cos, exp, x, y, z, InnerProduct
-from ngsolve import L2, GridFunction, TaskManager, SetNumThreads
+from ngsolve import L2, GridFunction, TaskManager
 from ngsolve import specialcf as scf
 from ngsolve.internal import visoptions
 from ngstents import TentSlab
@@ -19,7 +19,6 @@ def Make2DPeriodicMesh(xint, yint, maxh):
     periodic.Append ( ["line", pnums[3], pnums[2]], leftdomain=0, rightdomain=1, bc="top", copy=lbot)
     return periodic.GenerateMesh(maxh=maxh)
 
-# SetNumThreads(1)
 maxh = 0.1
 mesh = Mesh(Make2DPeriodicMesh([0,1], [0,1], maxh))
 
@@ -72,13 +71,11 @@ def InverseMap(y):
     return y/(1-InnerProduct(b,ts.gradphi))
 
 cl = ConservationLaw(u, ts, flux=Flux, numflux=NumFlux, inversemap=InverseMap)
-cl.SetVectorField(b)
 
 cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)
 
 pos = (0.5,0.5)
 u0 = CoefficientFunction( exp(-100* ((x-pos[0])*(x-pos[0])+(y-pos[1])*(y-pos[1])) ))
-# u0 = CoefficientFunction( 1.0 )
 cl.SetInitial(u0)
 
 Draw(u)
