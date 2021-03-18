@@ -6,7 +6,7 @@ mesh = Mesh(unit_square.GenerateMesh(maxh=0.2))
 
 tentslab = TentSlab(mesh, "edge")
 c = 1
-tentslab.SetWavespeed(c)
+tentslab.SetMaxWavespeed(c)
 tentslab.PitchTents(dt=0.1, local_ct=True, global_ct=1)
 
 Draw(mesh)

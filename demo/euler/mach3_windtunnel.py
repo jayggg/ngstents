@@ -34,7 +34,7 @@ local_ctau = True
 global_ctau = 2/3
 wavespeed = 6
 ts = TentSlab(mesh, method="edge")
-ts.SetWavespeed(wavespeed)
+ts.SetMaxWavespeed(wavespeed)
 ts.PitchTents(dt=dt, local_ct=local_ctau, global_ct=global_ctau)
 print("max slope", ts.MaxSlope())
 print("n tents", ts.GetNTents())

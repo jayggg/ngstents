@@ -177,8 +177,8 @@ public:
   int GetNTents() { return tents.Size(); }
   int GetNLayers() { return nlayers + 1; }
 
-  void SetWavespeed(const double c){cmax =  make_shared<ConstantCoefficientFunction>(c);}
-  void SetWavespeed(shared_ptr<CoefficientFunction> c){ cmax = c;}
+  void SetMaxWavespeed(const double c){cmax =  make_shared<ConstantCoefficientFunction>(c);}
+  void SetMaxWavespeed(shared_ptr<CoefficientFunction> c){ cmax = c;}
   
   double GetSlabHeight() { return dt; }
   const Tent & GetTent(int i) { return *tents[i];}

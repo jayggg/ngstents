@@ -14,7 +14,7 @@ def test_tent_properties():
     local_ctau = True
     # Tent slab tests
     tentslab = TentSlab(mesh, method, 1000000000)
-    tentslab.SetWavespeed(c)
+    tentslab.SetMaxWavespeed(c)
 
     maxslope = 1.0/c
     global_ctau = 1

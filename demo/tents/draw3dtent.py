@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 mesh = ng.Mesh(unit_cube.GenerateMesh(maxh=0.3))
 print("creating tent pitched slab")
 tps = TentSlab(mesh)
-tps.SetWavespeed(1.0)
+tps.SetMaxWavespeed(1.0)
 tps.PitchTents(dt=0.5)
 ntents = tps.GetNTents()
 print("The slab has {} tents.".format(ntents))

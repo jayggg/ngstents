@@ -32,14 +32,14 @@ auto ExportTimeSlab(py::module &m)
 			   {
 			     return self->cfgradphi;
 			   })
-    .def("SetWavespeed", [](shared_ptr<TentPitchedSlab> self, py::object wavespeed)
+    .def("SetMaxWavespeed", [](shared_ptr<TentPitchedSlab> self, py::object wavespeed)
 	 {
 	   if (auto ws = py::extract<double> (wavespeed); ws.check())
-	     self->SetWavespeed(ws());
+	     self->SetMaxWavespeed(ws());
            else if (auto ws = py::extract<shared_ptr<CF>>(wavespeed); ws.check())
-             self->SetWavespeed(ws());
+             self->SetMaxWavespeed(ws());
            else
-             throw Exception("wrong argument type in SetWavespeed");
+             throw Exception("wrong argument type in SetMaxWavespeed");
          })
     .def("PitchTents",[](shared_ptr<TentPitchedSlab> self,
 			 const double dt, const bool local_ct, const double global_ct)

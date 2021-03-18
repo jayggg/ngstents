@@ -21,7 +21,7 @@ heapsize = 10*1000*1000
 dt = 0.05
 c = 6
 ts = TentSlab(mesh, heapsize=heapsize)
-ts.SetWavespeed(c)
+ts.SetMaxWavespeed(c)
 ts.PitchTents(dt)
 print("max slope", ts.MaxSlope())
 

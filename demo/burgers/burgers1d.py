@@ -29,7 +29,7 @@ else:
 mesh = Mesh(mesh)
 
 ts = TentSlab(mesh)
-ts.SetWavespeed(c)
+ts.SetMaxWavespeed(c)
 ts.PitchTents(dt)
 print("Max Slope: ", ts.MaxSlope())
 

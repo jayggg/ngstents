@@ -21,7 +21,7 @@ def test_tent_height():
     method = "vol"
     # Tent slab tests
     tentslab = TentSlab(mesh, method, 10**7)
-    tentslab.SetWavespeed(c)
+    tentslab.SetMaxWavespeed(c)
     assert tentslab.PitchTents(dt), "Slab could not be pitched"
     for i in range(tentslab.GetNTents()):
         tent = tentslab.GetTent(i)

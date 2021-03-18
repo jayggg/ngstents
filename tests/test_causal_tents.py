@@ -38,7 +38,7 @@ def test_1D_vol_causal():
     method = "vol"
     heapsize = 5*1000*1000
     tentslab = TentSlab(mesh, method, heapsize)
-    tentslab.SetWavespeed(c)
+    tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
@@ -55,7 +55,7 @@ def test_1D_edge_causal():
     method = "edge"
     heapsize = 5*1000*1000
     tentslab = TentSlab(mesh, method, heapsize)
-    tentslab.SetWavespeed(c)
+    tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
@@ -72,7 +72,7 @@ def test_2D_vol_causal():
     method = "vol"
     heapsize = 5*1000*1000
     tentslab = TentSlab(mesh, method, heapsize)
-    tentslab.SetWavespeed(c)
+    tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
@@ -89,7 +89,7 @@ def test_2D_edge_causal():
     method = "edge"
     heapsize = 5*1000*1000
     tentslab = TentSlab(mesh, method, heapsize)
-    tentslab.SetWavespeed(c)
+    tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
@@ -106,7 +106,7 @@ def test_3D_vol_causal():
     method = "vol"
     heapsize = 5*1000*1000
     tentslab = TentSlab(mesh, method, heapsize)
-    tentslab.SetWavespeed(c)
+    tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
@@ -123,7 +123,7 @@ def test_3D_edge_causal():
     method = "edge"
     heapsize = 5*1000*1000
     tentslab = TentSlab(mesh, method, heapsize)
-    tentslab.SetWavespeed(c)
+    tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()

@@ -16,7 +16,7 @@ def test_burgers2D():
     geom.AddRectangle((0, 0), (1, 1), bc=1)
     mesh = Mesh(geom.GenerateMesh(maxh=0.2))
     ts = TentSlab(mesh, method)
-    ts.SetWavespeed(c)
+    ts.SetMaxWavespeed(c)
     success = ts.PitchTents(dt)
     try:
         assert success is True

@@ -11,7 +11,7 @@ def test_tent_nlayers():
     method = "vol"
     heapsize = 5*1000*1000
     tentslab = TentSlab(mesh, method, heapsize)
-    tentslab.SetWavespeed(c)
+    tentslab.SetMaxWavespeed(c)
     tentslab.PitchTents(dt, global_ct=global_ct)
     tents = [tentslab.GetTent(i) for i in range(tentslab.GetNTents())]
     layers = set([t.level for t in tents])
