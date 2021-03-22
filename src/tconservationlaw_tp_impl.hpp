@@ -37,11 +37,11 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 
       if constexpr(SYMBOLIC)
       	{
-      	  ProxyUserData ud(1, lh);
-      	  auto & trafo = *fedata->trafoi[i];
-      	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
-      	  ud.fel = &fel;
-	  ud.AssignMemory (Cast().proxy_u, simd_ir.GetNIP(), COMP, lh);
+	  ProxyUserData * ud = new (lh) ProxyUserData(1, lh);
+	  auto & trafo = *fedata->trafoi[i];
+	  const_cast<ElementTransformation&>(trafo).userdata = ud;
+	  ud->fel = &fel;
+	  ud->AssignMemory (Cast().proxy_u, simd_ir.GetNIP(), COMP, lh);
       	}
       fel.Evaluate (simd_ir, u.Rows(dn), u_iptsa);
       Cast().Flux(simd_mir, u_iptsa, flux_iptsa);
@@ -80,13 +80,13 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
           auto & simd_mir1 = *fedata->mfiri1[i];
 	  if constexpr(SYMBOLIC)
 	    {
-	      ProxyUserData ud(2, lh);
+	      ProxyUserData * ud = new (lh) ProxyUserData(2, lh);
 	      auto & trafo1 = *fedata->trafoi[elnr1];
-	      const_cast<ElementTransformation&>(trafo1).userdata = &ud;
-	      ud.fel = &fel1;
+	      const_cast<ElementTransformation&>(trafo1).userdata = ud;
+	      ud->fel = &fel1;
 	      // assume IR's have the same size
-	      ud.AssignMemory (Cast().proxy_u, simd_ir_facet_vol1.GetNIP(), COMP, lh);
-	      ud.AssignMemory (Cast().proxy_uother, simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	      ud->AssignMemory (Cast().proxy_u, simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	      ud->AssignMemory (Cast().proxy_uother, simd_ir_facet_vol1.GetNIP(), COMP, lh);
 	    }
 	  fel1.Evaluate(simd_ir_facet_vol1, u.Rows(dn1), u1);
 	  fel2.Evaluate(simd_ir_facet_vol2, u.Rows(dn2), u2);
@@ -118,12 +118,12 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 
 	  if constexpr(SYMBOLIC)
 	    {
-	      ProxyUserData ud(2, lh);
+	      ProxyUserData * ud = new (lh) ProxyUserData(2, lh);
 	      auto & trafo1 = *fedata->trafoi[elnr1];
-	      const_cast<ElementTransformation&>(trafo1).userdata = &ud;
-	      ud.fel = &fel1;
-	      ud.AssignMemory (Cast().proxy_u, simd_ir_facet_vol1.GetNIP(), COMP, lh);
-	      ud.AssignMemory (Cast().proxy_uother, simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	      const_cast<ElementTransformation&>(trafo1).userdata = ud;
+	      ud->fel = &fel1;
+	      ud->AssignMemory (Cast().proxy_u, simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	      ud->AssignMemory (Cast().proxy_uother, simd_ir_facet_vol1.GetNIP(), COMP, lh);
 	    }
           fel1.Evaluate(simd_ir_facet_vol1,u.Rows(dn1),u1);
           auto & simd_mir = *fedata->mfiri1[i];
@@ -152,12 +152,9 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 	      if(cf_bnd.EntrySize(bc))
 	      	{
 		  cf_bnd.Get(bc,derive_cf_bnd)->Evaluate(simd_mir,u2);
-		  // if(derive_cf_bnd > 0)
-		  //   for (size_t j : Range(simd_nipt))
-		  //     u2.Col(j) *= pow(di(j),derive_cf_bnd);
-		  for(auto k : Range(derive_cf_bnd))
+		  if(derive_cf_bnd > 0)
 		    for (size_t j : Range(simd_nipt))
-		      u2.Col(j) *= di(j);
+		      u2.Col(j) *= pow(di(j),derive_cf_bnd);
 	      	}
               else
 		throw Exception(string("no implementation for your ")+
@@ -611,13 +608,13 @@ Cyl2Tent (const Tent & tent, double tstar,
                     tstar*fedata->agradphi_top[i];
       if constexpr(SYMBOLIC)
 	{
-	  ProxyUserData ud(1, 1, lh); //ntrial = 1, ncf = 1
+	  ProxyUserData * ud = new (lh) ProxyUserData(1, 1, lh); //ntrial = 1, ncf = 1
 	  auto & trafo = *fedata->trafoi[i];
-	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
-	  ud.fel = &fel;
+	  const_cast<ElementTransformation&>(trafo).userdata = ud;
+	  ud->fel = &fel;
 	  auto nip = simd_mir.IR().GetNIP();
-	  ud.AssignMemory (Cast().proxy_u, nip, COMP, lh);
-	  ud.AssignMemory (tps->cfgradphi.get(), nip, DIM, lh);
+	  ud->AssignMemory (Cast().proxy_u, nip, COMP, lh);
+	  ud->AssignMemory (tps->cfgradphi.get(), nip, DIM, lh);
 	}
       fel.Evaluate (simd_mir.IR(), uhat.Rows(dn), u_ipts);
       Cast().InverseMap(simd_mir, gradphi_mat, u_ipts);
@@ -662,11 +659,11 @@ ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
       auto & simd_mir = *fedata->miri[i];
       if constexpr(SYMBOLIC)
 	{
-	  ProxyUserData ud(1, lh);
+	  ProxyUserData * ud = new (lh) ProxyUserData(1, lh);
 	  auto & trafo = *fedata->trafoi[i];
-	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
-	  ud.fel = &fel;
-	  ud.AssignMemory (Cast().proxy_u, simd_ir.GetNIP(), COMP, lh);
+	  const_cast<ElementTransformation&>(trafo).userdata = ud;
+	  ud->fel = &fel;
+	  ud->AssignMemory (Cast().proxy_u, simd_ir.GetNIP(), COMP, lh);
 	}
       fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
       Cast().Flux(simd_mir,u_ipts,flux);
@@ -720,11 +717,11 @@ Tent2Cyl (const Tent & tent, double tstar,
       auto & simd_mir = *fedata->miri[i];
       if constexpr(SYMBOLIC)
 	{
-	  ProxyUserData ud(1, lh);
+	  ProxyUserData * ud = new (lh) ProxyUserData(1, lh);
 	  auto & trafo = *fedata->trafoi[i];
-	  const_cast<ElementTransformation&>(trafo).userdata = &ud;
-	  ud.fel = &fel;
-	  ud.AssignMemory (Cast().proxy_u, simd_ir.GetNIP(), COMP, lh);
+	  const_cast<ElementTransformation&>(trafo).userdata = ud;
+	  ud->fel = &fel;
+	  ud->AssignMemory (Cast().proxy_u, simd_ir.GetNIP(), COMP, lh);
 	}
       fel.Evaluate (simd_ir, u.Rows(dn), u_ipts);
       Cast().Flux(simd_mir,u_ipts,flux);
