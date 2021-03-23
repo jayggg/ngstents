@@ -47,7 +47,8 @@ cf = CoefficientFunction((q0, mu0))
 wave.SetInitial(cf)
 
 tau = wave.tau # advancing front
-wave.SetBoundaryCF(mesh.Boundaries("square"),uex(tau))
+# wave.SetBoundaryCF(mesh.Boundaries("square"),uex(tau))
+wave.SetBoundaryCF(mesh.Boundaries(".*"),mesh.BoundaryCF({"square" : uex(tau)}))
 
 Draw(u)
 visoptions.scalfunction = "u:3"

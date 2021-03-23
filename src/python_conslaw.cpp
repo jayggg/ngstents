@@ -119,6 +119,9 @@ void ExportConsLaw(py::module & m)
 		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u, cpp_numflux_u, cpp_invmap,
 						    cpp_cf_reflect);
 
+		    cl->proxy_u = py::extract<shared_ptr<ProxyFunction>> (u)();
+		    cl->proxy_uother = py::extract<shared_ptr<ProxyFunction>> (uother)();
+
 		    // set boundary data
                     if(outflow.has_value())
                       cl->SetBC(0,outflow.value().Mask());
@@ -145,21 +148,25 @@ void ExportConsLaw(py::module & m)
     .def_property_readonly("tentslab", [](shared_ptr<CL> self)
                            {
   			     return self->tps;
-  			   })
+  			   }, "returns the tent pitched time slab")
     .def("__str__",[](shared_ptr<CL> self){ return self->equation; })
     .def_property_readonly("space", [](shared_ptr<CL> self)
   			   -> shared_ptr<FESpace>
                            {
   			     return self->fes;
-  			   })
+  			   }, "returns finite element space")
     .def_property_readonly("sol", [](shared_ptr<CL> self)
   			   {
   			     return self->gfu;
-  			   })
+  			   }, "returns grid function representing the solution")
+    .def_property_readonly("u_minus", [](shared_ptr<CL> self)
+                           {
+  			     return self->proxy_u;
+  			   }, "returns trial function u(x-s*n) for s->0^+ and the normal vector n")
     .def_property_readonly("tau", [](shared_ptr<CL> self)
 			   {
 			     return self->cftau;
-			   })
+			   }, "returns coefficient function representing the advancing front")
     .def_property_readonly("res", [](shared_ptr<CL> self)
   			   {
   			     return self->gfres;

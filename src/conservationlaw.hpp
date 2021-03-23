@@ -31,6 +31,8 @@ public:
   shared_ptr<GridFunction> gftau = nullptr;  // advancing front (used for time-dependent bc)
   shared_ptr<CoefficientFunction> cftau = nullptr;  // CF representing gftau
 
+  shared_ptr<ProxyFunction> proxy_u = nullptr;
+  shared_ptr<ProxyFunction> proxy_uother = nullptr;
 public:
   ConservationLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
