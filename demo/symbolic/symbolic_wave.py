@@ -86,7 +86,8 @@ cl = ConservationLaw(gfu, ts,
                      flux=Flux,
                      numflux=NumFlux,
                      inversemap=InverseMap)
-cl.SetBoundaryCF(mesh.Boundaries(".*"),mesh.BoundaryCF({ "reflect" : BndNumFlux(cl.u_minus) }))
+# cl.SetBoundaryCF(mesh.Boundaries(".*"),mesh.BoundaryCF({ "reflect" : BndNumFlux(cl.u_minus) }))
+cl.SetBoundaryCF(mesh.BoundaryCF({ "reflect" : BndNumFlux(cl.u_minus) }))
 # cl.SetTentSolver("SAT",stages=order+1, substeps=4*order)
 cl.SetTentSolver("SARK",stages=order+1, substeps=4*order)
 
