@@ -19,8 +19,6 @@ void SAT<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), lh);
   tent.InitTent(tcl->gftau);
 
-  tcl->DeriveBoundaryCF(stages);
-
   int ndof = tent.fedata->nd;
   FlatMatrixFixWidth<COMP> local_uhat(ndof,lh);
   FlatMatrixFixWidth<COMP> local_u0(ndof,lh);

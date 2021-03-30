@@ -6,8 +6,9 @@ template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC> class 
 class TentSolver
 {
 public:
-  TentSolver ()
-  { };
+  TentSolver() = default;
+
+  virtual void Setup() { };
 
   virtual void PropagateTent(const Tent & tent, BaseVector & hu,
 			     const BaseVector & hu0, LocalHeap & lh) = 0;
@@ -35,7 +36,12 @@ public:
     if(!fes_check)
       throw Exception("Structure-aware Taylor time stepping available for L2 spaces only");
   };
-  
+
+  void Setup() override
+  {
+    tcl->DeriveBoundaryCF(stages);
+  }
+
   void PropagateTent(const Tent & tent, BaseVector & hu,
 		     const BaseVector & hu0, LocalHeap & lh) override;
 };

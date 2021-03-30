@@ -774,6 +774,9 @@ void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 Propagate(LocalHeap & lh)
 {
   static Timer tprop ("Propagate", 2); RegionTimer reg(tprop);
+
+  tentsolver->Setup();
+
   RunParallelDependency
     (tent_dependency, [&] (int i)
      {
