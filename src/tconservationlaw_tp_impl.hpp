@@ -127,16 +127,15 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 	  auto & ir_facet_surf = stransform(*fedata->fir[i], lh);
 	  auto & smir = strafo(ir_facet_surf, lh);
 	  */
+	  ProxyUserData * ud = nullptr;
 	  if constexpr(SYMBOLIC)
 	    {
-	      ProxyUserData * ud = new (lh) ProxyUserData(2, lh);
+	      ud = new (lh) ProxyUserData(2, lh);
 	      auto & trafo1 = *fedata->trafoi[elnr1];
 	      const_cast<ElementTransformation&>(trafo1).userdata = ud;
 	      ud->fel = &fel1;
-	      // ud->AssignMemory (proxy_u.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
-	      ud->AssignMemory (proxy_u.get(), u1); // correct values for boundary CF
+	      ud->AssignMemory (proxy_u.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
 	      ud->AssignMemory (proxy_uother.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
-	      // ud->AssignMemory (proxy_uother.get(), u2);
 	      // const_cast<ElementTransformation&>(strafo).userdata = ud;
 	    }
           fel1.Evaluate(simd_ir_facet_vol1,u.Rows(dn1),u1);
@@ -165,6 +164,11 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 	    {
 	      if(cf_bnd.EntrySize(bc))
 	      	{
+		  if constexpr(SYMBOLIC)
+		    {
+		      // set values for u on boundary
+		      ud->GetAMemory(proxy_u.get()) = u1;
+		    }
 		  // smir.GetNormals() = simd_mir.GetNormals();
 		  // cf_bnd.Get(bc,derive_cf_bnd)->Evaluate(smir,u2);
 		  cf_bnd.Get(bc,derive_cf_bnd)->Evaluate(simd_mir,u2);
