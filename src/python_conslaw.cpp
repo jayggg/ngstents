@@ -182,7 +182,7 @@ void ExportConsLaw(py::module & m)
            SetValues(cf,*(self->gfu),VOL,0,*(self->pylh));
            self->uinit->Set(1.0,*(self->u)); // set data used for b.c.
          })
-    // Set flux field
+    // Set vector field for advection equation
     .def("SetVectorField",
          [](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
          {
@@ -198,17 +198,21 @@ void ExportConsLaw(py::module & m)
          {
 	   auto bndcf = cf->InputCoefficientFunctions();
 	   auto maxbcnr = self->GetMaxBCNr();
+	   ////// as one CF
+	   // self->SetBC(maxbcnr, Region(self->ma,BND,".*"));
+	   // self->SetBoundaryCF(maxbcnr, cf);
+	   /// split CF
 	   auto regions = self->ma->GetMaterials(BND);
 	   auto nregions = regions.Size();
 	   for( auto i : Range(nregions) )
 	     {
 	       self->SetBC(maxbcnr+i, Region(self->ma, BND, regions[i]));
 	       if ( bndcf.Size() == 1 )
-		 self->SetBoundaryCF(maxbcnr+i, bndcf[0]);
+	   	 self->SetBoundaryCF(maxbcnr+i, bndcf[0]);
 	       else if ( bndcf.Size() == nregions )
-		 self->SetBoundaryCF(maxbcnr+i, bndcf[i]);
+	   	 self->SetBoundaryCF(maxbcnr+i, bndcf[i]);
 	       else
-		 throw Exception("number of boundary conditions and size of coefficient function do not match");
+	   	 throw Exception("number of boundary conditions and size of coefficient function do not match");
 	     }
          })
     .def("SetMaterialParameters",
