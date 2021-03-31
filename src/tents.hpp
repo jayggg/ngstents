@@ -90,6 +90,8 @@ public:
   // local numbers of the neighbors
   Array<INT<2,size_t>> felpos;
   // facet integration rules for all facets in the tent
+  Array<SIMD_IntegrationRule*> fir;
+  // facet integration rules for all facets in the tent
   // transformed to local coordinated of the neighboring elements
   Array<Vec<2,const SIMD_IntegrationRule*>> firi;
   // mapped facet integration rules for all facets

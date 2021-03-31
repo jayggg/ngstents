@@ -49,9 +49,7 @@ def Flux(u):
     h represents the number of equations and
     w should correspond to the dimension of the mesh/space
     """
-    q = CoefficientFunction(tuple([u[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
-    mu = u[mesh.dim]
-    return CoefficientFunction((Id(mesh.dim)*mu,q.trans), dims=(V.dim, mesh.dim))
+    return CoefficientFunction((Id(mesh.dim)*u[mesh.dim],u[0,0:mesh.dim]), dims=(V.dim, mesh.dim))
 
 def NumFlux(um, up):
     """
@@ -62,9 +60,7 @@ def NumFlux(um, up):
     """
     # upwind flux
     flux = 0.5 * (Flux(um) + Flux(up))*n
-    qm = CoefficientFunction(tuple([um[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
-    qp = CoefficientFunction(tuple([up[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
-    flux_vec = 0.5 * OuterProduct(n,n) * (qm - qp)
+    flux_vec = 0.5 * OuterProduct(n,n) * (um[0,0:mesh.dim] - up[0,0:mesh.dim])
     flux_scal = 0.5 * (um[mesh.dim]-up[mesh.dim])
     return flux + CoefficientFunction((flux_vec,flux_scal))
 
@@ -73,26 +69,27 @@ def InverseMap(y):
     solves "y = u - (f(u),gradphi)" for u
     """
     norm_sqr = InnerProduct(ts.gradphi,ts.gradphi)
-    y_q = CoefficientFunction(tuple([y[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
-    y_mu = y[mesh.dim]
-    ip = InnerProduct(y_q,ts.gradphi)
-    mu = (y_mu + InnerProduct(y_q,ts.gradphi))/(1-norm_sqr)
-    q = y_q + mu*ts.gradphi
+    ip = InnerProduct(y[0,0:mesh.dim], ts.gradphi)
+    mu = (y[mesh.dim] + InnerProduct(y[0,0:mesh.dim],ts.gradphi))/(1-norm_sqr)
+    q = y[0,0:mesh.dim] + mu*ts.gradphi
     return CoefficientFunction((q,mu))
 
-def ReflectBnd(u):
+def BndNumFlux(um):
     """
-    reflects values of u at the boundary using the normal vector n
+    defines numerical flux on boundary elements using the normal vector n
+    um: trace of u for current element on facet
     """
-    q = CoefficientFunction(tuple([u[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
-    mu = u[mesh.dim]
-    return CoefficientFunction((q - 2*OuterProduct(n,n)*q, mu))
+    # set (q,n) = 0
+    return CoefficientFunction(( um[mesh.dim]*n, 0))
 
 cl = ConservationLaw(gfu, ts,
-                     flux=Flux, numflux=NumFlux, inversemap=InverseMap,
-                     reflectbnd=ReflectBnd, compile=True,
-                     reflect=mesh.Boundaries("reflect"))
-cl.SetTentSolver("SAT",stages=order+1, substeps=4*order)
+                     flux=Flux,
+                     numflux=NumFlux,
+                     inversemap=InverseMap)
+# cl.SetBoundaryCF(mesh.Boundaries(".*"),mesh.BoundaryCF({ "reflect" : BndNumFlux(cl.u_minus) }))
+cl.SetBoundaryCF(mesh.BoundaryCF({ "reflect" : BndNumFlux(cl.u_minus) }))
+# cl.SetTentSolver("SAT",stages=order+1, substeps=4*order)
+cl.SetTentSolver("SARK",stages=order+1, substeps=4*order)
 
 mu0 = cos(x) if dim==1 else cos(x)*cos(y)
 q0 = CoefficientFunction( tuple(dim*[0]) )

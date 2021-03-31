@@ -31,15 +31,15 @@ print("n tents", ts.GetNTents())
 
 order = 4
 V = L2(mesh, order=order)
-u = GridFunction(V,"u")
-cl = Advection(u, ts, inflow=mesh.Boundaries("circle"))
+gfu = GridFunction(V,"u")
+cl = Advection(gfu, ts, inflow=mesh.Boundaries("circle"))
 cl.SetVectorField( CoefficientFunction((y,-x)) )
 cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)
 
-u = CoefficientFunction( exp(-100* ((x-0.5)*(x-0.5)+y*y)))
-cl.SetInitial(u)
+u0 = CoefficientFunction( exp(-100* ((x-0.5)*(x-0.5)+y*y)))
+cl.SetInitial(u0)
 
-Draw(cl.sol)
+Draw(gfu)
 visoptions.autoscale = 0
 
 t = 0
@@ -61,14 +61,12 @@ print("total time = ",time.time()-t1)
 
 # exact solution
 exsol = CoefficientFunction(exp(-100*(
-    (x-0.5*cos(tend))
-    *(x-0.5*cos(tend))
-    +(y+0.5*sin(tend))
-    *(y+0.5*sin(tend))
+    (x-0.5*cos(tend))*(x-0.5*cos(tend))
+    +(y+0.5*sin(tend))*(y+0.5*sin(tend))
 )))
 
 Draw(exsol,mesh,'exact')
-error = cl.sol - exsol
+error = gfu - exsol
 Draw(error,mesh,'error')
 visoptions.scalfunction = 'u:'
 

@@ -119,6 +119,9 @@ void ExportConsLaw(py::module & m)
 		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u, cpp_numflux_u, cpp_invmap,
 						    cpp_cf_reflect);
 
+		    cl->proxy_u = py::extract<shared_ptr<ProxyFunction>> (u)();
+		    cl->proxy_uother = py::extract<shared_ptr<ProxyFunction>> (uother)();
+
 		    // set boundary data
                     if(outflow.has_value())
                       cl->SetBC(0,outflow.value().Mask());
@@ -145,21 +148,25 @@ void ExportConsLaw(py::module & m)
     .def_property_readonly("tentslab", [](shared_ptr<CL> self)
                            {
   			     return self->tps;
-  			   })
+  			   }, "returns the tent pitched time slab")
     .def("__str__",[](shared_ptr<CL> self){ return self->equation; })
     .def_property_readonly("space", [](shared_ptr<CL> self)
   			   -> shared_ptr<FESpace>
                            {
   			     return self->fes;
-  			   })
+  			   }, "returns finite element space")
     .def_property_readonly("sol", [](shared_ptr<CL> self)
   			   {
   			     return self->gfu;
-  			   })
+  			   }, "returns grid function representing the solution")
+    .def_property_readonly("u_minus", [](shared_ptr<CL> self)
+                           {
+  			     return self->proxy_u;
+  			   }, "returns trial function u(x-s*n) for s->0^+ and the normal vector n")
     .def_property_readonly("tau", [](shared_ptr<CL> self)
 			   {
 			     return self->cftau;
-			   })
+			   }, "returns coefficient function representing the advancing front")
     .def_property_readonly("res", [](shared_ptr<CL> self)
   			   {
   			     return self->gfres;
@@ -175,7 +182,7 @@ void ExportConsLaw(py::module & m)
            SetValues(cf,*(self->gfu),VOL,0,*(self->pylh));
            self->uinit->Set(1.0,*(self->u)); // set data used for b.c.
          })
-    // Set flux field
+    // Set vector field for advection equation
     .def("SetVectorField",
          [](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
          {
@@ -186,6 +193,27 @@ void ExportConsLaw(py::module & m)
 	   auto maxbcnr = self->GetMaxBCNr();
 	   self->SetBC(maxbcnr, region);
            self->SetBoundaryCF(maxbcnr, cf);
+         })
+    .def("SetBoundaryCF",[](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
+         {
+	   auto bndcf = cf->InputCoefficientFunctions();
+	   auto maxbcnr = self->GetMaxBCNr();
+	   ////// as one CF
+	   // self->SetBC(maxbcnr, Region(self->ma,BND,".*"));
+	   // self->SetBoundaryCF(maxbcnr, cf);
+	   /// split CF
+	   auto regions = self->ma->GetMaterials(BND);
+	   auto nregions = regions.Size();
+	   for( auto i : Range(nregions) )
+	     {
+	       self->SetBC(maxbcnr+i, Region(self->ma, BND, regions[i]));
+	       if ( bndcf.Size() == 1 )
+	   	 self->SetBoundaryCF(maxbcnr+i, bndcf[0]);
+	       else if ( bndcf.Size() == nregions )
+	   	 self->SetBoundaryCF(maxbcnr+i, bndcf[i]);
+	       else
+	   	 throw Exception("number of boundary conditions and size of coefficient function do not match");
+	     }
          })
     .def("SetMaterialParameters",
          [](shared_ptr<CL> self,

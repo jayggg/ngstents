@@ -1054,6 +1054,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
     agradphi_top(tent.els.Size(), lh),
     adelta(tent.els.Size(), lh),
     felpos(tent.internal_facets.Size(), lh),
+    fir(tent.internal_facets.Size(), lh),
     firi(tent.internal_facets.Size(), lh),
     mfiri1(tent.internal_facets.Size(), lh),
     mfiri2(tent.internal_facets.Size(), lh),
@@ -1152,8 +1153,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
                 }
             }
         }
-      SIMD_IntegrationRule * simd_ir_facet;
-
+      
       felpos[i] = INT<2,size_t>(size_t(-1));
       for(int j : Range(elnums.Size()))
         {
@@ -1178,16 +1178,14 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
 
               auto etfacet = ElementTopology::
 		GetFacetType (trafo.GetElementType(), loc_facetnr[j]);
+
               if(j == 0)
                 {
-                  simd_ir_facet = new (lh)
-		    SIMD_IntegrationRule (etfacet, 2*order+1);
-
-                  // quick fix to avoid usage of TP elements (slows down)
-                  simd_ir_facet->SetIRX(nullptr);
+		  fir[i] = new (lh) SIMD_IntegrationRule (etfacet, 2*order+1);
+		  fir[i]->SetIRX(nullptr); // quick fix to avoid usage of TP elements (slows down)
                 }
 
-              firi[i][j] = &transform(loc_facetnr[j], *simd_ir_facet, lh);
+	      firi[i][j] = &transform(loc_facetnr[j], *fir[i], lh);
 	      auto nipt = firi[i][j]->Size();
               if(j == 0)
                 {
