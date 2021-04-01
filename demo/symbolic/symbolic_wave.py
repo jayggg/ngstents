@@ -60,7 +60,7 @@ def NumFlux(um, up):
     """
     # upwind flux
     flux = 0.5 * (Flux(um) + Flux(up))*n
-    flux_vec = 0.5 * OuterProduct(n,n) * (um[0,0:mesh.dim] - up[0,0:mesh.dim])
+    flux_vec = 0.5 * (um[0,0:mesh.dim] - up[0,0:mesh.dim])*n * n
     flux_scal = 0.5 * (um[mesh.dim]-up[mesh.dim])
     return flux + CoefficientFunction((flux_vec,flux_scal))
 
@@ -86,7 +86,6 @@ cl = ConservationLaw(gfu, ts,
                      flux=Flux,
                      numflux=NumFlux,
                      inversemap=InverseMap)
-# cl.SetBoundaryCF(mesh.Boundaries(".*"),mesh.BoundaryCF({ "reflect" : BndNumFlux(cl.u_minus) }))
 cl.SetBoundaryCF(mesh.BoundaryCF({ "reflect" : BndNumFlux(cl.u_minus) }))
 # cl.SetTentSolver("SAT",stages=order+1, substeps=4*order)
 cl.SetTentSolver("SARK",stages=order+1, substeps=4*order)
@@ -104,7 +103,7 @@ cnt = 0
 redraw = 1
 
 import time
-input("press enter to start")
+# input("press enter to start")
 t1 = time.time()
 with TaskManager():
     while t < tend-dt/2:
@@ -124,6 +123,6 @@ else:
                                  cos(x)*sin(y)*sin(sqrt(2)*tend)/sqrt(2),
                                  cos(x)*cos(y)*cos(sqrt(2)*tend)))
 
-Draw(exsol, mesh, 'exact')
+Draw(exsol, mesh, "exact")
 l2error = sqrt(Integrate(InnerProduct(gfu-exsol, gfu-exsol), mesh, order=3*order))
 print("l2error = ", l2error)

@@ -47,10 +47,9 @@ t = 0
 cnt = 0
 
 redraw = 1
-input('start')
+# input("start")
 t1 = time.time()
 with TaskManager():
-    print("starting...")
     while t < t_end - dt/2:
         wave.Propagate()
         t += dt
@@ -64,6 +63,6 @@ print("total time = {}".format(time.time()-t1))
 exsol = CoefficientFunction((sin(x)*cos(y)*sin(sqrt(2)*t_end)/sqrt(2),
                              cos(x)*sin(y)*sin(sqrt(2)*t_end)/sqrt(2),
                              cos(x)*cos(y)*cos(sqrt(2)*t_end)))
-Draw(exsol, mesh, 'exact')
+Draw(exsol, mesh, "exact")
 l2error = sqrt(Integrate(InnerProduct(u-exsol, u-exsol), mesh, order=3*order))
 print("l2error = ", l2error)

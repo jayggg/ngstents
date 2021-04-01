@@ -47,7 +47,7 @@ cnt = 0
 redraw = 1
 
 import time
-input("press enter to start")
+# input("press enter to start")
 t1 = time.time()
 with TaskManager():
     while t < tend-dt/2:
@@ -65,11 +65,11 @@ exsol = CoefficientFunction(exp(-100*(
     +(y+0.5*sin(tend))*(y+0.5*sin(tend))
 )))
 
-Draw(exsol,mesh,'exact')
+Draw(exsol,mesh,"exact")
 error = gfu - exsol
-Draw(error,mesh,'error')
-visoptions.scalfunction = 'u:'
+Draw(error,mesh,"error")
+visoptions.scalfunction = "u:"
 
-l2error = Integrate(error*error,mesh,order=3*order)
-print("l2error = ",sqrt(l2error))
-print("ndof = ",cl.space.ndof)
+l2error = sqrt(Integrate(error*error,mesh,order=3*order))
+print("l2error = ", l2error)
+print("ndof = ", cl.space.ndof)

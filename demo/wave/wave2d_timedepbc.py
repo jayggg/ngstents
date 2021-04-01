@@ -56,7 +56,7 @@ t = 0
 cnt = 0
 
 redraw = 1
-input('start')
+# input("start")
 t1 = time.time()
 with TaskManager():
     while t < t_end - dt/2:
