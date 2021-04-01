@@ -81,10 +81,10 @@ protected:
 
   bool def_bcnr = false; // check if the array below is properly set
   Array<int> bcnr;       // array of boundary condition numbers
-  DynamicTable<shared_ptr<CoefficientFunction>> cf_bnd; // cf_bnd[i] used for boundary values on bc=i
+  Array<shared_ptr<CoefficientFunction>> cf_bnd; // CoefficientFunction used for boundary values
   bool cf_bnd_deriv = false;
-  Array<bool> scale_deriv; // scale time-dependent boundary coefficient function by tent height
-
+  BitArray scale_deriv; // scale time-dependent boundary coefficient function by tent height (SAT)
+  
   // collection of tents in timeslab
   Table<int> & tent_dependency = tps->tent_dependency;
 
@@ -105,10 +105,9 @@ public:
     // store boundary condition numbers
     bcnr = FlatArray<int>(ma->GetNFacets(),*pylh);
     bcnr = -1;
-    cf_bnd.SetSize(4);
-    scale_deriv.SetSize(cf_bnd.Size());
-    scale_deriv = false;
-    
+    scale_deriv = BitArray(ma->GetNRegions(BND), *pylh);
+    scale_deriv.Clear();
+
     // check dimension of space
     shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(fes);
     if(fes_check && (fes->GetDimension() != COMP) )
@@ -185,40 +184,7 @@ public:
 
   void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf)
   {
-    if(bcnr < 4)
-      throw Exception("tried to use a predefined bc number (1-4)");
-    else
-      {
-	bool has_proxy = false;
-	if(proxy_u)
-	  {
-	    cf->TraverseTree
-	      ( [&] (CoefficientFunction & nodecf)
-		{
-		  auto proxy = dynamic_cast<ProxyFunction*> (&nodecf);
-		  if (proxy == proxy_u.get())
-		    has_proxy = true;
-		});
-	  }
-        if( bcnr < cf_bnd.Size() )
-	  {
-	    if(cf_bnd.EntrySize(bcnr))
-	      throw Exception("CoefficientFunction for bc number "\
-			      +ToString(bcnr)+" already set!");
-	    else
-	      {
-		cf_bnd.Add(bcnr, cf);
-		scale_deriv[bcnr] = has_proxy ? false : true;
-	      }
-	  }
-        else
-          {
-	    cf_bnd.ChangeSize(bcnr+1);
-	    cf_bnd.Add(bcnr,cf);
-	    scale_deriv.SetSize(bcnr+1);
-	    scale_deriv[bcnr] = has_proxy ? false : true;
-          }
-      }
+    cf_bnd.Append(cf);
   }
 
   // derive boundary coefficient functions
@@ -228,38 +194,23 @@ public:
     if(cf_bnd_deriv)
       return;
 
-    for(size_t i : Range(cf_bnd.Size()))
-      if(cf_bnd.EntrySize(i))
-	{
-	  auto cf0 = cf_bnd.Get(i,0);
-	  bool has_proxy = false;
-	  bool timedep = false;
-	  if(proxy_u)
-	    {
-	      cf0->TraverseTree
-		( [&] (CoefficientFunction & nodecf)
-		  {
-		    auto proxy = dynamic_cast<ProxyFunction*> (&nodecf);
-		    if (proxy == proxy_u.get())
-		      has_proxy = true;
-		    auto temp = dynamic_cast<CoefficientFunction*> (&nodecf);
-		    if (temp == cftau.get())
-		      timedep = true;
-		  });
-	    }
-	  if(timedep && has_proxy)
-	    throw Exception("use of ProxyFunction and CoefficientFunction 'tau' not supported");
-	  for(size_t j : Range(stages-1))
-	    {
-	      if(has_proxy)
-	       	cf_bnd.Add(i,cf0);
-	      else
-		{
-		  auto cf = cf_bnd.Get(i,j);
-		  cf_bnd.Add(i,cf->Diff(cftau.get(), make_shared<ConstantCoefficientFunction>(1.0/(j+1))));
-		}
-	    }
-	}
+    if(cf_bnd.Size() == 0)
+      return;
+
+    // check if cf_bnd is time-dependent
+    auto dtau_cf = cf_bnd[0]->Diff(cftau.get(),make_shared<ConstantCoefficientFunction>(1.0));
+    auto components = dtau_cf->InputCoefficientFunctions();
+    for( auto i : Range(components.Size()))
+      if( components[i]->GetDescription() != "ZeroCF")
+	scale_deriv.SetBit(i);
+
+    for(size_t i : Range(stages-1))
+      {
+	auto dtau = cf_bnd[i]->Diff(cftau.get(), make_shared<ConstantCoefficientFunction>(1.0/(i+1)));
+	auto temp = cf_bnd[i]->Diff(proxy_u.get(), proxy_u); // identity
+	cf_bnd.Append(dtau + temp);
+      }
+
     cf_bnd_deriv = true;
   }
 

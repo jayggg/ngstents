@@ -115,7 +115,7 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
           int simd_nipt = simd_ir_facet_vol1.Size(); // IR's have the same size
           FlatMatrix<SIMD<double>> u1(COMP, simd_nipt, lh),
                                    u2(COMP, simd_nipt, lh);
-	  /*
+
 	  ArrayMem<int,2> elnums;
 	  ArrayMem<int,8> selvnums;
 	  ma->GetFacetSurfaceElements (tent.internal_facets[i], elnums);
@@ -126,17 +126,17 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 	  Facet2SurfaceElementTrafo stransform(strafo.GetElementType(), selvnums);
 	  auto & ir_facet_surf = stransform(*fedata->fir[i], lh);
 	  auto & smir = strafo(ir_facet_surf, lh);
-	  */
+
 	  ProxyUserData * ud = nullptr;
 	  if constexpr(SYMBOLIC)
 	    {
 	      ud = new (lh) ProxyUserData(2, lh);
 	      auto & trafo1 = *fedata->trafoi[elnr1];
-	      const_cast<ElementTransformation&>(trafo1).userdata = ud;
+	      const_cast<ElementTransformation&>(trafo1).userdata = ud; // still needed?
 	      ud->fel = &fel1;
 	      ud->AssignMemory (proxy_u.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
 	      ud->AssignMemory (proxy_uother.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
-	      // const_cast<ElementTransformation&>(strafo).userdata = ud;
+	      const_cast<ElementTransformation&>(strafo).userdata = ud;
 	    }
           fel1.Evaluate(simd_ir_facet_vol1,u.Rows(dn1),u1);
           auto & simd_mir = *fedata->mfiri1[i];
@@ -162,17 +162,18 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
             }
           else
 	    {
-	      if(cf_bnd.EntrySize(bc))
+	      if(cf_bnd.Size())
 	      	{
 		  if constexpr(SYMBOLIC)
 		    {
 		      // set values for u on boundary
 		      ud->GetAMemory(proxy_u.get()) = u1;
 		    }
-		  // smir.GetNormals() = simd_mir.GetNormals();
-		  // cf_bnd.Get(bc,derive_cf_bnd)->Evaluate(smir,u2);
-		  cf_bnd.Get(bc,derive_cf_bnd)->Evaluate(simd_mir,u2);
-		  if(scale_deriv[bc] && derive_cf_bnd > 0)
+		  smir.GetNormals() = simd_mir.GetNormals(); // outward normal
+		  cf_bnd[derive_cf_bnd]->Evaluate(smir,u2);
+
+		  auto index = strafo.GetElementIndex();
+		  if(scale_deriv.Test(index) && derive_cf_bnd > 0)
 		    for (size_t j : Range(simd_nipt))
 		      u2.Col(j) *= pow(di(j),derive_cf_bnd);
 	      	}
