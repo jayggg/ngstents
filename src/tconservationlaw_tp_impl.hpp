@@ -23,8 +23,7 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
   for (int i : Range(tent.els))
     {
       HeapReset hr(lh);
-      const DGFiniteElement<DIM> & fel =
-	static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
+      auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[i]);
 
       auto & simd_ir = *fedata->iri[i];
       auto & simd_mir = *fedata->miri[i];
@@ -62,10 +61,8 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
       if(elnr2 != size_t(-1))
         {
           // inner facet
-          const DGFiniteElement<DIM> & fel1 =
-            static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[elnr1]);
-          const DGFiniteElement<DIM> & fel2 =
-            static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[elnr2]);
+	  auto & fel1 = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[elnr1]);
+          auto & fel2 = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[elnr2]);
 
           IntRange dn1 = fedata->ranges[elnr1];
           IntRange dn2 = fedata->ranges[elnr2];
@@ -105,8 +102,7 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
       else
         {
           // boundary facet
-          const DGFiniteElement<DIM> & fel1 =
-            static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[elnr1]);
+	  auto & fel1 = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[elnr1]);
 
           IntRange dn1 = fedata->ranges[elnr1];
 
@@ -226,8 +222,7 @@ CalcViscosityTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
   for (size_t i : Range(tent.els))
     {
       HeapReset hr(lh);
-      const DGFiniteElement<DIM> & fel =
-	static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
+      auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[i]);
       auto & simd_mir = *fedata->miri[i];
 
       IntRange dn = tent.fedata->ranges[i];
@@ -302,10 +297,8 @@ CalcViscosityTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
         {
           // inner facet
           HeapReset hr(lh);
-          const DGFiniteElement<DIM> & fel1 =
-            static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[elnr1]);
-          const DGFiniteElement<DIM> & fel2 =
-            static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[elnr2]);
+	  auto & fel1 = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[elnr1]);
+          auto & fel2 = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[elnr2]);
 
           IntRange dn1 = tent.fedata->ranges[elnr1];
           IntRange dn2 = tent.fedata->ranges[elnr2];
@@ -383,8 +376,7 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
   for (int i : Range(tent.els))
     {
       HeapReset hr(lh);
-      const DGFiniteElement<DIM> & fel =
-	static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
+      auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[i]);
       const SIMD_IntegrationRule & simd_ir = *fedata->iri[i];
 
       IntRange dn = tent.fedata->ranges[i];
@@ -454,10 +446,8 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
       if(elnr2 != size_t(-1))
         {
           // inner facet
-          const DGFiniteElement<DIM> & fel1 =
-            static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[elnr1]);
-          const DGFiniteElement<DIM> & fel2 =
-            static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[elnr2]);
+	  auto & fel1 = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[elnr1]);
+          auto & fel2 = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[elnr2]);
 
           IntRange dn1 = tent.fedata->ranges[elnr1];
           IntRange dn2 = tent.fedata->ranges[elnr2];
@@ -490,8 +480,7 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
       else
         {
           // boundary facet
-          const DGFiniteElement<DIM> & fel1 =
-            static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[elnr1]);
+          auto & fel1 = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[elnr1]);
 
           IntRange dn1 = tent.fedata->ranges[elnr1];
 
@@ -560,8 +549,7 @@ CalcViscosityCoefficientTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
     {
       HeapReset hr(lh);
       ElementId ei (VOL, tent.els[i]);
-      const DGFiniteElement<DIM> & fel =
-	static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
+      auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[i]);
       const SIMD_IntegrationRule & simd_ir = *fedata->iri[i];
 
       IntRange dn = tent.fedata->ranges[i];
@@ -623,8 +611,7 @@ Cyl2Tent (const Tent & tent, double tstar,
   for (size_t i : Range(tent.els))
     {
       HeapReset hr(lh);
-      const DGFiniteElement<DIM> & fel =
-        static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
+      auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[i]);
 
       auto & simd_mir = *fedata->miri[i];
       IntRange dn = fedata->ranges[i];
@@ -671,8 +658,7 @@ ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
   for (int i : Range(tent.els))
     {
       HeapReset hr(lh);
-      const DGFiniteElement<DIM> & fel =
-	static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
+      auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[i]);
 
       const SIMD_IntegrationRule & simd_ir = *fedata->iri[i];
       IntRange dn = fedata->ranges[i];
@@ -728,8 +714,7 @@ Tent2Cyl (const Tent & tent, double tstar,
   for (int i : Range(tent.els))
     {
       HeapReset hr(lh);
-      const DGFiniteElement<DIM> & fel =
-	static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[i]);
+      auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[i]);
       const SIMD_IntegrationRule & simd_ir = *fedata->iri[i];
 
       IntRange dn = fedata->ranges[i];

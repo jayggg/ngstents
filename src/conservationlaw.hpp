@@ -234,8 +234,7 @@ public:
         throw Exception ("Expected tent.fedata to be set!");
 
     HeapReset hr(lh);
-    const DGFiniteElement<DIM> & fel =
-      static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[loci]);
+    auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[loci]);
 
     bool curved = ma->GetElement(ElementId(VOL,tent.els[loci])).is_curved;
     if (curved)
@@ -285,8 +284,7 @@ public:
         throw Exception ("Expected tent.fedata to be set!");
 
     HeapReset hr(lh);
-    const DGFiniteElement<DIM> & fel =
-      static_cast<const DGFiniteElement<DIM>&> (*fedata->fei[loci]);
+    auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[loci]);
 
     FlatVector<> diagmass(mat.Height(),lh);
     fel.GetDiagMassMatrix(diagmass);
