@@ -52,8 +52,8 @@ f(u) = [[ I*mu ],
 isentropic material: alpha = I*c^2 for wave speed c
 '''
 
-tend = 2.5
-dt = 0.1
+tend = 1.5
+dt = 0.05
 # define wave speed
 # c = 1   for |x| > a (domain1)
 # c = 1/2 for |x| < a (domain2)
@@ -78,9 +78,7 @@ def Flux(u):
     h represents the number of equations and
     w should correspond to the dimension of the mesh/space
     """
-    q = CoefficientFunction(tuple([u[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
-    mu = u[mesh.dim]
-    return CoefficientFunction((Id(mesh.dim)*mu,q.trans), dims=(V.dim, mesh.dim))
+    return CoefficientFunction((Id(mesh.dim)*u[mesh.dim],u[0,0:mesh.dim]), dims=(V.dim, mesh.dim))
 
 def NumFlux(um, up):
     """
@@ -91,9 +89,7 @@ def NumFlux(um, up):
     """
     # upwind flux
     flux = 0.5 * (Flux(um) + Flux(up))*n
-    qm = CoefficientFunction(tuple([um[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
-    qp = CoefficientFunction(tuple([up[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
-    flux_vec = 0.5 * OuterProduct(n,n) * (qm - qp)
+    flux_vec = 0.5 * (um[0,0:mesh.dim] - up[0,0:mesh.dim])*n * n
     flux_scal = 0.5 * (um[mesh.dim]-up[mesh.dim])
     return flux + CoefficientFunction((flux_vec,flux_scal))
 
@@ -103,31 +99,36 @@ def InverseMap(y):
     g(u) = [[1/c^2 0],[0, 1]] * u
     """
     norm_sqr = InnerProduct(ts.gradphi,ts.gradphi)
-    y_q = CoefficientFunction(tuple([y[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
-    y_mu = y[mesh.dim]
-    ip = InnerProduct(y_q,ts.gradphi)
-    mu = (y_mu + wavespeed**2 * InnerProduct(y_q,ts.gradphi))/(1-norm_sqr)
-    q = wavespeed**2 * (y_q + mu*ts.gradphi)
+    ip = InnerProduct(y[0,0:mesh.dim], ts.gradphi)
+    mu = (y[mesh.dim] + wavespeed**2 * InnerProduct(y[0,0:mesh.dim],ts.gradphi))/(1-wavespeed**2*norm_sqr)
+    q = wavespeed**2 * (y[0,0:mesh.dim] + mu*ts.gradphi)
     return CoefficientFunction((q,mu))
 
 def ReflectBnd(u):
     """
     reflects values of u at the boundary using the normal vector n
     """
-    q = CoefficientFunction(tuple([u[i] for i in range(0,mesh.dim)]),dims=(mesh.dim,1))
+    q = u[0,0:mesh.dim]
     mu = u[mesh.dim]
     return CoefficientFunction((q - 2*OuterProduct(n,n)*q, mu))
 
+def BndNumFlux(um):
+    """
+    defines numerical flux on boundary elements using the normal vector n
+    um: trace of u for current element on facet
+    """
+    # set (q,n) = 0
+    return CoefficientFunction(( um[mesh.dim]*n, 0))
 
 # define conservation law
-order = 4
+order = 2
 V = L2(mesh, order=order, dim=mesh.dim+1)
 gfu = GridFunction(V,name="u")
 cl = ConservationLaw(gfu, ts,
-                     flux=Flux, numflux=NumFlux, inversemap=InverseMap,
-                     reflectbnd=ReflectBnd, compile=True,
-                     reflect=mesh.Boundaries("bottom|right|top"))
+                     flux=Flux, numflux=NumFlux, inversemap=InverseMap)
 cl.SetTentSolver("SARK", substeps=4*order)
+# cl.SetTentSolver("SAT", substeps=4*order)
+
 # set inital data
 mu0 = CoefficientFunction(0)
 q0 = CoefficientFunction( (0,0) )
@@ -143,7 +144,8 @@ def uex(time):
     return CoefficientFunction((k,1)) * f(time-InnerProduct(k,pos))
 
 tau = cl.tau # advancing front
-cl.SetBoundaryCF(mesh.Boundaries("left"),uex(tau))
+cl.SetBoundaryCF(mesh.BoundaryCF({"left"             : uex(tau),
+                                  "bottom|right|top" : BndNumFlux(cl.u_minus)} ))
 
 Draw(gfu)
 visoptions.scalfunction = "u:3"

@@ -34,8 +34,6 @@ public:
 
   // solve for û: Û = ĝ(x̂, t̂, û) - ∇̂ φ(x̂, t̂) ⋅ f̂(x̂, t̂, û)
   // at all points in an integration rule
-  //
-  // in this case, û = 2 Û / [ 1 + √(1 - 2 Û ⋅∇̂ φ(x̂, t̂)) ]
   template <typename T>
   void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
 		  FlatMatrix<T> grad, FlatMatrix<T> u) const
