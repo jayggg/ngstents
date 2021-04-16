@@ -126,8 +126,8 @@ V = L2(mesh, order=order, dim=mesh.dim+1)
 gfu = GridFunction(V,name="u")
 cl = ConservationLaw(gfu, ts,
                      flux=Flux, numflux=NumFlux, inversemap=InverseMap)
-cl.SetTentSolver("SARK", substeps=4*order)
-# cl.SetTentSolver("SAT", substeps=4*order)
+# cl.SetTentSolver("SARK", substeps=4*order)
+cl.SetTentSolver("SAT", stages=order+1, substeps=4*order)
 
 # set inital data
 mu0 = CoefficientFunction(0)

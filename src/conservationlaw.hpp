@@ -201,8 +201,9 @@ public:
     auto dtau_cf = cf_bnd[0]->Diff(cftau.get(),make_shared<ConstantCoefficientFunction>(1.0));
     auto components = dtau_cf->InputCoefficientFunctions();
     for( auto i : Range(components.Size()))
-      if( components[i]->GetDescription() != "ZeroCF")
-	scale_deriv.SetBit(i);
+      if(components[i])
+	if( components[i]->GetDescription() != "ZeroCF")
+	  scale_deriv.SetBit(i);
 
     for(size_t i : Range(stages-1))
       {
