@@ -190,12 +190,13 @@ void ExportConsLaw(py::module & m)
          })
     .def("SetBoundaryCF",[](shared_ptr<CL> self, Region region, shared_ptr<CoefficientFunction> cf)
          {
-	   auto maxbcnr = self->GetMaxBCNr();
-	   self->SetBC(maxbcnr, region);
-           self->SetBoundaryCF(maxbcnr, cf);
+	   // bcnr's 0 - 3 used for default boundary conditions
+	   self->SetBC(4, region);
+           self->SetBoundaryCF(4 , cf);
          })
     .def("SetBoundaryCF",[](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
          {
+	   // bcnr's 0 - 3 used for default boundary conditions
 	   self->SetBC(4, Region(self->ma,BND,".*"));
 	   self->SetBoundaryCF(4, cf);
          })

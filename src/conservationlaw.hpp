@@ -47,8 +47,6 @@ public:
 
   virtual void CheckBC() = 0;
 
-  virtual double GetMaxBCNr() = 0;
-
   virtual void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf) = 0;
   
   virtual void SetVectorField(shared_ptr<CoefficientFunction> cf) = 0;
@@ -180,11 +178,12 @@ public:
         }
   }
 
-  double GetMaxBCNr() { return cf_bnd.Size(); }
-
   void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf)
   {
-    cf_bnd.Append(cf);
+    if(cf_bnd.Size()==0)
+      cf_bnd.Append(cf);
+    else
+      throw Exception("boundary coefficient function already set");
   }
 
   // derive boundary coefficient functions

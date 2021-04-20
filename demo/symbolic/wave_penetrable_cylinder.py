@@ -52,8 +52,8 @@ f(u) = [[ I*mu ],
 isentropic material: alpha = I*c^2 for wave speed c
 '''
 
-tend = 1.5
-dt = 0.05
+tend = 2.5
+dt = 0.025
 # define wave speed
 # c = 1   for |x| > a (domain1)
 # c = 1/2 for |x| < a (domain2)
@@ -100,7 +100,7 @@ def InverseMap(y):
     """
     norm_sqr = InnerProduct(ts.gradphi,ts.gradphi)
     ip = InnerProduct(y[0,0:mesh.dim], ts.gradphi)
-    mu = (y[mesh.dim] + wavespeed**2 * InnerProduct(y[0,0:mesh.dim],ts.gradphi))/(1-wavespeed**2*norm_sqr)
+    mu = (y[mesh.dim] + wavespeed**2 * ip)/(1-wavespeed**2*norm_sqr)
     q = wavespeed**2 * (y[0,0:mesh.dim] + mu*ts.gradphi)
     return CoefficientFunction((q,mu))
 
@@ -126,8 +126,8 @@ V = L2(mesh, order=order, dim=mesh.dim+1)
 gfu = GridFunction(V,name="u")
 cl = ConservationLaw(gfu, ts,
                      flux=Flux, numflux=NumFlux, inversemap=InverseMap)
-# cl.SetTentSolver("SARK", substeps=4*order)
-cl.SetTentSolver("SAT", stages=order+1, substeps=4*order)
+cl.SetTentSolver("SARK", substeps=4*order)
+# cl.SetTentSolver("SAT", stages=order+1, substeps=4*order)
 
 # set inital data
 mu0 = CoefficientFunction(0)
@@ -141,10 +141,10 @@ def f(s):
 k = CoefficientFunction( (1,0) )
 pos = CoefficientFunction( (x,y) )
 def uex(time):
-    return CoefficientFunction((k,1)) * f(time-InnerProduct(k,pos))
+    return CoefficientFunction((k,1), dims=(1,mesh.dim+1)) * f(time-InnerProduct(k,pos))
 
 tau = cl.tau # advancing front
-cl.SetBoundaryCF(mesh.BoundaryCF({"left"             : uex(tau),
+cl.SetBoundaryCF(mesh.BoundaryCF({"left"             : NumFlux(cl.u_minus, uex(tau)),
                                   "bottom|right|top" : BndNumFlux(cl.u_minus)} ))
 
 Draw(gfu)

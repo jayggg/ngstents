@@ -70,7 +70,6 @@ def InverseMap(y):
     solves "y = u - (f(u),gradphi)" for u
     """
     norm_sqr = InnerProduct(ts.gradphi,ts.gradphi)
-    ip = InnerProduct(y[0,0:mesh.dim], ts.gradphi)
     mu = (y[mesh.dim] + ws**2 * InnerProduct(y[0,0:mesh.dim],ts.gradphi))/(1-ws**2*norm_sqr)
     q = ws**2 * (y[0,0:mesh.dim] + mu*ts.gradphi)
     return CoefficientFunction((q,mu))
