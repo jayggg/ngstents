@@ -1,36 +1,38 @@
-from netgen.geom2d import SplineGeometry
 from ngsolve import Mesh, Draw, Redraw
-from ngsolve import (CoefficientFunction, IfPos, sqrt, sin, cos, exp, x, y, z,
-                     InnerProduct, Norm, OuterProduct, Id)
-from ngsolve import L2, GridFunction, TaskManager, SetNumThreads, Integrate
+from ngsolve import CoefficientFunction, cos, x, InnerProduct, Id
+from ngsolve import L2, GridFunction, TaskManager
 from ngsolve import specialcf as scf
 from ngsolve.internal import visoptions, viewoptions
 from ngstents import TentSlab
-from ngstents.conslaw import ConservationLaw
 from ngstents.utils import Make1DMesh
+from ngstents.conslaw import ConservationLaw
 from math import pi
-import time
+          
+N = 128
+mesh = Mesh(Make1DMesh([[0,2],[2,4]], [N,N], bcname=["left","right"]))
 
-dim = 2
-if(dim == 1):
-    N = 100
-    ngmesh = Make1DMesh([[0,pi]], [N], bcname="reflect")
-else:
-    geom = SplineGeometry()
-    geom.AddRectangle((0,0),(pi,pi), bc="reflect")
-    ngmesh = geom.GenerateMesh(maxh=0.25)
-mesh = Mesh(ngmesh)
+'''
+solve wave equation: d_tt(phi) - div(alpha grad(phi)) = 0
+define first order system
 
-# setting the problem
-tend = 2/sqrt(dim)*pi
-dt = tend/10
-wavespeed = 1
+d_t(g(u)) - div f(u) = 0
 
-# using causality constant
+for u = [q,mu]^t with q = -alpha grad(phi) and mu = d_t(phi)
+g(u) = [[alpha^-1 0],[0, 1]] * u
+f(u) = [[ I*mu ],
+        [ q^t  ]]
+isentropic material: alpha = I*c^2 for wave speed c
+'''
+
+# wave speeds in domains
+ws = CoefficientFunction([1,1/2])
+
+tend = 7
+dt = 0.1
 local_ctau = True
-global_ctau = 2/3
+global_ctau = 1/2
 ts = TentSlab(mesh, method="edge")
-ts.SetMaxWavespeed(wavespeed)
+ts.SetMaxWavespeed(ws)
 ts.PitchTents(dt=dt, local_ct=local_ctau, global_ct=global_ctau)
 print("max slope", ts.MaxSlope())
 print("n tents", ts.GetNTents())
@@ -38,7 +40,6 @@ print("n tents", ts.GetNTents())
 order = 2
 V = L2(mesh, order=order, dim=mesh.dim+1)
 gfu = GridFunction(V,name="u")
-
 # vector-valued coefficient function
 n = scf.normal(mesh.dim)
 
@@ -67,45 +68,50 @@ def NumFlux(um, up):
 def InverseMap(y):
     """
     solves "y = u - (f(u),gradphi)" for u
-    
-    assuming wave speed = 1
     """
     norm_sqr = InnerProduct(ts.gradphi,ts.gradphi)
-    ip = InnerProduct(y[0:mesh.dim], ts.gradphi)
-    mu = (y[mesh.dim] + InnerProduct(y[0:mesh.dim],ts.gradphi))/(1-norm_sqr)
-    q = y[0:mesh.dim] + mu*ts.gradphi
+    mu = (y[mesh.dim] + ws**2 * InnerProduct(y[0:mesh.dim],ts.gradphi))/(1-ws**2*norm_sqr)
+    q = ws**2 * (y[0:mesh.dim] + mu*ts.gradphi)
     return CoefficientFunction((q,mu))
 
-def BndNumFlux(um):
+def BndNumFlux_transparent(um):
     """
     defines numerical flux on boundary elements using the normal vector n
     um: trace of u for current element on facet
     """
-    # set (q,n) = 0
-    return CoefficientFunction(( um[mesh.dim]*n, 0))
+    return CoefficientFunction(( 0.5*(um[mesh.dim] + 1/ws * um[0:mesh.dim]*n) * n,
+                                 0.5*(um[mesh.dim] + (2-1/ws) * um[0:mesh.dim]*n) ))
 
 cl = ConservationLaw(gfu, ts,
                      flux=Flux,
                      numflux=NumFlux,
                      inversemap=InverseMap)
-cl.SetBoundaryCF(mesh.BoundaryCF({ "reflect" : BndNumFlux(cl.u_minus) }))
-# cl.SetTentSolver("SAT",stages=order+1, substeps=4*order)
-cl.SetTentSolver("SARK",stages=order+1, substeps=4*order)
+cl.SetTentSolver("SAT",stages=order+1, substeps=4*order)
+# cl.SetTentSolver("SARK", substeps=4*order)
 
-mu0 = cos(x) if dim==1 else cos(x)*cos(y)
-q0 = CoefficientFunction( tuple(dim*[0]) )
-cl.SetInitial(CoefficientFunction((q0,mu0)))
+# set inital data
+cl.SetInitial(CoefficientFunction((0,0)))
+
+# define plane wave for boundary condition
+def f(s):
+    return (CoefficientFunction(1)-cos(4*pi*(s))) * IfPos(s,IfPos(1/2-s,1,0),0)
+
+def planewave(time):
+    return CoefficientFunction((ws**2,ws)) * f(time-x)
+
+tau = cl.tau # advancing front
+cl.SetBoundaryCF(mesh.BoundaryCF({"left" : NumFlux(cl.u_minus, planewave(tau)),
+                                  "right" : BndNumFlux_transparent(cl.u_minus) }))
 
 Draw(gfu)
-visoptions.scalfunction = "u:{:0}".format(mesh.dim+1)
+visoptions.scalfunction = "u:2"
 viewoptions.drawedges = 1
 
+redraw = 1
 t = 0
 cnt = 0
-redraw = 1
-
+input("start")
 import time
-# input("press enter to start")
 t1 = time.time()
 with TaskManager():
     while t < tend-dt/2:
@@ -114,17 +120,5 @@ with TaskManager():
         cnt += 1
         if cnt%redraw == 0:
             print("{:5f}".format(t))
-            Redraw(True)
+        Redraw(True)
 print("total time = ",time.time()-t1)
-
-if(dim==1):
-    exsol = CoefficientFunction((sin(x)*sin(tend),
-                                 cos(x)*cos(tend)))
-else:
-    exsol = CoefficientFunction((sin(x)*cos(y)*sin(sqrt(2)*tend)/sqrt(2),
-                                 cos(x)*sin(y)*sin(sqrt(2)*tend)/sqrt(2),
-                                 cos(x)*cos(y)*cos(sqrt(2)*tend)))
-
-Draw(exsol, mesh, "exact")
-l2error = sqrt(Integrate(InnerProduct(gfu-exsol, gfu-exsol), mesh, order=3*order))
-print("l2error = ", l2error)

@@ -190,30 +190,15 @@ void ExportConsLaw(py::module & m)
          })
     .def("SetBoundaryCF",[](shared_ptr<CL> self, Region region, shared_ptr<CoefficientFunction> cf)
          {
-	   auto maxbcnr = self->GetMaxBCNr();
-	   self->SetBC(maxbcnr, region);
-           self->SetBoundaryCF(maxbcnr, cf);
+	   // bcnr's 0 - 3 used for default boundary conditions
+	   self->SetBC(4, region);
+           self->SetBoundaryCF(4 , cf);
          })
     .def("SetBoundaryCF",[](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
          {
-	   auto bndcf = cf->InputCoefficientFunctions();
-	   auto maxbcnr = self->GetMaxBCNr();
-	   ////// as one CF
-	   // self->SetBC(maxbcnr, Region(self->ma,BND,".*"));
-	   // self->SetBoundaryCF(maxbcnr, cf);
-	   /// split CF
-	   auto regions = self->ma->GetMaterials(BND);
-	   auto nregions = regions.Size();
-	   for( auto i : Range(nregions) )
-	     {
-	       self->SetBC(maxbcnr+i, Region(self->ma, BND, regions[i]));
-	       if ( bndcf.Size() == 1 )
-	   	 self->SetBoundaryCF(maxbcnr+i, bndcf[0]);
-	       else if ( bndcf.Size() == nregions )
-	   	 self->SetBoundaryCF(maxbcnr+i, bndcf[i]);
-	       else
-	   	 throw Exception("number of boundary conditions and size of coefficient function do not match");
-	     }
+	   // bcnr's 0 - 3 used for default boundary conditions
+	   self->SetBC(4, Region(self->ma,BND,".*"));
+	   self->SetBoundaryCF(4, cf);
          })
     .def("SetMaterialParameters",
          [](shared_ptr<CL> self,
