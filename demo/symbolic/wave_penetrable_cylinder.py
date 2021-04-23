@@ -78,7 +78,7 @@ def Flux(u):
     h represents the number of equations and
     w should correspond to the dimension of the mesh/space
     """
-    return CoefficientFunction((Id(mesh.dim)*u[mesh.dim],u[0,0:mesh.dim]), dims=(V.dim, mesh.dim))
+    return CoefficientFunction((Id(mesh.dim)*u[mesh.dim],u[0:mesh.dim]), dims=(V.dim, mesh.dim))
 
 def NumFlux(um, up):
     """
@@ -89,7 +89,7 @@ def NumFlux(um, up):
     """
     # upwind flux
     flux = 0.5 * (Flux(um) + Flux(up))*n
-    flux_vec = 0.5 * (um[0,0:mesh.dim] - up[0,0:mesh.dim])*n * n
+    flux_vec = 0.5 * (um[0:mesh.dim] - up[0:mesh.dim])*n * n
     flux_scal = 0.5 * (um[mesh.dim]-up[mesh.dim])
     return flux + CoefficientFunction((flux_vec,flux_scal))
 
@@ -99,16 +99,16 @@ def InverseMap(y):
     g(u) = [[1/c^2 0],[0, 1]] * u
     """
     norm_sqr = InnerProduct(ts.gradphi,ts.gradphi)
-    ip = InnerProduct(y[0,0:mesh.dim], ts.gradphi)
+    ip = InnerProduct(y[0:mesh.dim], ts.gradphi)
     mu = (y[mesh.dim] + wavespeed**2 * ip)/(1-wavespeed**2*norm_sqr)
-    q = wavespeed**2 * (y[0,0:mesh.dim] + mu*ts.gradphi)
+    q = wavespeed**2 * (y[0:mesh.dim] + mu*ts.gradphi)
     return CoefficientFunction((q,mu))
 
 def ReflectBnd(u):
     """
     reflects values of u at the boundary using the normal vector n
     """
-    q = u[0,0:mesh.dim]
+    q = u[0:mesh.dim]
     mu = u[mesh.dim]
     return CoefficientFunction((q - 2*OuterProduct(n,n)*q, mu))
 
@@ -141,7 +141,7 @@ def f(s):
 k = CoefficientFunction( (1,0) )
 pos = CoefficientFunction( (x,y) )
 def uex(time):
-    return CoefficientFunction((k,1), dims=(1,mesh.dim+1)) * f(time-InnerProduct(k,pos))
+    return CoefficientFunction((k,1)) * f(time-InnerProduct(k,pos))
 
 tau = cl.tau # advancing front
 cl.SetBoundaryCF(mesh.BoundaryCF({"left"             : NumFlux(cl.u_minus, uex(tau)),

@@ -50,7 +50,7 @@ def Flux(u):
     h represents the number of equations and
     w should correspond to the dimension of the mesh/space
     """
-    return CoefficientFunction((Id(mesh.dim)*u[mesh.dim],u[0,0:mesh.dim]), dims=(V.dim, mesh.dim))
+    return CoefficientFunction((Id(mesh.dim)*u[mesh.dim],u[0:mesh.dim]), dims=(V.dim, mesh.dim))
 
 def NumFlux(um, up):
     """
@@ -61,7 +61,7 @@ def NumFlux(um, up):
     """
     # upwind flux
     flux = 0.5 * (Flux(um) + Flux(up))*n
-    flux_vec = 0.5 * (um[0,0:mesh.dim] - up[0,0:mesh.dim])*n * n
+    flux_vec = 0.5 * (um[0:mesh.dim] - up[0:mesh.dim])*n * n
     flux_scal = 0.5 * (um[mesh.dim]-up[mesh.dim])
     return flux + CoefficientFunction((flux_vec,flux_scal))
 
@@ -70,8 +70,8 @@ def InverseMap(y):
     solves "y = u - (f(u),gradphi)" for u
     """
     norm_sqr = InnerProduct(ts.gradphi,ts.gradphi)
-    mu = (y[mesh.dim] + ws**2 * InnerProduct(y[0,0:mesh.dim],ts.gradphi))/(1-ws**2*norm_sqr)
-    q = ws**2 * (y[0,0:mesh.dim] + mu*ts.gradphi)
+    mu = (y[mesh.dim] + ws**2 * InnerProduct(y[0:mesh.dim],ts.gradphi))/(1-ws**2*norm_sqr)
+    q = ws**2 * (y[0:mesh.dim] + mu*ts.gradphi)
     return CoefficientFunction((q,mu))
 
 def BndNumFlux_transparent(um):
@@ -79,8 +79,8 @@ def BndNumFlux_transparent(um):
     defines numerical flux on boundary elements using the normal vector n
     um: trace of u for current element on facet
     """
-    return CoefficientFunction(( 0.5*(um[mesh.dim] + 1/ws * um[0,0:mesh.dim]*n) * n,
-                                 0.5*(um[mesh.dim] + (2-1/ws) * um[0,0:mesh.dim]*n) ))
+    return CoefficientFunction(( 0.5*(um[mesh.dim] + 1/ws * um[0:mesh.dim]*n) * n,
+                                 0.5*(um[mesh.dim] + (2-1/ws) * um[0:mesh.dim]*n) ))
 
 cl = ConservationLaw(gfu, ts,
                      flux=Flux,
@@ -97,7 +97,7 @@ def f(s):
     return (CoefficientFunction(1)-cos(4*pi*(s))) * IfPos(s,IfPos(1/2-s,1,0),0)
 
 def planewave(time):
-    return CoefficientFunction((ws**2,ws), dims=(1,mesh.dim+1)) * f(time-x)
+    return CoefficientFunction((ws**2,ws)) * f(time-x)
 
 tau = cl.tau # advancing front
 cl.SetBoundaryCF(mesh.BoundaryCF({"left" : NumFlux(cl.u_minus, planewave(tau)),

@@ -49,7 +49,7 @@ def Flux(u):
     h represents the number of equations and
     w should correspond to the dimension of the mesh/space
     """
-    return CoefficientFunction((Id(mesh.dim)*u[mesh.dim],u[0,0:mesh.dim]), dims=(V.dim, mesh.dim))
+    return CoefficientFunction((Id(mesh.dim)*u[mesh.dim],u[0:mesh.dim]), dims=(V.dim, mesh.dim))
 
 def NumFlux(um, up):
     """
@@ -60,18 +60,20 @@ def NumFlux(um, up):
     """
     # upwind flux
     flux = 0.5 * (Flux(um) + Flux(up))*n
-    flux_vec = 0.5 * (um[0,0:mesh.dim] - up[0,0:mesh.dim])*n * n
+    flux_vec = 0.5 * (um[0:mesh.dim] - up[0:mesh.dim])*n * n
     flux_scal = 0.5 * (um[mesh.dim]-up[mesh.dim])
     return flux + CoefficientFunction((flux_vec,flux_scal))
 
 def InverseMap(y):
     """
     solves "y = u - (f(u),gradphi)" for u
+    
+    assuming wave speed = 1
     """
     norm_sqr = InnerProduct(ts.gradphi,ts.gradphi)
-    ip = InnerProduct(y[0,0:mesh.dim], ts.gradphi)
-    mu = (y[mesh.dim] + InnerProduct(y[0,0:mesh.dim],ts.gradphi))/(1-norm_sqr)
-    q = y[0,0:mesh.dim] + mu*ts.gradphi
+    ip = InnerProduct(y[0:mesh.dim], ts.gradphi)
+    mu = (y[mesh.dim] + InnerProduct(y[0:mesh.dim],ts.gradphi))/(1-norm_sqr)
+    q = y[0:mesh.dim] + mu*ts.gradphi
     return CoefficientFunction((q,mu))
 
 def BndNumFlux(um):
