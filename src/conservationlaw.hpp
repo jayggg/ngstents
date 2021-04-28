@@ -33,6 +33,8 @@ public:
 
   shared_ptr<ProxyFunction> proxy_u = nullptr;
   shared_ptr<ProxyFunction> proxy_uother = nullptr;
+  shared_ptr<ProxyFunction> proxy_graddelta = nullptr;
+  shared_ptr<ProxyFunction> proxy_res = nullptr;
 public:
   ConservationLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
@@ -53,6 +55,8 @@ public:
 
   virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
                                      shared_ptr<CoefficientFunction> cf_eps) = 0;
+
+  virtual void SetViscosityCoefficient(shared_ptr<CoefficientFunction> cf_visc) = 0;
 
   virtual void SetTentSolver(string method, int stages, int substeps) = 0;
 
@@ -126,6 +130,13 @@ public:
         gfres = CreateGridFunction(fes_scal,"res",Flags());
     	gfres->Update();
 
+	// residual proxy
+	proxy_res = fes_scal->GetProxyFunction(false);
+	// graddelta proxy
+	proxy_graddelta = make_shared<ProxyFunction>(fes_scal, false, false,
+						     fes_scal->GetFluxEvaluator(VOL),
+						     nullptr, nullptr, nullptr, nullptr, nullptr);
+	cout << "grad proxy : dim = " << proxy_graddelta->Dimension() << endl;
         // Zero order L2 finite element space for viscosity
     	shared_ptr<FESpace> fes_lo = CreateFESpace("l2ho", ma,
                                                    Flags().SetFlag("order",0));
@@ -224,7 +235,12 @@ public:
   {
     throw Exception("SetMaterialParameters just available for Wave equation");
   }
-  
+
+  virtual void SetViscosityCoefficient(shared_ptr<CoefficientFunction> cf_visc)
+  {
+    throw Exception("set cf_visccoeff for SymbolicConsLaw");
+  }
+
   template <int W>
   void SolveM (const Tent & tent, int loci, FlatMatrixFixWidth<W> mat,
                LocalHeap & lh) const

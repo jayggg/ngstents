@@ -327,7 +327,6 @@ CalcViscosityTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
             }
 
           auto normal = fedata->anormals[i];
-          // *testout << normal << endl;
           for(size_t j : Range(COMP))
             {
               fel1.EvaluateGrad(simd_mir,u.Col(j).Range(dn1),gradu1);
@@ -410,13 +409,33 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
             gradphi_mat(k,l).Value() = (1-tstar)*gradbot(k,l) + tstar*gradtop(k,l);
             gradphi_mat(k,l).DValue(0) = gradtop(k,l) - gradbot(k,l);
           }
+
+      FlatMatrix<SIMD<double>> Ei(ECOMP,simd_ir.Size(),lh), Fi(DIM*ECOMP,simd_ir.Size(),lh);
       if constexpr(SYMBOLIC)
-	{ throw Exception("Entropy viscosity not supported for symbolic equations"); }
+	{
+	  ProxyUserData * ud = new (lh) ProxyUserData(3, 1, lh); //ntrial = 3, ncf = 1
+	  auto & trafo = *fedata->trafoi[i];
+	  const_cast<ElementTransformation&>(trafo).userdata = ud;
+	  ud->fel = &fel;
+	  auto nip = simd_mir.IR().GetNIP();
+	  ud->AssignMemory (proxy_u.get(), nip, COMP, lh);        // proxy u
+	  ud->AssignMemory (proxy_uother.get(), nip, COMP, lh);   // proxy ut
+	  ud->AssignMemory (tps->cfgradphi.get(), nip, DIM, lh);  // cf gradphi
+	  ud->AssignMemory (proxy_graddelta.get(), nip, DIM, lh);  // proxy graddelta
+
+	  auto simd_nipt = simd_mir.Size();
+	  FlatMatrix<SIMD<double>> gradphi(DIM, simd_nipt, lh), graddelta(DIM, simd_nipt, lh);
+	  gradphi = (1-tstar)*gradbot + tstar*gradtop;
+	  graddelta = gradtop - gradbot;
+	  Cast().InverseMap(simd_mir, gradphi, graddelta, ui, uti);
+	  graddelta = gradtop - gradbot; //reset graddelta for now
+	  Cast().CalcEntropy(simd_mir, ui, uti, gradphi, graddelta, Ei, Fi);
+	}
       else
-	Cast().InverseMap(simd_mir, gradphi_mat, adu);
-      FlatMatrix<SIMD<double>> Ei(ECOMP,simd_ir.Size(),lh),
-                               Fi(DIM*ECOMP,simd_ir.Size(),lh);
-      Cast().CalcEntropy(adu, gradphi_mat, Ei, Fi);
+	{
+	  Cast().InverseMap(simd_mir, gradphi_mat, adu);
+	  Cast().CalcEntropy(adu, gradphi_mat, Ei, Fi);
+	}
 
       FlatVector<SIMD<double>> di = fedata->adelta[i];
       for(size_t k : Range(simd_ir.Size()))
@@ -462,10 +481,22 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
           fel1.Evaluate(simd_ir_facet_vol1,temp.Rows(dn1),u1);
           fel2.Evaluate(simd_ir_facet_vol2,temp.Rows(dn2),u2);
 
-          FlatMatrix<SIMD<double>> Fn(ECOMP, simd_nipt, lh);
-          Cast().EntropyFlux(u1,u2,fedata->anormals[i],Fn);
-
           auto & simd_mir = *fedata->mfiri1[i];
+          FlatMatrix<SIMD<double>> Fn(ECOMP, simd_nipt, lh);
+	  if constexpr(SYMBOLIC)
+	    {
+	      ProxyUserData * ud = new (lh) ProxyUserData(2, lh);
+	      auto & trafo1 = *fedata->trafoi[elnr1];
+	      const_cast<ElementTransformation&>(trafo1).userdata = ud;
+	      ud->fel = &fel1;
+	      // assume IR's have the same size
+	      ud->AssignMemory (proxy_u.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	      ud->AssignMemory (proxy_uother.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	      Cast().EntropyFlux(simd_mir, u1,u2,fedata->anormals[i],Fn);
+	    }
+	  else
+	    Cast().EntropyFlux(u1,u2,fedata->anormals[i],Fn);
+
           FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))
             {
@@ -512,12 +543,27 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
               Cast().u_transparent(simd_mir1, u1, fedata->anormals[i], u2);
             }
           else
-            throw Exception(string(
-               "no implementation for your chosen boundary condition number ")
-                + ToString(bc+1));
+	    {
+	      u2 = u1; // TODO: handle boundaries
+	    }
+	  // throw Exception(string(
+	  //    "no implementation for your chosen boundary condition number ")
+	  //     + ToString(bc+1));
 
           FlatMatrix<SIMD<double>> Fn(ECOMP, simd_nipt, lh);
-          Cast().EntropyFlux(u1,u2,fedata->anormals[i],Fn);
+	  if constexpr(SYMBOLIC)
+	    {
+	      ProxyUserData * ud = new (lh) ProxyUserData(2, lh);
+	      auto & trafo1 = *fedata->trafoi[elnr1];
+	      const_cast<ElementTransformation&>(trafo1).userdata = ud;
+	      ud->fel = &fel1;
+	      // assume IR's have the same size
+	      ud->AssignMemory (proxy_u.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	      ud->AssignMemory (proxy_uother.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
+	      Cast().EntropyFlux(simd_mir1, u1, u2, fedata->anormals[i], Fn);
+	    }
+	  else
+	    Cast().EntropyFlux(u1, u2, fedata->anormals[i], Fn);
 
 	  FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))
@@ -581,9 +627,17 @@ CalcViscosityCoefficientTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                     tstar*fedata->agradphi_top[i];
 
       if constexpr(SYMBOLIC)
-	{ throw Exception("Entropy viscosity not supported for symbolic equations"); }
-      else
-	Cast().InverseMap(simd_mir, gradphi_mat, ui);
+	{
+	  ProxyUserData * ud = new (lh) ProxyUserData(2, 1, lh); //ntrial = 2, ncf = 1
+	  auto & trafo = *fedata->trafoi[i];
+	  const_cast<ElementTransformation&>(trafo).userdata = ud;
+	  ud->fel = &fel;
+	  auto nip = simd_mir.IR().GetNIP();
+	  ud->AssignMemory (proxy_u.get(), nip, COMP, lh);
+	  ud->AssignMemory (tps->cfgradphi.get(), nip, DIM, lh);
+	  ud->AssignMemory (proxy_res.get(), nip, ECOMP, lh);
+	}
+      Cast().InverseMap(simd_mir, gradphi_mat, ui);
       Cast().CalcViscCoeffEl(simd_mir, ui, resi, hi, nu(ei.Nr()));
 
       if(nu(ei.Nr()) > nu_tent)

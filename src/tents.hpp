@@ -120,17 +120,26 @@ public:
     : CoefficientFunction(adim)
   { }
 
-  virtual double Evaluate (const BaseMappedIntegrationPoint & ip) const
+  double Evaluate (const BaseMappedIntegrationPoint & ip) const
   {
     throw Exception ("Evaluate not implemented for BaseMappedIntegrationPoint!");
   }
 
-  virtual void Evaluate (const SIMD_BaseMappedIntegrationRule & mir,
-			 BareSliceMatrix<SIMD<double>> values) const
+  void Evaluate (const SIMD_BaseMappedIntegrationRule & mir,
+		 BareSliceMatrix<SIMD<double>> values) const
   {
     // loads values of grad(phi) from ProxyUserData, assuming it is properly set
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     values.AddSize(Dimension(), mir.Size()) = BareSliceMatrix<SIMD<double>> (ud.GetAMemory (this));
+  }
+
+  shared_ptr<CoefficientFunction>
+  Diff (const CoefficientFunction * var, shared_ptr<CoefficientFunction> dir) const
+  {
+    if(var == this)
+      return dir;
+    else
+      return ZeroCF(Dimensions());
   }
 };
 
