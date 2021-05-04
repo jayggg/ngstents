@@ -183,30 +183,20 @@ shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction
   const int dim = tps->ma->GetDimension();
   constexpr int MAXCOMP = 6;
   const int comp_space = gfu->GetFESpace()->GetDimension();
+  const auto ecomp = (entropy && entropyflux && numentropyflux) ? 1 : 0;
+
   shared_ptr<ConservationLaw> cl = nullptr;
-  switch(dim){
-  case 1:
-    Switch<MAXCOMP>(comp_space, [&](auto COMP) {
-	cl = make_shared<SymbolicConsLaw<1, COMP, 1>>(gfu, tps, proxy_u, proxy_uother,
-						      flux, numflux, invmap,
-						      entropy, entropyflux, numentropyflux);
-      });
-    break;
-  case 2:
-    Switch<MAXCOMP>(comp_space, [&](auto COMP) {
-	cl = make_shared<SymbolicConsLaw<2, COMP, 1>>(gfu, tps, proxy_u, proxy_uother,
-						      flux, numflux, invmap,
-						      entropy, entropyflux, numentropyflux);
-      });
-    break;
-  case 3:
-    Switch<MAXCOMP>(comp_space, [&](auto COMP) {
-	cl = make_shared<SymbolicConsLaw<3, COMP, 1>>(gfu, tps, proxy_u, proxy_uother,
-						      flux, numflux, invmap,
-						      entropy, entropyflux, numentropyflux);
-      });
-    break;
-  }
+  Switch<4>(dim, [&](auto DIM) {
+      Switch<MAXCOMP+1>(comp_space, [&](auto COMP) {
+	  Switch<2>(ecomp, [&](auto ECOMP) {
+	      const auto DIM_ = DIM;
+	      const auto COMP_ = COMP;
+	      cl = make_shared<SymbolicConsLaw<DIM_, COMP_, ECOMP>>(gfu, tps, proxy_u, proxy_uother,
+								    flux, numflux, invmap,
+								    entropy, entropyflux, numentropyflux);
+	    });
+	});
+    });
   if(cl)
     return cl;
   else

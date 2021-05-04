@@ -114,46 +114,54 @@ void ExportConsLaw(py::module & m)
 		    cpp_invmap = Compile(cpp_invmap, compile);
 
 		    // CF for entropy residual
-		    shared_ptr<CF> cpp_cf_entropy = nullptr;
-		    shared_ptr<CF> cpp_cf_entropyflux = nullptr;
-		    shared_ptr<CF> cpp_cf_numentropyflux = nullptr;
-		    shared_ptr<CF> cpp_cf_visccoeff = nullptr;
+		    shared_ptr<CF> cpp_entropy = nullptr;
+		    shared_ptr<CF> cpp_entropyflux = nullptr;
+		    shared_ptr<CF> cpp_numentropyflux = nullptr;
 		    if(Entropy.has_value())
 		      {
 			py::object cf_entropy = Entropy.value()( u );
-			cpp_cf_entropy = py::extract<shared_ptr<CF>> (cf_entropy)();
-			cpp_cf_entropy = Compile(cpp_cf_entropy, compile);
+			cpp_entropy = py::extract<shared_ptr<CF>> (cf_entropy)();
+			cpp_entropy = Compile(cpp_entropy, compile);
 		      }
 		    if(EntropyFlux.has_value())
 		      {
 			py::object cf_entropyflux = EntropyFlux.value()( u );
-			cpp_cf_entropyflux =
+			cpp_entropyflux =
 			  py::extract<shared_ptr<CF>> (cf_entropyflux)();
-			cpp_cf_entropyflux = Compile(cpp_cf_entropyflux, compile);
+			cpp_entropyflux = Compile(cpp_entropyflux, compile);
 		      }
 		    if(NumEntropyFlux.has_value())
 		      {
-			py::object cf_numentropyflux = EntropyFlux.value()( u );
-			cpp_cf_numentropyflux =
+			py::object cf_numentropyflux = NumEntropyFlux.value()( u, uother);
+			cpp_numentropyflux =
 			  py::extract<shared_ptr<CF>> (cf_numentropyflux)();
-			cpp_cf_numentropyflux = Compile(cpp_cf_numentropyflux, compile);
+			cpp_numentropyflux = Compile(cpp_numentropyflux, compile);
 		      }
+
+		    bool entropy_functions = false;
+		    if (cpp_entropy && cpp_entropyflux && cpp_numentropyflux)
+		      entropy_functions = true;
+		    else if (cpp_entropy || cpp_entropyflux || cpp_numentropyflux)
+		      throw Exception("at least one entropy function missing");
+
 		    auto proxy_u = py::extract<shared_ptr<ProxyFunction>> (u)();
 		    auto proxy_uother = py::extract<shared_ptr<ProxyFunction>> (uother)();
-		    
+
 		    auto cl = CreateSymbolicConsLaw(gfu, tps, proxy_u, proxy_uother,
 						    cpp_flux_u, cpp_numflux_u, cpp_invmap,
-						    cpp_cf_entropy, cpp_cf_entropyflux,
-						    cpp_cf_numentropyflux);
+						    cpp_entropy, cpp_entropyflux,
+						    cpp_numentropyflux);
 		    if(ViscosityCoefficient.has_value())
 		      {
 			py::object cf_visccoeff =
 			  ViscosityCoefficient.value()( u, py::cast(cl->proxy_res) );
-			cpp_cf_visccoeff =
+			auto cpp_visccoeff =
 			  py::extract<shared_ptr<CF>> (cf_visccoeff)();
-			cpp_cf_visccoeff = Compile(cpp_cf_visccoeff, compile);
-			cl->SetViscosityCoefficient(cpp_cf_visccoeff);
+			cpp_visccoeff = Compile(cpp_visccoeff, compile);
+			cl->SetViscosityCoefficient(cpp_visccoeff);
 		      }
+		    else if (entropy_functions)
+		      throw Exception("function for ViscosityCoefficient missing");
 
 		    // use old style bc numbers
 		    cl->CheckBC();

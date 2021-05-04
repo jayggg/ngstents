@@ -136,7 +136,7 @@ public:
 	proxy_graddelta = make_shared<ProxyFunction>(fes_scal, false, false,
 						     fes_scal->GetFluxEvaluator(VOL),
 						     nullptr, nullptr, nullptr, nullptr, nullptr);
-	cout << "grad proxy : dim = " << proxy_graddelta->Dimension() << endl;
+
         // Zero order L2 finite element space for viscosity
     	shared_ptr<FESpace> fes_lo = CreateFESpace("l2ho", ma,
                                                    Flags().SetFlag("order",0));
