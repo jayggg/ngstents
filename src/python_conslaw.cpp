@@ -15,6 +15,8 @@ shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<GridFunction> & gfu,
 typedef CoefficientFunction CF;
 shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction> & gfu,
 						   const shared_ptr<TentPitchedSlab> & tps,
+						   const shared_ptr<ProxyFunction> & proxy_u,
+						   const shared_ptr<ProxyFunction> & proxy_uother,
 						   const shared_ptr<CF> & flux,
 						   const shared_ptr<CF> & numflux,
 						   const shared_ptr<CF> & invmap,
@@ -136,13 +138,13 @@ void ExportConsLaw(py::module & m)
 			  py::extract<shared_ptr<CF>> (cf_numentropyflux)();
 			cpp_cf_numentropyflux = Compile(cpp_cf_numentropyflux, compile);
 		      }
-
-		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u, cpp_numflux_u, cpp_invmap,
+		    auto proxy_u = py::extract<shared_ptr<ProxyFunction>> (u)();
+		    auto proxy_uother = py::extract<shared_ptr<ProxyFunction>> (uother)();
+		    
+		    auto cl = CreateSymbolicConsLaw(gfu, tps, proxy_u, proxy_uother,
+						    cpp_flux_u, cpp_numflux_u, cpp_invmap,
 						    cpp_cf_entropy, cpp_cf_entropyflux,
-						    cpp_cf_numentropyflux);//, cpp_cf_visccoeff);
-		    cl->proxy_u = py::extract<shared_ptr<ProxyFunction>> (u)();
-		    cl->proxy_uother = py::extract<shared_ptr<ProxyFunction>> (uother)();
-
+						    cpp_cf_numentropyflux);
 		    if(ViscosityCoefficient.has_value())
 		      {
 			py::object cf_visccoeff =

@@ -19,6 +19,11 @@ class SymbolicConsLaw : public T_ConservationLaw<SymbolicConsLaw<D,COMP,ECOMP>, 
   shared_ptr<CF> cf_numentropyflux = nullptr;
   shared_ptr<CF> cf_visccoeff = nullptr;
 
+  // compiled differentials
+  shared_ptr<CF> ddu_invmap = nullptr;
+  shared_ptr<CF> ddphi_invmap = nullptr;
+  shared_ptr<CF> ddu_entropy = nullptr;
+
   using BASE::proxy_u;
   using BASE::proxy_uother;
   using BASE::proxy_graddelta;
@@ -27,6 +32,8 @@ class SymbolicConsLaw : public T_ConservationLaw<SymbolicConsLaw<D,COMP,ECOMP>, 
 public:
   SymbolicConsLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
+		   const shared_ptr<ProxyFunction> & aproxy_u,
+		   const shared_ptr<ProxyFunction> & aproxy_uother,
 		   const shared_ptr<CF> & acf_flux,
 		   const shared_ptr<CF> & acf_numflux,
 		   const shared_ptr<CF> & acf_invmap,
@@ -37,7 +44,21 @@ public:
       cf_flux{acf_flux}, cf_numflux{acf_numflux}, cf_invmap{acf_invmap},
       cf_entropy{acf_entropy}, cf_entropyflux{acf_entropyflux},
       cf_numentropyflux{acf_numentropyflux}
-  { }
+  {
+    // set proxies
+    proxy_u = aproxy_u;
+    proxy_uother = aproxy_uother;
+
+    if(cf_entropy)
+      {
+	// precompute derivatives for entropy residual
+	ddu_invmap = cf_invmap->Diff(proxy_u.get(), proxy_uother);
+	ddphi_invmap = cf_invmap->Diff(BASE::tps->cfgradphi.get(), proxy_graddelta);
+
+	auto temp = cf_entropy - cf_entropyflux*tps->cfgradphi;
+	ddu_entropy = temp->Diff(proxy_u.get(), proxy_uother);
+      }
+  }
 
   using BASE::Flux;
   using BASE::NumFlux;
@@ -65,11 +86,12 @@ public:
     ud.GetAMemory(proxy_uother.get()) = ut;            // abuse other proxy for derivatives
     ud.GetAMemory(BASE::tps->cfgradphi.get()) = gradphi;  // set values for grad(phi)
     ud.GetAMemory(proxy_graddelta.get()) = graddelta;     // set values for graddelta
-    auto diffu = cf_invmap->Diff(proxy_u.get(), proxy_uother);
-    diffu->Evaluate(mir, ut);
-    auto diffgrad = cf_invmap->Diff(BASE::tps->cfgradphi.get(), proxy_graddelta);
-    diffgrad->Evaluate(mir, graddelta);
+
+    // map derivative
+    ddu_invmap->Evaluate(mir, ut);
+    ddphi_invmap->Evaluate(mir, graddelta);
     ut += graddelta;
+    // map function value
     cf_invmap->Evaluate(mir, u);
   }
 
@@ -104,12 +126,10 @@ public:
     ud.GetAMemory(proxy_uother.get()) = ut;            // abuse other proxy for derivatives
     ud.GetAMemory(BASE::tps->cfgradphi.get()) = gradphi;   // set values for grad(phi)
     ud.GetAMemory(proxy_graddelta.get()) = graddelta;      // set values for graddelta
-    auto diff1 = cf_entropy->Diff(proxy_u.get(), proxy_uother);
-    auto temp = cf_entropyflux*tps->cfgradphi;
-    auto diff2 = temp->Diff(proxy_u.get(), proxy_uother);
-    auto temp2 = diff1 - diff2;
-    temp2->Evaluate(mir, dEdt);
+
+    ddu_entropy->Evaluate(mir, dEdt);
     cf_entropyflux->Evaluate(mir, F);
+    // add linear part to derivative
     for( size_t i : Range(dEdt.Width()))
       dEdt(0,i) -= InnerProduct(F.Col(i), graddelta.Col(i));
   }
@@ -151,6 +171,8 @@ public:
 
 shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction> & gfu,
 						   const shared_ptr<TentPitchedSlab> & tps,
+						   const shared_ptr<ProxyFunction> & proxy_u,
+						   const shared_ptr<ProxyFunction> & proxy_uother,
 						   const shared_ptr<CF> & flux,
 						   const shared_ptr<CF> & numflux,
 						   const shared_ptr<CF> & invmap,
@@ -165,19 +187,22 @@ shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction
   switch(dim){
   case 1:
     Switch<MAXCOMP>(comp_space, [&](auto COMP) {
-	cl = make_shared<SymbolicConsLaw<1, COMP, 1>>(gfu, tps, flux, numflux, invmap,
+	cl = make_shared<SymbolicConsLaw<1, COMP, 1>>(gfu, tps, proxy_u, proxy_uother,
+						      flux, numflux, invmap,
 						      entropy, entropyflux, numentropyflux);
       });
     break;
   case 2:
     Switch<MAXCOMP>(comp_space, [&](auto COMP) {
-	cl = make_shared<SymbolicConsLaw<2, COMP, 1>>(gfu, tps, flux, numflux, invmap,
+	cl = make_shared<SymbolicConsLaw<2, COMP, 1>>(gfu, tps, proxy_u, proxy_uother,
+						      flux, numflux, invmap,
 						      entropy, entropyflux, numentropyflux);
       });
     break;
   case 3:
     Switch<MAXCOMP>(comp_space, [&](auto COMP) {
-	cl = make_shared<SymbolicConsLaw<3, COMP, 1>>(gfu, tps, flux, numflux, invmap,
+	cl = make_shared<SymbolicConsLaw<3, COMP, 1>>(gfu, tps, proxy_u, proxy_uother,
+						      flux, numflux, invmap,
 						      entropy, entropyflux, numentropyflux);
       });
     break;
