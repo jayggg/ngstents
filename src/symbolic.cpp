@@ -189,11 +189,9 @@ shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction
   Switch<4>(dim, [&](auto DIM) {
       Switch<MAXCOMP+1>(comp_space, [&](auto COMP) {
 	  Switch<2>(ecomp, [&](auto ECOMP) {
-	      const auto DIM_ = DIM;
-	      const auto COMP_ = COMP;
-	      cl = make_shared<SymbolicConsLaw<DIM_, COMP_, ECOMP>>(gfu, tps, proxy_u, proxy_uother,
-								    flux, numflux, invmap,
-								    entropy, entropyflux, numentropyflux);
+	      cl = make_shared<SymbolicConsLaw<DIM.value, COMP.value, ECOMP>>(gfu, tps, proxy_u, proxy_uother,
+									      flux, numflux, invmap,
+									      entropy, entropyflux, numentropyflux);
 	    });
 	});
     });
