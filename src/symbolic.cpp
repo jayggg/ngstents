@@ -39,7 +39,8 @@ public:
 		   const shared_ptr<CF> & acf_invmap,
 		   const shared_ptr<CF> & acf_entropy,
 		   const shared_ptr<CF> & acf_entropyflux,
-		   const shared_ptr<CF> & acf_numentropyflux)
+		   const shared_ptr<CF> & acf_numentropyflux,
+		   const bool compile)
     : BASE (agfu, atps, "symbolic"),
       cf_flux{acf_flux}, cf_numflux{acf_numflux}, cf_invmap{acf_invmap},
       cf_entropy{acf_entropy}, cf_entropyflux{acf_entropyflux},
@@ -51,9 +52,13 @@ public:
 
     if(cf_entropy)
       {
+	bool wait = true;
 	// precompute derivatives for entropy residual
 	ddu_invmap = cf_invmap->Diff(proxy_u.get(), proxy_uother);
+	ddu_invmap = Compile(ddu_invmap, compile, 0, wait);
+
 	ddphi_invmap = cf_invmap->Diff(BASE::tps->cfgradphi.get(), proxy_graddelta);
+	ddphi_invmap = Compile(ddphi_invmap, compile, 0, wait);
 
 	auto temp = cf_entropy - cf_entropyflux*tps->cfgradphi;
 	ddu_entropy = temp->Diff(proxy_u.get(), proxy_uother);
@@ -181,7 +186,8 @@ shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction
 						   const shared_ptr<CF> & invmap,
 						   const shared_ptr<CF> & entropy,
 						   const shared_ptr<CF> & entropyflux,
-						   const shared_ptr<CF> & numentropyflux)
+						   const shared_ptr<CF> & numentropyflux,
+						   const bool compile)
 {
   const int dim = tps->ma->GetDimension();
   constexpr int MAXCOMP = 6;
@@ -194,7 +200,8 @@ shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction
 	  Switch<2>(ecomp, [&](auto ECOMP) {
 	      cl = make_shared<SymbolicConsLaw<DIM.value, COMP.value, ECOMP>>(gfu, tps, proxy_u, proxy_uother,
 									      flux, numflux, invmap,
-									      entropy, entropyflux, numentropyflux);
+									      entropy, entropyflux, numentropyflux,
+									      compile);
 	    });
 	});
     });
