@@ -133,6 +133,8 @@ public:
     values.AddSize(Dimension(), mir.Size()) = BareSliceMatrix<SIMD<double>> (ud.GetAMemory (this));
   }
 
+  void GenerateCode(Code &code, FlatArray<int> inputs, int index) const;
+
   shared_ptr<CoefficientFunction>
   Diff (const CoefficientFunction * var, shared_ptr<CoefficientFunction> dir) const
   {
