@@ -87,10 +87,13 @@ public:
     ud.GetAMemory(BASE::tps->cfgradphi.get()) = gradphi;  // set values for grad(phi)
     ud.GetAMemory(proxy_graddelta.get()) = graddelta;     // set values for graddelta
 
+    STACK_ARRAY(SIMD<double>, mem, COMP*mir.Size());
+    FlatMatrix<SIMD<double>> temp(COMP, mir.Size(), mem);
+
     // map derivative
     ddu_invmap->Evaluate(mir, ut);
-    ddphi_invmap->Evaluate(mir, graddelta);
-    ut += graddelta;
+    ddphi_invmap->Evaluate(mir, temp);
+    ut += temp;
     // map function value
     cf_invmap->Evaluate(mir, u);
   }

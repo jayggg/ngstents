@@ -428,7 +428,6 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
 	  gradphi = (1-tstar)*gradbot + tstar*gradtop;
 	  graddelta = gradtop - gradbot;
 	  Cast().InverseMap(simd_mir, gradphi, graddelta, ui, uti);
-	  graddelta = gradtop - gradbot; //reset graddelta for now
 	  Cast().CalcEntropy(simd_mir, ui, uti, gradphi, graddelta, Ei, Fi);
 	}
       else
