@@ -75,6 +75,9 @@ public:
   void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
 		  FlatMatrix<SIMD<double>> gradphi, FlatMatrix<SIMD<double>> u) const
   {
+    static Timer tinvmap ("Inverse Map", 2);
+    RegionTimer reg(tinvmap);
+
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = u;                  // set values for u
     ud.GetAMemory(BASE::tps->cfgradphi.get()) = gradphi;  // set values for grad(phi)
@@ -87,6 +90,9 @@ public:
 		  FlatMatrix<SIMD<double>> u,
 		  FlatMatrix<SIMD<double>> ut) const
   {
+    static Timer tinvmapdiff ("Inverse Map Diff", 2);
+    RegionTimer reg(tinvmapdiff);
+
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = u;                  // set values for u
     ud.GetAMemory(proxy_uother.get()) = ut;            // abuse other proxy for derivatives
@@ -108,6 +114,9 @@ public:
   void Flux (const SIMD_BaseMappedIntegrationRule & mir,
              FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> flux) const
   {
+    static Timer tflux ("Flux", 2);
+    RegionTimer reg(tflux);
+
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = u; // set values for u
     cf_flux->Evaluate(mir, flux);
@@ -118,6 +127,9 @@ public:
 	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
+    static Timer tnumflux ("NumFlux", 2);
+    RegionTimer reg(tnumflux);
+
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = ul; // set values for ul
     ud.GetAMemory(proxy_uother.get()) = ur; // set values for ur
@@ -130,6 +142,9 @@ public:
 		    FlatMatrix<SIMD<double>> gradphi, FlatMatrix<SIMD<double>> graddelta,
 		    FlatMatrix<SIMD<double>> dEdt, FlatMatrix<SIMD<double>> F) const
   {
+    static Timer tentropy ("CalcEntropy", 2);
+    RegionTimer reg(tentropy);
+    
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = u;                  // set values for u
     ud.GetAMemory(proxy_uother.get()) = ut;            // abuse other proxy for derivatives
@@ -148,6 +163,9 @@ public:
 		   FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
 		   FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
+    static Timer tentropyflux ("EntropyFlux", 2);
+    RegionTimer reg(tentropyflux);
+
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = ul;      // set values for ul
     ud.GetAMemory(proxy_uother.get()) = ur; // set values for ur
@@ -164,6 +182,9 @@ public:
                        FlatMatrix<SIMD<double>> res,
                        const double hi, double & coeff) const
   {
+    static Timer tentropyvisc ("EntropyViscCoeff", 2);
+    RegionTimer reg(tentropyvisc);
+
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = u; // set values for u
     ud.GetAMemory(proxy_res.get()) = res;

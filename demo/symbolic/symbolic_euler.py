@@ -11,6 +11,8 @@ from ngstents.utils import Make1DMesh
 from math import pi
 import time
 
+SetNumThreads(1)
+
 # define geometry
 maxh = 0.05
 mesh = Mesh(unit_square.GenerateMesh(maxh=maxh))
@@ -31,7 +33,7 @@ T = 4/d (E/rho - 1/2 ||m||^2/rho^2)
 degrees of freedom of the gas particle d = 5
 '''
 
-tend = 0.25
+tend = 0.25#01
 dt = 0.05
 
 # using causality constant
@@ -83,13 +85,23 @@ def InverseMap(y):
     y_m = y[1:mesh.dim+1]
     y_E = y[mesh.dim+1]
     d = 5
-    a1 = d/2 * ( y_rho - InnerProduct(y_m, ts.gradphi) )
+    temp = InnerProduct(y_m, ts.gradphi)
+    a1 = d/2 * ( y_rho - temp )
     a2 = 2*y_E*y_rho - InnerProduct(y_m,y_m)
     normgrad = InnerProduct(ts.gradphi,ts.gradphi)
     p = a2 / (a1 + sqrt( a1**2 - (d+1)*normgrad*a2))
-    rho = y_rho**2 / (y_rho - (InnerProduct(y_m, ts.gradphi) + p*normgrad))
+    rho = y_rho**2 / (y_rho - (temp + p*normgrad))
     m = rho/y_rho * (y_m + p*ts.gradphi)
     E = 1/y_rho * (rho*y_E + p*InnerProduct(m,ts.gradphi))
+    """
+    d = 5
+    temp = y[0] - y[1:mesh.dim+1]*ts.gradphi
+    temp2 = 2*y[mesh.dim+1]*y[0] - y[1:mesh.dim+1]*y[1:mesh.dim+1]
+    rhoe = temp2 /(temp + sqrt( temp**2 - 4*(d+1)/d**2 * ts.gradphi*ts.gradphi * temp2))
+    rho = y[0]**2 / (temp - 2* ts.gradphi*ts.gradphi * rhoe/d)
+    m = rho/y[0] * (y[1:mesh.dim+1] + 2*rhoe/d * ts.gradphi)
+    E = ( rho*y[mesh.dim+1] + 2*rhoe/d * m*ts.gradphi) / y[0]
+    """
     return CoefficientFunction((rho, m, E))
 
 def BndNumFlux(um):
@@ -139,7 +151,7 @@ def ViscosityCoefficient(u, res):
     return IfPos( nu_max - nu_entr, nu_entr, nu_max)
 
 # define conservation law
-order = 2
+order = 4
 V = L2(mesh, order=order, dim=mesh.dim+2)
 gfu = GridFunction(V,name="u")
 cl = ConservationLaw(gfu, ts,
@@ -171,6 +183,7 @@ redraw = 1
 
 input("press enter to start")
 t1 = time.time()
+print("start time stepping")
 with TaskManager():
     while t < tend-dt/2:
         cl.Propagate()
@@ -180,3 +193,18 @@ with TaskManager():
             print("{:5f}".format(t))
             Redraw(True)
 print("total time = ",time.time()-t1)
+
+for t in Timers():
+    if t["name"] == "SARK::Propagate Tent" or \
+       t["name"] == "Propagate" or \
+       t["name"] == "calc residual" or \
+       t["name"] == "calc nu" or \
+       t["name"] == "apply viscosity" or \
+       t["name"] ==  "Inverse Map Diff" or \
+       t["name"] ==  "CalcEntropy" or \
+       t["name"] ==  "EntropyFlux" or \
+       t["name"] ==  "Inverse Map" or \
+       t["name"] ==  "Flux" or \
+       t["name"] ==  "NumFlux" or \
+       t["name"] ==  "EntropyViscCoeff":
+        print(t)

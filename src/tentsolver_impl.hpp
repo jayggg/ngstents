@@ -66,6 +66,10 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   static Timer tproptent ("SARK::Propagate Tent", 2);
   ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
 
+  static Timer tres ("calc residual", 2);
+  static Timer tnu ("calc nu", 2);
+  static Timer tvisc ("apply viscosity", 2);
+
   tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), lh);
   tent.InitTent(tcl->gftau);
 
@@ -156,12 +160,16 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
 	  // double nu_tent = tcl->CalcViscosityCoefficientTent(
 	  //                        tent, U0, res, (j+1)*taustar, lh);
 	  /////// use dUhatdt as approximation at the initial time
+	  tres.Start();
 	  tcl->CalcEntropyResidualTent(tent, U0, dUhatdt, res, local_init, j*taustar, lh);
+	  tres.Stop();
 	  hres->SetIndirect(tent.fedata->dofs,AsFV(res));
+	  tnu.Start();
 	  double nu_tent = tcl->CalcViscosityCoefficientTent(tent, U0, res,j*taustar, lh);
-
+	  tnu.Stop();
 	  local_nu = nu_tent;
 	  double steps_visc = (40*tau_tent*nu_tent/tau_visc1)/substeps;
+	  tvisc.Start();
 	  if (steps_visc > 0.2)
 	    {
 	      steps_visc = max(1.0,ceil(steps_visc));
@@ -176,6 +184,7 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
 		}
 	      tcl->Tent2Cyl(tent, (j+1)*taustar, local_u, local_Gu0, true, lh);
 	    }
+	  tvisc.Stop();
 	}
     }
 

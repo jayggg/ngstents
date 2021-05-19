@@ -97,6 +97,9 @@ public:
   void Flux (const SIMD_BaseMappedIntegrationRule & mir,
              FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> flux) const
   {
+    static Timer tflux ("Flux", 2);
+    RegionTimer reg(tflux);
+
     for(int i : Range(u.Width()))
       {
         Mat<D+2,D,SIMD<double>> fluxmat = Flux(u.Col(i));
@@ -181,6 +184,9 @@ public:
   void NumFlux(FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
             FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
+    static Timer tnumflux ("NumFlux", 2);
+    RegionTimer reg(tnumflux);
+
     // TODO: proper use of SIMD!
     for (size_t i : Range(ula.Width()))
       for (size_t j : Range(SIMD<double>::Size()))
@@ -250,6 +256,9 @@ public:
                    FlatMatrix<AutoDiff<1,SIMD<double>>> grad, 
 		   FlatMatrix<SIMD<double>> dEdt, FlatMatrix<SIMD<double>> F) const
   {
+    static Timer tentropy ("CalcEntropy", 2);
+    RegionTimer reg(tentropy);
+
     auto InnerProduct = [](auto a, auto b)
       {
         typename decltype(a)::TELEM res(0.0);
@@ -278,6 +287,9 @@ public:
   void EntropyFlux (FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
                     FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> flux) const
   {
+    static Timer tentropyflux ("EntropyFlux", 2);
+    RegionTimer reg(tentropyflux);
+
     for(size_t i : Range(ula.Width()))
       {        
         auto rhol = ula(0,i);
@@ -306,6 +318,9 @@ public:
                        FlatMatrix<SIMD<double>> res_ipts,
                        const double hi, double & coeff) const
   {
+    static Timer tentropyvisc ("EntropyViscCoeff", 2);
+    RegionTimer reg(tentropyvisc);
+
     double betaeli = 0.0;
     double rhoeli = 0.0;
     double visci = 0.0;
@@ -470,6 +485,9 @@ public:
   void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
 		  FlatMatrix<T> grad, FlatMatrix<T> u) const
   {
+    static Timer tinvmap ("Inverse Map", 2);
+    RegionTimer reg(tinvmap);
+
     for (auto i : Range(mir))
       InverseMap(mir[i], grad.Col(i), u.Col(i));
   }

@@ -1,9 +1,11 @@
 from netgen.geom2d import unit_square
 from ngsolve import (Mesh, Draw, Redraw, CoefficientFunction, sqrt, x, y, exp,
-                     L2, GridFunction, TaskManager)
+                     L2, GridFunction, TaskManager, SetNumThreads, Timers)
 from ngsolve.internal import visoptions
 from ngstents import TentSlab
 from ngstents.conslaw import Euler
+
+SetNumThreads(1)
 
 maxh = 0.05
 mesh = Mesh(unit_square.GenerateMesh(maxh=maxh))
@@ -43,6 +45,8 @@ visoptions.vecfunction = None
 
 t = 0
 cnt = 0
+import time
+t1 = time.time()
 with TaskManager():
     while t<tend-dt/2:
         cl.Propagate()
@@ -51,3 +55,19 @@ with TaskManager():
         if cnt%1 == 0:
             print("{0:.5f}".format(t))
             Redraw(True)
+print("total time = ", time.time() - t1)
+
+for t in Timers():
+    if t["name"] == "SARK::Propagate Tent" or \
+       t["name"] == "Propagate" or \
+       t["name"] == "calc residual" or \
+       t["name"] == "calc nu" or \
+       t["name"] == "apply viscosity" or \
+       t["name"] ==  "Inverse Map Diff" or \
+       t["name"] ==  "CalcEntropy" or \
+       t["name"] ==  "EntropyFlux" or \
+       t["name"] ==  "Inverse Map" or \
+       t["name"] ==  "Flux" or \
+       t["name"] ==  "NumFlux" or \
+       t["name"] ==  "EntropyViscCoeff":
+        print(t)
