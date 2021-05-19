@@ -133,7 +133,7 @@ public:
             norm2 += normals(j,i) * normals(j,i); 
             prod += normals(j,i) * u(j,i);
           }
-        u_refl.Col(i) -= 2/norm2 * prod * normals.Col(i);
+	u_refl.Rows(0,D).Col(i) -= 2/norm2 * prod * normals.Col(i);
       }
     u_refl.Row(D) = u.Row(D);
   }
