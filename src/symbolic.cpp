@@ -52,7 +52,7 @@ public:
 
     if(cf_entropy)
       {
-	bool wait = true;
+	bool wait = false;
 	// precompute derivatives for entropy residual
 	ddu_invmap = cf_invmap->Diff(proxy_u.get(), proxy_uother);
 	ddu_invmap = Compile(ddu_invmap, compile, 0, wait);
@@ -62,6 +62,7 @@ public:
 
 	auto temp = cf_entropy - cf_entropyflux*tps->cfgradphi;
 	ddu_entropy = temp->Diff(proxy_u.get(), proxy_uother);
+	ddu_entropy = Compile(ddu_entropy, compile, 0, wait);
       }
   }
 
