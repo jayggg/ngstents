@@ -1,6 +1,6 @@
 from ngsolve import Mesh, Draw, Redraw
 from ngsolve import CoefficientFunction, x, cos, sqrt, exp, IfPos, Id, InnerProduct
-from ngsolve import L2, GridFunction, TaskManager, SetNumThreads
+from ngsolve import L2, GridFunction, TaskManager, SetNumThreads, Timers
 from ngsolve import specialcf as scf
 from ngsolve.internal import visoptions, viewoptions
 from ngstents import TentSlab
@@ -10,7 +10,7 @@ from math import pi
 
 SetNumThreads(1)
 
-N = 20
+N = 100
 mesh = Mesh(Make1DMesh([[0,1]], [N], bcname=["left","right"]))
 
 '''
@@ -99,7 +99,8 @@ cl = ConservationLaw(gfu, ts,
                      entropy = Entropy,
                      entropyflux = EntropyFlux,
                      numentropyflux = NumEntropyFlux,
-                     visccoeff = ViscosityCoefficient)
+                     visccoeff = ViscosityCoefficient,
+                     compile = True)
 cl.SetTentSolver("SARK", substeps=order*order)
 
 # set inital data
@@ -128,3 +129,18 @@ with TaskManager():
             print("{:5f}".format(t))
             Redraw(True)
 print("total time = ",time.time()-t1)
+
+for t in Timers():
+    if t["name"] == "SARK::Propagate Tent" or \
+       t["name"] == "Propagate" or \
+       t["name"] == "calc residual" or \
+       t["name"] == "calc nu" or \
+       t["name"] == "apply viscosity" or \
+       t["name"] ==  "Inverse Map Diff" or \
+       t["name"] ==  "CalcEntropy" or \
+       t["name"] ==  "EntropyFlux" or \
+       t["name"] ==  "Inverse Map" or \
+       t["name"] ==  "Flux" or \
+       t["name"] ==  "NumFlux" or \
+       t["name"] ==  "EntropyViscCoeff":
+        print(t)

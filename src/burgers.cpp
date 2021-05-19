@@ -33,6 +33,9 @@ public:
   void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
 		  FlatMatrix<T> grad, FlatMatrix<T> u) const
   {
+    static Timer tinvmap ("Inverse Map", 2);
+    RegionTimer reg(tinvmap);
+
     for (int i : Range(grad.Width()))
       {
 	auto sum = T(0.0);
@@ -46,6 +49,9 @@ public:
   void Flux (const SIMD_BaseMappedIntegrationRule & mir,
              FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> flux) const
   {
+    static Timer tflux ("Flux", 2);
+    RegionTimer reg(tflux);
+
     for(size_t i : Range(mir))
       flux.Col(i) = 0.5 * u(0,i)*u(0,i);
   }
@@ -57,6 +63,9 @@ public:
 	       FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
+    static Timer tnumflux ("NumFlux", 2);
+    RegionTimer reg(tnumflux);
+
     for(size_t i : Range(ula.Width()))
       {
         SIMD<double> sumn = 0.0;
@@ -76,6 +85,9 @@ public:
                    FlatMatrix<AutoDiff<1,SIMD<double>>> grad,
 		   FlatMatrix<SIMD<double>> dEdt, FlatMatrix<SIMD<double>> F) const
   {
+    static Timer tentropy ("CalcEntropy", 2);
+    RegionTimer reg(tentropy);
+
     // E = u^2/2,
     // F = u^3/3 [ 1 ]*D
     for(size_t i : Range(adu.Width()))
@@ -98,6 +110,9 @@ public:
                     FlatMatrix<SIMD<double>> n,
                     FlatMatrix<SIMD<double>> flux) const
   {
+    static Timer tentropyflux ("EntropyFlux", 2);
+    RegionTimer reg(tentropyflux);
+
     for(size_t i : Range(ul.Width()))
       {
         SIMD<double> sumn = 0.0;
@@ -128,6 +143,9 @@ public:
                        FlatMatrix<SIMD<double>> res_ipts,
                        const double hi, double & coeff) const
   {
+    static Timer tentropyvisc ("EntropyViscCoeff", 2);
+    RegionTimer reg(tentropyvisc);
+
     int nipt = mir.IR().GetNIP();
 
     double betai = 0.0;

@@ -8,8 +8,10 @@ from ngstents.utils import Make1DMesh, Make1DMeshSpecified
 from ngstents.conslaw import Burgers
 from ngsolve import Mesh, CoefficientFunction, x, exp, Draw, Redraw
 from ngsolve import L2, GridFunction
-from ngsolve import TaskManager, SetNumThreads
+from ngsolve import TaskManager, SetNumThreads, Timers
 from ngsolve.internal import viewoptions
+
+SetNumThreads(1)
 
 # Options
 cfnum = 0
@@ -25,7 +27,7 @@ if spec:
              0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0,]
     mesh = Make1DMeshSpecified(pts, bcname=["left","right"])
 else:
-    mesh = Make1DMesh([[0, 1]], [20], bcname=["left","right"])
+    mesh = Make1DMesh([[0, 1]], [100], bcname=["left","right"])
 mesh = Mesh(mesh)
 
 ts = TentSlab(mesh)
@@ -48,7 +50,7 @@ cf = CoefficientFunction(0.5*exp(-100*(x-0.2)*(x-0.2))) if cfnum == 0 \
 burg.SetInitial(cf)
 Draw(u)
 
-tend = 4
+tend = 1
 t = 0
 cnt = 0
 
@@ -57,12 +59,27 @@ viewoptions.drawcolorbar = 0
 
 input('start')
 with TaskManager():
-    while t < tend:
+    while t < tend - dt/2:
         burg.Propagate()
         t += dt
         cnt += 1
-        if cnt % 5 == 0:
+        if cnt % 1 == 0:
             print("{0:.5f}".format(t))
             Redraw()
+            # print("||res|| = ",Norm(burg.res.vec.FV()))
             if step_sol:
                 input('step')
+
+for t in Timers():
+    if t["name"] == "SARK::Propagate Tent" or \
+       t["name"] == "Propagate" or \
+       t["name"] == "calc residual" or \
+       t["name"] == "calc nu" or \
+       t["name"] == "apply viscosity" or \
+       t["name"] ==  "CalcEntropy" or \
+       t["name"] ==  "EntropyFlux" or \
+       t["name"] ==  "Inverse Map" or \
+       t["name"] ==  "Flux" or \
+       t["name"] ==  "NumFlux" or \
+       t["name"] ==  "EntropyViscCoeff":
+        print(t)
