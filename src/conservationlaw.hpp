@@ -58,6 +58,8 @@ public:
 
   virtual void SetViscosityCoefficient(shared_ptr<CoefficientFunction> cf_visc) = 0;
 
+  virtual void SetNumEntropyFlux(shared_ptr<CoefficientFunction> cf_numentropyflux) = 0;
+
   virtual void SetTentSolver(string method, int stages, int substeps) = 0;
 
   virtual void Propagate(LocalHeap & lh) = 0;
@@ -86,7 +88,9 @@ protected:
   Array<shared_ptr<CoefficientFunction>> cf_bnd; // CoefficientFunction used for boundary values
   bool cf_bnd_deriv = false;
   BitArray scale_deriv; // scale time-dependent boundary coefficient function by tent height (SAT)
-  
+
+  shared_ptr<CoefficientFunction> cf_numentropyflux = nullptr;
+
   // collection of tents in timeslab
   Table<int> & tent_dependency = tps->tent_dependency;
 
@@ -238,7 +242,12 @@ public:
 
   virtual void SetViscosityCoefficient(shared_ptr<CoefficientFunction> cf_visc)
   {
-    throw Exception("set cf_visccoeff for SymbolicConsLaw");
+    throw Exception("SetViscosityCoefficient just available for SymbolicConsLaw");
+  }
+
+  virtual void SetNumEntropyFlux(shared_ptr<CoefficientFunction> cf_numentropyflux)
+  {
+    throw Exception("SetNumEntropyFlux just available for SymbolicConsLaw");
   }
 
   template <int W>
