@@ -394,11 +394,11 @@ public:
   }
 
   // numerical flux for the entropy flux
-  void EntropyFlux (FlatMatrix<SIMD<double>> ml, FlatMatrix<SIMD<double>> mr,
-                    FlatMatrix<SIMD<double>> n,
-                    FlatMatrix<SIMD<double>> flux) const
+  void NumEntropyFlux (FlatMatrix<SIMD<double>> ml, FlatMatrix<SIMD<double>> mr,
+		       FlatMatrix<SIMD<double>> n,
+		       FlatMatrix<SIMD<double>> flux) const
   {
-    cout << "no overload for EntropyFlux for FlatMatrix<SIMD>" << endl;
+    cout << "no overload for NumEntropyFlux for FlatMatrix<SIMD>" << endl;
   }
 
   // apply viscosity

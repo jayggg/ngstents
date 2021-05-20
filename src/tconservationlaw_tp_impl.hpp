@@ -490,10 +490,10 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
 	      // assume IR's have the same size
 	      ud->AssignMemory (proxy_u.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
 	      ud->AssignMemory (proxy_uother.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
-	      Cast().EntropyFlux(simd_mir, u1,u2,fedata->anormals[i],Fn);
+	      Cast().NumEntropyFlux(simd_mir, u1,u2,fedata->anormals[i],Fn);
 	    }
 	  else
-	    Cast().EntropyFlux(u1,u2,fedata->anormals[i],Fn);
+	    Cast().NumEntropyFlux(u1,u2,fedata->anormals[i],Fn);
 
           FlatVector<SIMD<double>> di = fedata->adelta_facet[i];
           for (size_t j : Range(simd_nipt))
@@ -557,7 +557,7 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
 
 		  ud.AssignMemory (proxy_u.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
 		  ud.AssignMemory (proxy_uother.get(), simd_ir_facet_vol1.GetNIP(), COMP, lh);
-		  Cast().EntropyFlux(simd_mir1, u1, u2, fedata->anormals[i], Fn);
+		  Cast().NumEntropyFlux(simd_mir1, u1, u2, fedata->anormals[i], Fn);
 		}
 	    }
 	  else
@@ -584,7 +584,7 @@ CalcEntropyResidualTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
 		  throw Exception("no implementation for your chosen boundary condition number "
 				  + ToString(bc+1));
 		}
-	      Cast().EntropyFlux(u1, u2, fedata->anormals[i], Fn);
+	      Cast().NumEntropyFlux(u1, u2, fedata->anormals[i], Fn);
 	    }
 
 	  FlatVector<SIMD<double>> di = fedata->adelta_facet[i];

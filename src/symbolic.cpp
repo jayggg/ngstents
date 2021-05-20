@@ -144,9 +144,9 @@ public:
   }
 
   // numerical entropy flux
-  void EntropyFlux(const SIMD_BaseMappedIntegrationRule & mir,
-		   FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-		   FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+  void NumEntropyFlux(const SIMD_BaseMappedIntegrationRule & mir,
+		      FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
+		      FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = ul;      // set values for ul

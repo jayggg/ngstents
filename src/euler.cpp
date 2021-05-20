@@ -275,8 +275,8 @@ public:
       }
   }
   
-  void EntropyFlux (FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
-                    FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> flux) const
+  void NumEntropyFlux (FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
+		       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> flux) const
   {
     for(size_t i : Range(ula.Width()))
       {        
