@@ -11,15 +11,21 @@ shared_ptr<ConservationLaw> CreateAdvection(const shared_ptr<GridFunction> & gfu
 					    const shared_ptr<TentPitchedSlab> & tps);
 shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<GridFunction> & gfu,
 					  const shared_ptr<TentPitchedSlab> & tps);
+
+typedef CoefficientFunction CF;
 shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction> & gfu,
 						   const shared_ptr<TentPitchedSlab> & tps,
-						   const shared_ptr<CoefficientFunction> & flux,
-						   const shared_ptr<CoefficientFunction> & numflux,
-						   const shared_ptr<CoefficientFunction> & invmap,
-						   const shared_ptr<CoefficientFunction> & cf_reflect);
+						   const shared_ptr<ProxyFunction> & proxy_u,
+						   const shared_ptr<ProxyFunction> & proxy_uother,
+						   const shared_ptr<CF> & flux,
+						   const shared_ptr<CF> & numflux,
+						   const shared_ptr<CF> & invmap,
+						   const shared_ptr<CF> & entropy,
+						   const shared_ptr<CF> & entropyflux,
+						   const shared_ptr<CF> & numentropyflux,
+						   const bool compile);
 
 typedef ConservationLaw CL;
-
 shared_ptr<CL> CreateConsLaw(const shared_ptr<GridFunction> & gfu,
 			     const shared_ptr<TentPitchedSlab> & tps,
 			     const string & eqn)
@@ -78,11 +84,11 @@ void ExportConsLaw(py::module & m)
      		     py::object Flux,
 		     py::object NumFlux,
 		     py::object InverseMap,
-		     optional<py::object> ReflectBnd,
 		     const bool compile,
-		     optional<Region> outflow,
-		     optional<Region> inflow,
-		     optional<Region> reflect)
+		     optional<py::object> Entropy,
+		     optional<py::object> EntropyFlux,
+		     optional<py::object> NumEntropyFlux,
+		     optional<py::object> ViscosityCoefficient)
      		  -> shared_ptr<CL>
 		  {
 		    // proxies for u and u.Other()
@@ -91,45 +97,73 @@ void ExportConsLaw(py::module & m)
 
 		    // CF for flux
 		    py::object flux_u = Flux( u );
-     		    shared_ptr<CoefficientFunction> cpp_flux_u =
-     		      py::extract<shared_ptr<CoefficientFunction>> (flux_u)();
-     		    cpp_flux_u = Compile(cpp_flux_u, compile);
+     		    shared_ptr<CF> cpp_flux_u =
+     		      py::extract<shared_ptr<CF>> (flux_u)();
+		    cpp_flux_u = Compile(cpp_flux_u, compile, 0);
 
 		    //  CF for numerical flux
 		    py::object numflux_u = NumFlux( u, uother );
-		    shared_ptr<CoefficientFunction> cpp_numflux_u =
-		      py::extract<shared_ptr<CoefficientFunction>> (numflux_u)();
-		    cpp_numflux_u = Compile(cpp_numflux_u, compile);
+		    shared_ptr<CF> cpp_numflux_u =
+		      py::extract<shared_ptr<CF>> (numflux_u)();
+		    cpp_numflux_u = Compile(cpp_numflux_u, compile, 0);
 
 		    // CF for inverse map
 		    py::object invmap = InverseMap( u );
-		    shared_ptr<CoefficientFunction> cpp_invmap =
-		      py::extract<shared_ptr<CoefficientFunction>> (invmap)();
-		    cpp_invmap = Compile(cpp_invmap, compile);
+		    shared_ptr<CF> cpp_invmap =
+		      py::extract<shared_ptr<CF>> (invmap)();
+		    cpp_invmap = Compile(cpp_invmap, compile, 0);
 
-		    // CF for reflecting boundary condition
-		    shared_ptr<CoefficientFunction> cpp_cf_reflect = nullptr;
-		    if(ReflectBnd.has_value())
+		    // CF for entropy residual
+		    shared_ptr<CF> cpp_entropy = nullptr;
+		    shared_ptr<CF> cpp_entropyflux = nullptr;
+		    shared_ptr<CF> cpp_numentropyflux = nullptr;
+		    if(Entropy.has_value())
 		      {
-			py::object cf_reflect = ReflectBnd.value()( u );
-			cpp_cf_reflect = py::extract<shared_ptr<CoefficientFunction>> (cf_reflect)();
-			cpp_cf_reflect = Compile(cpp_cf_reflect, compile);
+			py::object cf_entropy = Entropy.value()( u );
+			cpp_entropy = py::extract<shared_ptr<CF>> (cf_entropy)();
+			cpp_entropy = Compile(cpp_entropy, compile, 0);
+		      }
+		    if(EntropyFlux.has_value())
+		      {
+			py::object cf_entropyflux = EntropyFlux.value()( u );
+			cpp_entropyflux =
+			  py::extract<shared_ptr<CF>> (cf_entropyflux)();
+			cpp_entropyflux = Compile(cpp_entropyflux, compile, 0);
+		      }
+		    if(NumEntropyFlux.has_value())
+		      {
+			py::object cf_numentropyflux = NumEntropyFlux.value()( u, uother);
+			cpp_numentropyflux =
+			  py::extract<shared_ptr<CF>> (cf_numentropyflux)();
+			cpp_numentropyflux = Compile(cpp_numentropyflux, compile, 0);
 		      }
 
-		    auto cl = CreateSymbolicConsLaw(gfu, tps, cpp_flux_u, cpp_numflux_u, cpp_invmap,
-						    cpp_cf_reflect);
+		    bool entropy_functions = false;
+		    if (cpp_entropy && cpp_entropyflux && cpp_numentropyflux)
+		      entropy_functions = true;
+		    else if (cpp_entropy || cpp_entropyflux || cpp_numentropyflux)
+		      throw Exception("at least one entropy function missing");
 
-		    cl->proxy_u = py::extract<shared_ptr<ProxyFunction>> (u)();
-		    cl->proxy_uother = py::extract<shared_ptr<ProxyFunction>> (uother)();
+		    auto proxy_u = py::extract<shared_ptr<ProxyFunction>> (u)();
+		    auto proxy_uother = py::extract<shared_ptr<ProxyFunction>> (uother)();
 
-		    // set boundary data
-                    if(outflow.has_value())
-                      cl->SetBC(0,outflow.value().Mask());
-                    if(reflect.has_value())
-                      cl->SetBC(1,reflect.value().Mask());
-                    if(inflow.has_value())
-                      cl->SetBC(2,inflow.value().Mask());
-		    //use old style bc numbers if no regions set
+		    auto cl = CreateSymbolicConsLaw(gfu, tps, proxy_u, proxy_uother,
+						    cpp_flux_u, cpp_numflux_u, cpp_invmap,
+						    cpp_entropy, cpp_entropyflux,
+						    cpp_numentropyflux, compile);
+		    if(ViscosityCoefficient.has_value())
+		      {
+			py::object cf_visccoeff =
+			  ViscosityCoefficient.value()( u, py::cast(cl->proxy_res) );
+			auto cpp_visccoeff =
+			  py::extract<shared_ptr<CF>> (cf_visccoeff)();
+			cpp_visccoeff = Compile(cpp_visccoeff, compile, 0);
+			cl->SetViscosityCoefficient(cpp_visccoeff);
+		      }
+		    else if (entropy_functions)
+		      throw Exception("function for ViscosityCoefficient missing");
+
+		    // use old style bc numbers
 		    cl->CheckBC();
 
 		    return cl;
@@ -139,11 +173,11 @@ void ExportConsLaw(py::module & m)
      	 py::arg("flux"),
 	 py::arg("numflux"),
 	 py::arg("inversemap"),
-	 py::arg("reflectbnd")=nullptr,
 	 py::arg("compile")=false,
-	 py::arg("outflow")=nullptr,
-	 py::arg("inflow")=nullptr,
-         py::arg("reflect")=nullptr
+	 py::arg("entropy")=nullptr,
+	 py::arg("entropyflux")=nullptr,
+         py::arg("numentropyflux")=nullptr,
+	 py::arg("visccoeff")=nullptr
 	 )
     .def_property_readonly("tentslab", [](shared_ptr<CL> self)
                            {
@@ -177,33 +211,37 @@ void ExportConsLaw(py::module & m)
   			   })
     // Set the initial data
     .def("SetInitial",
-         [](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
+         [](shared_ptr<CL> self, shared_ptr<CF> cf)
          {
            SetValues(cf,*(self->gfu),VOL,0,*(self->pylh));
            self->uinit->Set(1.0,*(self->u)); // set data used for b.c.
          })
     // Set vector field for advection equation
     .def("SetVectorField",
-         [](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
+         [](shared_ptr<CL> self, shared_ptr<CF> cf)
          {
            self->SetVectorField(cf);
          })
-    .def("SetBoundaryCF",[](shared_ptr<CL> self, Region region, shared_ptr<CoefficientFunction> cf)
+    .def("SetBoundaryCF",[](shared_ptr<CL> self, Region region, shared_ptr<CF> cf)
          {
 	   // bcnr's 0 - 3 used for default boundary conditions
 	   self->SetBC(4, region);
            self->SetBoundaryCF(4 , cf);
          })
-    .def("SetBoundaryCF",[](shared_ptr<CL> self, shared_ptr<CoefficientFunction> cf)
+    .def("SetBoundaryCF",[](shared_ptr<CL> self, shared_ptr<CF> cf)
          {
 	   // bcnr's 0 - 3 used for default boundary conditions
 	   self->SetBC(4, Region(self->ma,BND,".*"));
 	   self->SetBoundaryCF(4, cf);
          })
+    .def("SetNumEntropyFlux",[](shared_ptr<CL> self, shared_ptr<CF> cf)
+         {
+	   self->SetNumEntropyFlux(cf);
+         })
     .def("SetMaterialParameters",
          [](shared_ptr<CL> self,
-	    shared_ptr<CoefficientFunction> cf_mu,
-	    shared_ptr<CoefficientFunction> cf_eps)
+	    shared_ptr<CF> cf_mu,
+	    shared_ptr<CF> cf_eps)
 	 {
 	   self->SetMaterialParameters(cf_mu,cf_eps);
 	 }, py::arg("mu"), py::arg("eps"))

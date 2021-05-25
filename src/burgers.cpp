@@ -94,9 +94,9 @@ public:
   }
 
 
-  void EntropyFlux (FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-                    FlatMatrix<SIMD<double>> n,
-                    FlatMatrix<SIMD<double>> flux) const
+  void NumEntropyFlux (FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
+		       FlatMatrix<SIMD<double>> n,
+		       FlatMatrix<SIMD<double>> flux) const
   {
     for(size_t i : Range(ul.Width()))
       {

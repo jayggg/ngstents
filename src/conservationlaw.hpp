@@ -33,6 +33,8 @@ public:
 
   shared_ptr<ProxyFunction> proxy_u = nullptr;
   shared_ptr<ProxyFunction> proxy_uother = nullptr;
+  shared_ptr<ProxyFunction> proxy_graddelta = nullptr;
+  shared_ptr<ProxyFunction> proxy_res = nullptr;
 public:
   ConservationLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
@@ -53,6 +55,10 @@ public:
 
   virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
                                      shared_ptr<CoefficientFunction> cf_eps) = 0;
+
+  virtual void SetViscosityCoefficient(shared_ptr<CoefficientFunction> cf_visc) = 0;
+
+  virtual void SetNumEntropyFlux(shared_ptr<CoefficientFunction> cf_numentropyflux) = 0;
 
   virtual void SetTentSolver(string method, int stages, int substeps) = 0;
 
@@ -82,7 +88,9 @@ protected:
   Array<shared_ptr<CoefficientFunction>> cf_bnd; // CoefficientFunction used for boundary values
   bool cf_bnd_deriv = false;
   BitArray scale_deriv; // scale time-dependent boundary coefficient function by tent height (SAT)
-  
+
+  shared_ptr<CoefficientFunction> cf_numentropyflux = nullptr;
+
   // collection of tents in timeslab
   Table<int> & tent_dependency = tps->tent_dependency;
 
@@ -125,6 +133,13 @@ public:
         fes_scal->FinalizeUpdate();
         gfres = CreateGridFunction(fes_scal,"res",Flags());
     	gfres->Update();
+
+	// residual proxy
+	proxy_res = fes_scal->GetProxyFunction(false);
+	// graddelta proxy
+	proxy_graddelta = make_shared<ProxyFunction>(fes_scal, false, false,
+						     fes_scal->GetFluxEvaluator(VOL),
+						     nullptr, nullptr, nullptr, nullptr, nullptr);
 
         // Zero order L2 finite element space for viscosity
     	shared_ptr<FESpace> fes_lo = CreateFESpace("l2ho", ma,
@@ -224,7 +239,17 @@ public:
   {
     throw Exception("SetMaterialParameters just available for Wave equation");
   }
-  
+
+  virtual void SetViscosityCoefficient(shared_ptr<CoefficientFunction> cf_visc)
+  {
+    throw Exception("SetViscosityCoefficient just available for SymbolicConsLaw");
+  }
+
+  virtual void SetNumEntropyFlux(shared_ptr<CoefficientFunction> cf_numentropyflux)
+  {
+    throw Exception("SetNumEntropyFlux just available for SymbolicConsLaw");
+  }
+
   template <int W>
   void SolveM (const Tent & tent, int loci, FlatMatrixFixWidth<W> mat,
                LocalHeap & lh) const
@@ -369,11 +394,11 @@ public:
   }
 
   // numerical flux for the entropy flux
-  void EntropyFlux (FlatMatrix<SIMD<double>> ml, FlatMatrix<SIMD<double>> mr,
-                    FlatMatrix<SIMD<double>> n,
-                    FlatMatrix<SIMD<double>> flux) const
+  void NumEntropyFlux (FlatMatrix<SIMD<double>> ml, FlatMatrix<SIMD<double>> mr,
+		       FlatMatrix<SIMD<double>> n,
+		       FlatMatrix<SIMD<double>> flux) const
   {
-    cout << "no overload for EntropyFlux for FlatMatrix<SIMD>" << endl;
+    cout << "no overload for NumEntropyFlux for FlatMatrix<SIMD>" << endl;
   }
 
   // apply viscosity

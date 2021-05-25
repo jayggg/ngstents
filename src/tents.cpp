@@ -1,6 +1,55 @@
 #include "tents.hpp"
 #include <limits>
 
+///////////////////// GradPhiCoefficientFunction ///////////////////////////
+
+void GradPhiCoefficientFunction::GenerateCode(Code &code, FlatArray<int> inputs, int index) const
+{
+  auto dims = Dimensions();
+
+  string header = "\n\
+    {flatmatrix} {values};\n\
+    ProxyUserData * {ud} = (ProxyUserData*)mir.GetTransformation().userdata;\n\
+    {\n\
+      // class GradPhiCoefficientFunction\n ";
+  header+=
+    "      if ({ud}->fel) {\n";
+  if(code.is_simd) {
+    header += "auto x = {ud}->GetAMemory ({this});\n";
+    header += "{values}.AssignMemory(x.Height(), x.Width(), &x(0,0));\n";
+  } else {
+    header += "auto x = {ud}->GetMemory ({this});\n";
+    header += "{values}.AssignMemory(x.Height(), x.Width(), &x(0,0));\n";
+  }
+  header +=  "}\n";
+  header += "}\n";
+
+  string body = "";
+  TraverseDimensions( dims, [&](int ind, int i, int j) {
+      body += Var(index, i,j).Declare("{scal_type}", 0.0);
+      string values = "{values}";
+      if(code.is_simd)
+	values += "(" + ToLiteral(ind) + ",i)";
+      else
+	values += "(i," + ToLiteral(ind) + ")";
+      body += Var(index, i,j).Assign(CodeExpr(values), false);
+    });
+
+  std::map<string,string> variables;
+  variables["ud"] = "tmp_"+ToLiteral(index)+"_0";
+  variables["this"] = "reinterpret_cast<CoefficientFunction*>("+code.AddPointer(this)+")";
+
+  variables["flatmatrix"] = code.is_simd ? "FlatMatrix<SIMD<double>>" : "FlatMatrix<double>";
+  variables["values"] = Var("values", index).S();
+
+  string scal_type = "double";
+  if(code.is_simd) scal_type = "SIMD<" + scal_type + ">";
+  variables["scal_type"] = scal_type;
+
+  code.header += Code::Map(header, variables);
+  code.body += Code::Map(body, variables);
+}
+
 /////////////////// Tent meshing ///////////////////////////////////////////
 
 constexpr ELEMENT_TYPE EL_TYPE(int DIM)
