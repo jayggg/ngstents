@@ -234,6 +234,10 @@ void ExportConsLaw(py::module & m)
 	   self->SetBC(4, Region(self->ma,BND,".*"));
 	   self->SetBoundaryCF(4, cf);
          })
+    .def("SetNumEntropyFlux",[](shared_ptr<CL> self, shared_ptr<CF> cf)
+         {
+	   self->SetNumEntropyFlux(cf);
+         })
     .def("SetMaterialParameters",
          [](shared_ptr<CL> self,
 	    shared_ptr<CF> cf_mu,

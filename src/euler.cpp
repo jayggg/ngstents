@@ -284,8 +284,8 @@ public:
       }
   }
   
-  void EntropyFlux (FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
-                    FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> flux) const
+  void NumEntropyFlux (FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
+		       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> flux) const
   {
     static Timer tentropyflux ("EntropyFlux", 2);
     RegionTimer reg(tentropyflux);

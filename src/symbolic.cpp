@@ -159,9 +159,9 @@ public:
   }
 
   // numerical entropy flux
-  void EntropyFlux(const SIMD_BaseMappedIntegrationRule & mir,
-		   FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-		   FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+  void NumEntropyFlux(const SIMD_BaseMappedIntegrationRule & mir,
+		      FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
+		      FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
     static Timer tentropyflux ("EntropyFlux", 2);
     RegionTimer reg(tentropyflux);
@@ -171,9 +171,15 @@ public:
     ud.GetAMemory(proxy_uother.get()) = ur; // set values for ur
     cf_numentropyflux->Evaluate(mir,fna);
   }
+
   void SetViscosityCoefficient(shared_ptr<CoefficientFunction> cf_visc)
   {
     cf_visccoeff = cf_visc;
+  }
+
+  void SetNumEntropyFlux(shared_ptr<CoefficientFunction> cf_numentropyflux)
+  {
+    BASE::cf_numentropyflux = cf_numentropyflux;
   }
 
   // compute the viscosity coefficient

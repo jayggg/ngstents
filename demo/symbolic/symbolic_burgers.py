@@ -8,7 +8,7 @@ from ngstents.utils import Make1DMesh
 from ngstents.conslaw import ConservationLaw
 from math import pi
 
-SetNumThreads(1)
+# SetNumThreads(1)
 
 N = 100
 mesh = Mesh(Make1DMesh([[0,1]], [N], bcname=["left","right"]))
@@ -21,7 +21,7 @@ f(u) = 1/2 * u^2
 
 '''
 
-tend = 1
+tend = 4
 dt = 0.05
 ts = TentSlab(mesh, method="edge")
 ts.SetMaxWavespeed(4)
@@ -90,7 +90,6 @@ def ViscosityCoefficient(u, res):
     nu_entr = (h/order)**2 * IfPos(res, res, -res) / Entropy(u)
     nu_max = h/order * IfPos(u, u, -u)
     return IfPos( nu_max - nu_entr, nu_entr, nu_max)
-    # return h/order * IfPos( abs_u - abs_res * h/order, abs_res * h/order, abs_u )#0.01
 
 cl = ConservationLaw(gfu, ts,
                      flux = Flux,
@@ -100,7 +99,7 @@ cl = ConservationLaw(gfu, ts,
                      entropyflux = EntropyFlux,
                      numentropyflux = NumEntropyFlux,
                      visccoeff = ViscosityCoefficient,
-                     compile = True)
+                     compile=True)
 cl.SetTentSolver("SARK", substeps=order*order)
 
 # set inital data
@@ -110,11 +109,12 @@ cl.SetInitial(cf0)
 # set boundary conditions
 cl.SetBoundaryCF(mesh.BoundaryCF({"left" : NumFlux(cl.u_minus, cf0),
                                   "right" : NumFlux(cl.u_minus, cl.u_minus) }) )
+cl.SetNumEntropyFlux(mesh.BoundaryCF({".*" : EntropyFlux(cl.u_minus)}))
 
 Draw(gfu)
 viewoptions.drawedges = 1
 
-redraw = 1
+redraw = 5
 t = 0
 cnt = 0
 input("start")
