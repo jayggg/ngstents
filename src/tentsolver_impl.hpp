@@ -77,11 +77,11 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   hu.GetIndirect(tent.fedata->dofs, AsFV(local_Gu0));
   hu0.GetIndirect(tent.fedata->dofs, AsFV(local_init));
 
-  FlatMatrixFixWidth<COMP> local_u1(ndof,lh);
-  FlatMatrixFixWidth<COMP> local_u1_half(ndof,lh);
+  // FlatMatrixFixWidth<COMP> local_u1(ndof,lh);
+  // FlatMatrixFixWidth<COMP> local_u1_half(ndof,lh);
   FlatMatrixFixWidth<COMP> local_u(ndof,lh);
   FlatMatrixFixWidth<COMP> local_help(ndof,lh);
-  FlatMatrixFixWidth<COMP> local_flux(ndof,lh), local_flux1(ndof,lh);
+  FlatMatrixFixWidth<COMP> local_flux(ndof,lh);//, local_flux1(ndof,lh);
 
   FlatMatrixFixWidth<COMP> U0(ndof,lh);
   FlatMatrixFixWidth<COMP> U1(ndof,lh);
@@ -99,6 +99,19 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   FlatMatrixFixWidth<COMP> fu1(ndof,lh);
   FlatMatrixFixWidth<COMP> fu2(ndof,lh);
   FlatMatrixFixWidth<COMP> fu3(ndof,lh);
+
+  Array<FlatMatrixFixWidth<COMP>> U(stages);
+  Array<FlatMatrixFixWidth<COMP>> u(stages);
+  Array<FlatMatrixFixWidth<COMP>> M1u(stages);
+  Array<FlatMatrixFixWidth<COMP>> fu(stages);
+  for ( auto i : Range(stages))
+    {
+      U[i].AssignMemory(ndof, lh);
+      u[i].AssignMemory(ndof, lh);
+      M1u[i].AssignMemory(ndof, lh);
+      fu[i].AssignMemory(ndof, lh);
+    }
+
   FlatMatrixFixWidth<COMP> Uhat(ndof,lh);
 
   shared_ptr<BaseVector> hres = (ECOMP > 0) ? tcl->gfres->GetVectorPtr() : nullptr;
@@ -124,6 +137,7 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   //TODO: implement SARK for different number to stages
   for (int j = 0; j < substeps; j++)
     {
+      /*
       // third order
       U0 = local_Gu0;
       tcl->Cyl2Tent (tent, j*taustar, U0, u0, lh);
@@ -143,6 +157,26 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
       local_Gu0 = Uhat;
       // for viscosity
       dUhatdt = fu0;
+      */
+      Uhat = local_Gu0;
+      for ( auto s : Range(stages) )
+	{
+	  U[s] = local_Gu0;
+	  for ( auto i : Range(s) )
+	    {
+	      U[s] += taustar * acoeff(s,i) * fu[i];
+	      U[s] += taustar * dcoeff(s,i) * M1u[i];
+	    }
+	  tcl->Cyl2Tent (tent, j*taustar, U[s], u[s], lh);
+	  tcl->ApplyM1(tent, j*taustar, u[s], M1u[s], lh);
+	  tcl->CalcFluxTent(tent, u[s], local_init, fu[s],
+			    (j+ccoeff(s))*taustar, 0, lh);
+	  Uhat += taustar * bcoeff(s) * fu[s];
+	}
+      local_Gu0 = Uhat;
+      // for viscosity
+      dUhatdt = fu[0];
+
       if (ECOMP > 0)
 	{
 	  /////// use dUhatdt as approximation at the final time
@@ -156,9 +190,9 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
 	  // double nu_tent = tcl->CalcViscosityCoefficientTent(
 	  //                        tent, U0, res, (j+1)*taustar, lh);
 	  /////// use dUhatdt as approximation at the initial time
-	  tcl->CalcEntropyResidualTent(tent, U0, dUhatdt, res, local_init, j*taustar, lh);
+	  tcl->CalcEntropyResidualTent(tent, U[0], dUhatdt, res, local_init, j*taustar, lh);
 	  hres->SetIndirect(tent.fedata->dofs,AsFV(res));
-	  double nu_tent = tcl->CalcViscosityCoefficientTent(tent, U0, res,j*taustar, lh);
+	  double nu_tent = tcl->CalcViscosityCoefficientTent(tent, U[0], res,j*taustar, lh);
 
 	  local_nu = nu_tent;
 	  double steps_visc = (40*tau_tent*nu_tent/tau_visc1)/substeps;

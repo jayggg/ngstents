@@ -59,6 +59,12 @@ protected:
   static constexpr int ECOMP = TCONSLAW::NECOMP;
   
 public:
+
+  Matrix<> acoeff;
+  Matrix<> dcoeff;
+  Vector<> bcoeff;
+  Vector<> ccoeff;
+
   SARK (const shared_ptr<TCONSLAW> & atcl, int astages, int asubsteps)
     : tcl{atcl}, stages{astages}, substeps{asubsteps}
   {
@@ -68,8 +74,36 @@ public:
     shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(atcl->fes);
     if(!fes_check)
       throw Exception("Structure-aware Runge-Kutta time stepping available for L2 spaces only");
+
+    switch(stages)
+      {
+	// case 1:
+	// break;
+	// case 2:
+	// break;
+      case 3:
+	acoeff = { {0.0, 0.0, 0.0},
+		   {0.5, 0.0, 0.0},
+		   {-1.0, 2.0, 0.0} };
+	dcoeff = { {0.0, 0.0, 0.0},
+		   {0.5, 0.0, 0.0},
+		   {-3.0, 4.0, 0.0} };
+	bcoeff = { 1.0/6.0, 2.0/3.0, 1.0/6.0 };
+	ccoeff = { 0.0, 0.5, 1.0 };
+	break;
+	// case 4:
+	// break;
+	// case 5:
+	// break;
+      default:
+	throw Exception("no "+ToString(stages)+"-stage SARK method implemented");
+      }
+    cout << "a = " << endl << acoeff << endl;
+    cout << "d = " << endl << dcoeff << endl;
+    cout << "b = " << endl << bcoeff << endl;
+    cout << "c = " << endl << ccoeff << endl;
   };
-  
+
   void PropagateTent(const Tent & tent, BaseVector & hu,
 		     const BaseVector & hu0, LocalHeap & lh) override;
 };
