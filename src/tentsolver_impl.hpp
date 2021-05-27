@@ -14,7 +14,8 @@ void SAT<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
 				  const BaseVector & hu0, LocalHeap & lh)
 {
   static Timer tproptent ("SAT::Propagate Tent", 2);
-  ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
+  // ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
+  RegionTimer reg(tproptent);
 
   tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), lh);
   tent.InitTent(tcl->gftau);
@@ -64,7 +65,8 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
 				   const BaseVector & hu0, LocalHeap & lh)
 {
   static Timer tproptent ("SARK::Propagate Tent", 2);
-  ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
+  // ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
+  RegionTimer reg(tproptent);
 
   static Timer tres ("calc residual", 2);
   static Timer tnu ("calc nu", 2);

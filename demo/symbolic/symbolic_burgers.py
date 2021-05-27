@@ -8,7 +8,7 @@ from ngstents.utils import Make1DMesh
 from ngstents.conslaw import ConservationLaw
 from math import pi
 
-# SetNumThreads(1)
+SetNumThreads(1)
 
 N = 100
 mesh = Mesh(Make1DMesh([[0,1]], [N], bcname=["left","right"]))
@@ -87,7 +87,7 @@ def ViscosityCoefficient(u, res):
     Compute the viscosity coefficient for given TrialFunction u
     and entropy residual res
     """
-    nu_entr = (h/order)**2 * IfPos(res, res, -res) / Entropy(u)
+    nu_entr = 0.25 * (h/order)**2 * IfPos(res, res, -res) / Entropy(u)
     nu_max = h/order * IfPos(u, u, -u)
     return IfPos( nu_max - nu_entr, nu_entr, nu_max)
 
@@ -114,7 +114,7 @@ cl.SetNumEntropyFlux(mesh.BoundaryCF({".*" : EntropyFlux(cl.u_minus)}))
 Draw(gfu)
 viewoptions.drawedges = 1
 
-redraw = 5
+redraw = 1
 t = 0
 cnt = 0
 input("start")
@@ -130,9 +130,15 @@ with TaskManager():
             Redraw(True)
 print("total time = ",time.time()-t1)
 
+f = open("timings_symbolic_burgers.csv","w")
 for t in Timers():
     if t["name"] == "SARK::Propagate Tent" or \
        t["name"] == "Propagate" or \
+       t["name"] == "CalcFluxTent" or \
+       t["name"] == "Cyl2Tent" or \
+       t["name"] == "ApplyM1" or \
+       t["name"] == "Tent2Cyl" or \
+       t["name"] == "CalcViscosityTent" or \
        t["name"] == "calc residual" or \
        t["name"] == "calc nu" or \
        t["name"] == "apply viscosity" or \
@@ -143,4 +149,6 @@ for t in Timers():
        t["name"] ==  "Flux" or \
        t["name"] ==  "NumFlux" or \
        t["name"] ==  "EntropyViscCoeff":
+        f.write(", ".join([t["name"], str(t["time"]) , str(t["counts"])])+"\n")
         print(t)
+f.close()

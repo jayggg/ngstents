@@ -11,7 +11,8 @@ CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<
 	      FlatMatrixFixWidth<COMP> flux, double tstar, int derive_cf_bnd, LocalHeap & lh)
 {
   static Timer tflux ("CalcFluxTent", 2);
-  ThreadRegionTimer reg(tflux, TaskManager::GetThreadId());
+  // ThreadRegionTimer reg(tflux, TaskManager::GetThreadId());
+  RegionTimer reg(tflux);
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -209,6 +210,10 @@ CalcViscosityTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
                    FlatMatrixFixWidth<COMP> ubnd, FlatVector<double> nu,
                    FlatMatrixFixWidth<COMP> visc, LocalHeap & lh)
 {
+  static Timer tvisctent ("CalcViscosityTent", 2);
+  // ThreadRegionTimer reg(tflux, TaskManager::GetThreadId());
+  RegionTimer reg(tvisctent);
+
   // const Tent & tent = tps->GetTent(tentnr);
 
   // grad(u)*grad(v) - {du/dn} * [v] - {dv/dn} * [u] + alpha * p^2 / h * [u]*[v]
@@ -679,7 +684,8 @@ Cyl2Tent (const Tent & tent, double tstar,
 	  LocalHeap & lh)
 {
   static Timer tcyl2tent ("Cyl2Tent", 2);
-  ThreadRegionTimer reg(tcyl2tent, TaskManager::GetThreadId());
+  // ThreadRegionTimer reg(tcyl2tent, TaskManager::GetThreadId());
+  RegionTimer reg(tcyl2tent);
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -725,7 +731,8 @@ ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
          FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
 {
   static Timer tapplym1 ("ApplyM1", 2);
-  ThreadRegionTimer reg(tapplym1, TaskManager::GetThreadId());
+  // ThreadRegionTimer reg(tapplym1, TaskManager::GetThreadId());
+  RegionTimer reg(tapplym1);
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -781,7 +788,8 @@ Tent2Cyl (const Tent & tent, double tstar,
           bool solvemass, LocalHeap & lh)
 {
   static Timer ttent2cyl ("Tent2Cyl", 2);
-  ThreadRegionTimer reg(ttent2cyl, TaskManager::GetThreadId());
+  // ThreadRegionTimer reg(ttent2cyl, TaskManager::GetThreadId());
+  RegionTimer reg(ttent2cyl);
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");

@@ -50,7 +50,7 @@ cf = CoefficientFunction(0.5*exp(-100*(x-0.2)*(x-0.2))) if cfnum == 0 \
 burg.SetInitial(cf)
 Draw(u)
 
-tend = 1
+tend = 4
 t = 0
 cnt = 0
 
@@ -70,9 +70,15 @@ with TaskManager():
             if step_sol:
                 input('step')
 
+    f = open("timings_burgers.csv","w")
 for t in Timers():
     if t["name"] == "SARK::Propagate Tent" or \
        t["name"] == "Propagate" or \
+       t["name"] == "CalcFluxTent" or \
+       t["name"] == "Cyl2Tent" or \
+       t["name"] == "ApplyM1" or \
+       t["name"] == "Tent2Cyl" or \
+       t["name"] == "CalcViscosityTent" or \
        t["name"] == "calc residual" or \
        t["name"] == "calc nu" or \
        t["name"] == "apply viscosity" or \
@@ -82,4 +88,6 @@ for t in Timers():
        t["name"] ==  "Flux" or \
        t["name"] ==  "NumFlux" or \
        t["name"] ==  "EntropyViscCoeff":
+        f.write(", ".join([t["name"], str(t["time"]) , str(t["counts"])])+"\n")
         print(t)
+f.close()
