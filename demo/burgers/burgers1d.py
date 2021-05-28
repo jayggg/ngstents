@@ -11,8 +11,6 @@ from ngsolve import L2, GridFunction
 from ngsolve import TaskManager, SetNumThreads
 from ngsolve.internal import viewoptions
 
-SetNumThreads(1)
-
 # Options
 cfnum = 0
 draw_tents = False  # Plot tents.  Don't set this in Netgen context.
