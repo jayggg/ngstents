@@ -25,7 +25,7 @@ if spec:
              0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.0,]
     mesh = Make1DMeshSpecified(pts, bcname=["left","right"])
 else:
-    mesh = Make1DMesh([[0, 1]], [20], bcname=["left","right"])
+    mesh = Make1DMesh([[0, 1]], [100], bcname=["left","right"])
 mesh = Mesh(mesh)
 
 ts = TentSlab(mesh)
@@ -39,7 +39,7 @@ if draw_tents:
 V = L2(mesh, order=order)
 u = GridFunction(V,"u")
 burg = Burgers(u, ts, inflow=mesh.Boundaries("left"), outflow=mesh.Boundaries("right"))
-burg.SetTentSolver("SARK",substeps=order*order)
+burg.SetTentSolver("SARK", stages=3, substeps=order*order)
 
 cf = CoefficientFunction(0.5*exp(-100*(x-0.2)*(x-0.2))) if cfnum == 0 \
     else CoefficientFunction(x) if cfnum == 1 \
@@ -55,6 +55,8 @@ cnt = 0
 viewoptions.drawedges = 1
 viewoptions.drawcolorbar = 0
 
+import time
+t1 = time.time()
 input('start')
 with TaskManager():
     while t < tend:
@@ -66,3 +68,4 @@ with TaskManager():
             Redraw()
             if step_sol:
                 input('step')
+print("total time = ", time.time()-t1)

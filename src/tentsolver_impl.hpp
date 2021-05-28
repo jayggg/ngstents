@@ -77,32 +77,26 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   hu.GetIndirect(tent.fedata->dofs, AsFV(local_Gu0));
   hu0.GetIndirect(tent.fedata->dofs, AsFV(local_init));
 
-  FlatMatrixFixWidth<COMP> local_u1(ndof,lh);
-  FlatMatrixFixWidth<COMP> local_u1_half(ndof,lh);
   FlatMatrixFixWidth<COMP> local_u(ndof,lh);
   FlatMatrixFixWidth<COMP> local_help(ndof,lh);
-  FlatMatrixFixWidth<COMP> local_flux(ndof,lh), local_flux1(ndof,lh);
+  FlatMatrixFixWidth<COMP> local_flux(ndof,lh);
 
-  FlatMatrixFixWidth<COMP> U0(ndof,lh);
-  FlatMatrixFixWidth<COMP> U1(ndof,lh);
-  FlatMatrixFixWidth<COMP> U2(ndof,lh);
-  FlatMatrixFixWidth<COMP> U3(ndof,lh);
-  FlatMatrixFixWidth<COMP> u0(ndof,lh);
-  FlatMatrixFixWidth<COMP> u1(ndof,lh);
-  FlatMatrixFixWidth<COMP> u2(ndof,lh);
-  FlatMatrixFixWidth<COMP> u3(ndof,lh);
-  FlatMatrixFixWidth<COMP> M1u0(ndof,lh);
-  FlatMatrixFixWidth<COMP> M1u1(ndof,lh);
-  FlatMatrixFixWidth<COMP> M1u2(ndof,lh);
-  FlatMatrixFixWidth<COMP> M1u3(ndof,lh);
-  FlatMatrixFixWidth<COMP> fu0(ndof,lh);
-  FlatMatrixFixWidth<COMP> fu1(ndof,lh);
-  FlatMatrixFixWidth<COMP> fu2(ndof,lh);
-  FlatMatrixFixWidth<COMP> fu3(ndof,lh);
+  Array<FlatMatrixFixWidth<COMP>> U(stages);
+  Array<FlatMatrixFixWidth<COMP>> u(stages);
+  Array<FlatMatrixFixWidth<COMP>> M1u(stages);
+  Array<FlatMatrixFixWidth<COMP>> fu(stages);
+  for ( auto i : Range(stages))
+    {
+      U[i].AssignMemory(ndof, lh);
+      u[i].AssignMemory(ndof, lh);
+      M1u[i].AssignMemory(ndof, lh);
+      fu[i].AssignMemory(ndof, lh);
+    }
+
   FlatMatrixFixWidth<COMP> Uhat(ndof,lh);
+  FlatMatrixFixWidth<COMP> dUhatdt(ndof,lh);
 
   shared_ptr<BaseVector> hres = (ECOMP > 0) ? tcl->gfres->GetVectorPtr() : nullptr;
-  FlatMatrixFixWidth<COMP> dUhatdt(ndof,lh);
   FlatMatrixFixWidth<ECOMP> res(ndof,lh);
   FlatVector<> local_nu(tent.els.Size(),lh);
 
@@ -121,44 +115,43 @@ void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
   // double norm_bot = InnerProduct(AsFV(local_u0),AsFV(local_help));
 
   const double taustar = 1.0/substeps;
-  //TODO: implement SARK for different number to stages
   for (int j = 0; j < substeps; j++)
     {
-      // third order
-      U0 = local_Gu0;
-      tcl->Cyl2Tent (tent, j*taustar, U0, u0, lh);
-      tcl->ApplyM1(tent, j*taustar, u0, M1u0, lh);
-      tcl->CalcFluxTent(tent, u0, local_init, fu0, j*taustar, 0, lh);
-      U1 = U0 + 0.5*taustar*(M1u0+fu0);
-
-      tcl->Cyl2Tent (tent, j*taustar, U1, u1, lh);
-      tcl->ApplyM1(tent, j*taustar, u1, M1u1, lh);
-      tcl->CalcFluxTent(tent, u1, local_init, fu1, (j+0.5)*taustar, 0, lh);
-      U2 = U0 + taustar*(4*M1u1-3*M1u0+2*fu1-fu0);
-
-      tcl->Cyl2Tent (tent, j*taustar, U2, u2, lh);
-      tcl->CalcFluxTent(tent, u2, local_init, fu2, (j+1)*taustar, 0, lh);
-
-      Uhat = U0 + taustar * (1.0/6.0 * fu0 + 2.0/3.0 * fu1 + 1.0/6.0 * fu2);
+      Uhat = local_Gu0;
+      for ( auto s : Range(stages) )
+	{
+	  U[s] = local_Gu0;
+	  for ( auto i : Range(s) )
+	    {
+	      U[s] += taustar * acoeff(s,i) * fu[i];
+	      U[s] += taustar * dcoeff(s,i) * M1u[i];
+	    }
+	  tcl->Cyl2Tent (tent, j*taustar, U[s], u[s], lh);
+	  tcl->ApplyM1(tent, j*taustar, u[s], M1u[s], lh);
+	  tcl->CalcFluxTent(tent, u[s], local_init, fu[s],
+			    (j+ccoeff(s))*taustar, 0, lh);
+	  Uhat += taustar * bcoeff(s) * fu[s];
+	}
       local_Gu0 = Uhat;
       // for viscosity
-      dUhatdt = fu0;
+      dUhatdt = fu[0];
+
       if (ECOMP > 0)
 	{
 	  /////// use dUhatdt as approximation at the final time
-	  // U0 = local_Gu0;
+	  // U[0] = local_Gu0;
 	  // tcl->Cyl2Tent (tent, (j+1)*taustar, local_Gu0, local_help, lh);
 	  // tcl->CalcFluxTent(tent, local_help, local_init, dUhatdt,
 	  //              (j+1)*taustar, 0, lh);
-	  // tcl->CalcEntropyResidualTent(tent, U0, dUhatdt, res, local_init,
+	  // tcl->CalcEntropyResidualTent(tent, U[0], dUhatdt, res, local_init,
 	  //                         (j+1)*taustar, lh);
 	  // hres->SetIndirect(tent.dofs,AsFV(res));
 	  // double nu_tent = tcl->CalcViscosityCoefficientTent(
-	  //                        tent, U0, res, (j+1)*taustar, lh);
+	  //                        tent, U[0], res, (j+1)*taustar, lh);
 	  /////// use dUhatdt as approximation at the initial time
-	  tcl->CalcEntropyResidualTent(tent, U0, dUhatdt, res, local_init, j*taustar, lh);
+	  tcl->CalcEntropyResidualTent(tent, U[0], dUhatdt, res, local_init, j*taustar, lh);
 	  hres->SetIndirect(tent.fedata->dofs,AsFV(res));
-	  double nu_tent = tcl->CalcViscosityCoefficientTent(tent, U0, res,j*taustar, lh);
+	  double nu_tent = tcl->CalcViscosityCoefficientTent(tent, U[0], res,j*taustar, lh);
 
 	  local_nu = nu_tent;
 	  double steps_visc = (40*tau_tent*nu_tent/tau_visc1)/substeps;

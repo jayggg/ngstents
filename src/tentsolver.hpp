@@ -59,17 +59,74 @@ protected:
   static constexpr int ECOMP = TCONSLAW::NECOMP;
   
 public:
+
+  Matrix<> acoeff;
+  Matrix<> dcoeff;
+  Vector<> bcoeff;
+  Vector<> ccoeff;
+
   SARK (const shared_ptr<TCONSLAW> & atcl, int astages, int asubsteps)
     : tcl{atcl}, stages{astages}, substeps{asubsteps}
   {
-    cout << "set up structure-aware Runge-Kutta time stepping with "
-      +ToString(substeps)+" substeps within each tent" << endl;
-
     shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(atcl->fes);
     if(!fes_check)
       throw Exception("Structure-aware Runge-Kutta time stepping available for L2 spaces only");
+
+    cout << "set up " + ToString(stages) + "-stage ";
+    // coefficients for SARK methods derived in disseration
+    // "Mapped Tent Pitching Schemes for Hyperbolic Systems"
+    // by C. Wintersteiger (2020)
+    switch(stages)
+      {
+      case 1:
+	acoeff = { {0.0} };
+	dcoeff = { {0.0} };
+	bcoeff = { 1.0 };
+	ccoeff = { 0.0 };
+	cout << "(first order) ";
+	break;
+      case 2:
+	acoeff = { {0.0, 0.0},
+		   {0.5, 0.0} };
+	dcoeff = { {0.0, 0.0},
+		   {0.5, 0.0} };
+	bcoeff = { 0.0, 1.0 };
+	ccoeff = { 0.0, 0.5 };
+	cout << "(second first order) ";
+	break;
+      case 3:
+	acoeff = { {0.0, 0.0, 0.0},
+		   {0.5, 0.0, 0.0},
+		   {-1.0, 2.0, 0.0} };
+	dcoeff = { {0.0, 0.0, 0.0},
+		   {0.5, 0.0, 0.0},
+		   {-3.0, 4.0, 0.0} };
+	bcoeff = { 1.0/6.0, 2.0/3.0, 1.0/6.0 };
+	ccoeff = { 0.0, 0.5, 1.0 };
+	cout << "(third order) ";
+	break;
+      case 5:
+	acoeff = { {0.0, 0.0, 0.0, 0.0, 0.0},
+		   {1.0/3.0, 0.0, 0.0, 0.0, 0.0},
+		   {-1.0/3.0, 1.0, 0.0, 0.0, 0.0},
+		   {-2.0/5.0, 7.0/5.0, 0.0, 0.0, 0.0},
+		   {3.0/8.0, -1.0/8.0, 1.0/4.0, 0.0, 0.0} };
+	dcoeff = { {0.0, 0.0, 0.0, 0.0, 0.0},
+		   {1.0/3.0, 0.0, 0.0, 0.0, 0.0},
+		   {-4.0/3.0, 2.0, 0.0, 0.0, 0.0},
+		   {-9.0/5.0, 14.0/5.0, 0.0, 0.0, 0.0},
+		   {11.0/16.0, -13.0/16.0, 5.0/16.0, 5.0/16.0, 0.0} };
+	bcoeff = { 5.0/32.0, 3.0/32.0, 3.0/32.0, 5.0/32.0, 1.0/2.0 };
+	ccoeff = { 0.0, 1.0/3.0, 2.0/3.0, 1.0, 1.0/2.0 };
+	cout << "(fouth order) ";
+	break;
+      default:
+	throw Exception("no "+ToString(stages)+"-stage SARK method implemented");
+      }
+    cout << "structure-aware Runge-Kutta time stepping with "
+      + ToString(substeps) + " substeps within each tent" << endl;
   };
-  
+
   void PropagateTent(const Tent & tent, BaseVector & hu,
 		     const BaseVector & hu0, LocalHeap & lh) override;
 };

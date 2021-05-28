@@ -8,8 +8,6 @@ from ngstents.utils import Make1DMesh
 from ngstents.conslaw import ConservationLaw
 from math import pi
 
-# SetNumThreads(1)
-
 N = 20
 mesh = Mesh(Make1DMesh([[0,1]], [N], bcname=["left","right"]))
 
@@ -99,8 +97,8 @@ cl = ConservationLaw(gfu, ts,
                      entropyflux = EntropyFlux,
                      numentropyflux = NumEntropyFlux,
                      visccoeff = ViscosityCoefficient,
-                     compile=True)
-cl.SetTentSolver("SARK", substeps=order*order)
+                     compile = True)
+cl.SetTentSolver("SARK", stages=3, substeps=order*order)
 
 # set inital data
 cf0 = CoefficientFunction(0.5*exp(-100*(x-0.2)*(x-0.2)))

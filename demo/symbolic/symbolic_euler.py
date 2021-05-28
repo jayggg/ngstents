@@ -77,7 +77,8 @@ def InverseMap(y):
     """
     solves "y = u - (f(u),gradphi)" for u
     
-    [disseration by C. Wintersteiger (2020)]
+    [derived in disseration "Mapped Tent Pitching Schemes
+    for Hyperbolic Systems" by C. Wintersteiger (2020)]
     """
     y_rho = y[0]
     y_m = y[1:mesh.dim+1]
