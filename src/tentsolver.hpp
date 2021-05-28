@@ -125,11 +125,6 @@ public:
       }
     cout << "structure-aware Runge-Kutta time stepping with "
       + ToString(substeps) + " substeps within each tent" << endl;
-    
-    cout << "a = " << endl << acoeff << endl;
-    cout << "d = " << endl << dcoeff << endl;
-    cout << "b = " << endl << bcoeff << endl;
-    cout << "c = " << endl << ccoeff << endl;
   };
 
   void PropagateTent(const Tent & tent, BaseVector & hu,
