@@ -843,10 +843,8 @@ Propagate(LocalHeap & lh, shared_ptr<GridFunction> hdgf)
 {
   static Timer tprop ("Propagate", 2); RegionTimer reg(tprop);
 
-  if (hdgf != nullptr) {
-      auto vec = hdgf->GetVectorPtr();
+  if (hdgf != nullptr)
       vis3d->SetInitialHd(gfu, hdgf, lh);
-  }
 
   tentsolver->Setup();
 
