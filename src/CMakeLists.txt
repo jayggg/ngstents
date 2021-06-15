@@ -22,6 +22,7 @@ add_ngsolve_python_module(_pyconslaw
   advection.cpp
   maxwell.cpp
   symbolic.cpp
+  vis3d.cpp
   )
 target_link_libraries(_pyconslaw PRIVATE _pytents)
 
@@ -57,6 +58,7 @@ install(FILES
 install(FILES
   ../py/utils/__init__.py
   ../py/utils/mesh1d.py
+  ../py/utils/slab2mesh.py
   DESTINATION ngstents/utils)
 
 install(FILES

@@ -250,11 +250,32 @@ void ExportConsLaw(py::module & m)
          {
            self->SetTentSolver(method, stages, substeps);
          }, py::arg("method") = "SAT", py::arg("stages") = 2, py::arg("substeps") = 1)
-    .def("Propagate",
-         [](shared_ptr<CL> self)
+    .def("SetIdx3d",
+         [](shared_ptr<CL> self, py::list lst)
          {
-           self->Propagate(*(self->pylh));
-         })
+           auto idx3d = Array<shared_ptr<Table<int>>>();
+           std::vector<std::map<int, int>> vec
+             = lst.cast<std::vector<std::map<int, int>>>();
+           for (auto vmp : vec) {
+              TableCreator<int> create_vmap;
+              for ( ; !create_vmap.Done(); create_vmap++)
+                {
+                  for ( const auto &p : vmp )
+                      create_vmap.Add (p.first, p.second);
+                }
+              auto vmap = create_vmap.MoveTable();
+              auto tptr = make_shared<Table<int>>(vmap);
+              idx3d.Append(tptr);
+           }
+           self->vis3d = make_shared<Visualization3D>(idx3d);
+         }, "Set index for visualization on a 3D mesh", py::arg("idx3d"))
+    .def("Propagate",
+         [](shared_ptr<CL> self,
+            shared_ptr<GridFunction> hdgf)
+         {
+            self->Propagate(*(self->pylh), hdgf);
+         }, "GridFunction vector for visualization on 3D mesh"
+         , py::arg("hdgf")=nullptr)
     ;
 }
 

@@ -836,11 +836,17 @@ Tent2Cyl (const Tent & tent, double tstar,
 // time stepping methods 
 ////////////////////////////////////////////////////////////////
 
+
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
-Propagate(LocalHeap & lh)
+Propagate(LocalHeap & lh, shared_ptr<GridFunction> hdgf)
 {
   static Timer tprop ("Propagate", 2); RegionTimer reg(tprop);
+
+  if (hdgf != nullptr) {
+      auto vec = hdgf->GetVectorPtr();
+      vis3d->SetInitialHd(gfu, hdgf, lh);
+  }
 
   tentsolver->Setup();
 
@@ -848,7 +854,10 @@ Propagate(LocalHeap & lh)
     (tent_dependency, [&] (int i)
      {
        LocalHeap slh = lh.Split();  // split to threads
-       tentsolver->PropagateTent(tps->GetTent(i), *u, *uinit, slh);
+       Tent tent = tps->GetTent(i);
+       tentsolver->PropagateTent(tent, *u, *uinit, slh);
+       if (hdgf != nullptr)
+         vis3d->SetForTent(tent, gfu, hdgf, slh);
      });
 }
 

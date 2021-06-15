@@ -6,6 +6,7 @@
 #endif
 #include "tents.hpp"
 #include "tentsolver.hpp"
+#include "vis3d.hpp"
 #include <atomic>
 
 class ConservationLaw
@@ -33,6 +34,10 @@ public:
 
   shared_ptr<ProxyFunction> proxy_u = nullptr;
   shared_ptr<ProxyFunction> proxy_uother = nullptr;
+
+  // instance for 3D visualization of tent slab solutions based on 2D meshes.
+  shared_ptr<Visualization3D> vis3d = nullptr;
+
   shared_ptr<ProxyFunction> proxy_graddelta = nullptr;
   shared_ptr<ProxyFunction> proxy_res = nullptr;
 public:
@@ -62,7 +67,9 @@ public:
 
   virtual void SetTentSolver(string method, int stages, int substeps) = 0;
 
-  virtual void Propagate(LocalHeap & lh) = 0;
+  // virtual void Propagate(LocalHeap & lh) = 0;
+
+  virtual void Propagate(LocalHeap & lh, shared_ptr<GridFunction> hdgf) = 0;
 
 };
 
@@ -200,6 +207,7 @@ public:
     else
       throw Exception("boundary coefficient function already set");
   }
+
 
   // derive boundary coefficient functions
   // fill table with 1/j! * cf^(j)
@@ -466,7 +474,7 @@ public:
       throw Exception("unknown TentSolver "+method);
   }
   
-  void Propagate(LocalHeap & lh);
+  void Propagate(LocalHeap & lh, shared_ptr<GridFunction> hdgf);
 
 };
 
