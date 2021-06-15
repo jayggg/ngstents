@@ -259,9 +259,10 @@ class SlabConverter:
             # *Temporarily* work around issue:
             # https://ngsolve.org/forum/ngspy-forum/
             #   1413-original-edges-retained-after-mesh-refine#3812
-            true_edges = sorted(list(set(e for v in smesh.vertices
-                                         for e in smesh[v].edges)),
-                                key=lambda e: e.nr)
+            Z = ng.HCurl(smesh, order=0)
+            fd = Z.FreeDofs()
+            true_edges = [e for i, e in enumerate(smesh.edges) if fd[i]]
+             
             minedgenr = min(e.nr for e in true_edges)
             # extend gfixmap to include edge dof indices
             # Note that edge.vertices always returns a pair
