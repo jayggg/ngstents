@@ -87,10 +87,10 @@ class WebGLScene:
         self.mesh = tps.mesh
         self.tps = tps
 
-    def GenerateHTML(self, filename=None):
+    def GenerateHTML(self, filename=None, show_timing=False):
         import json
         print(" Generating data in Python")
-        d = self.GetData()
+        d = self.GetData(show_timing=show_timing)
         print(" Converting data to JSON")
         data = json.dumps(d)
         jscode = "var render_data = {}\n".format(data) + render_js_code
@@ -99,10 +99,10 @@ class WebGLScene:
             open(filename, 'w').write(html)
         return html
 
-    def Draw(self):
+    def Draw(self, show_timing=False):
         from IPython.display import display
         self.widget = NGSTentsWebGuiWidget()
-        d = self.GetData()
+        d = self.GetData(show_timing=show_timing)
         self.widget.value = d
         display(self.widget)
         return self.widget
@@ -114,9 +114,9 @@ class WebGLScene:
     def __repr__(self):
         return ""
 
-    def GetData(self):
+    def GetData(self, show_timing=False):
         d = {}
-        lists = self.GetElements2D(d)
+        lists = self.GetElements2D(d, show_timing=show_timing)
         vertices, normals, faces, tentcenters, nrs, layers = lists
         vertices = np.array(vertices)
         normals = np.array(normals)
@@ -137,7 +137,7 @@ class WebGLScene:
         d['slab_radius'] = np.linalg.norm(vmax-vmin)/2
         return d
 
-    def GetElements2D(self, d):
+    def GetElements2D(self, d, show_timing=False):
         """
         Return six lists
         1. vertices: the distinct vertices for each element, where
@@ -205,8 +205,9 @@ class WebGLScene:
             gvertices.extend(vertices)
             normals.extend(nrmls)
             face_times.append(time()-start)
-        print("setup: {}, tents: {} faces: {}".format(
-            sum(setup_times), sum(tent_times), sum(face_times)))
+        if show_timing:
+            print("setup: {:.6f}, tents: {:.6f} faces: {:.6f}".format(
+                sum(setup_times), sum(tent_times), sum(face_times)))
 
         return gvertices, normals, faces, tentcenters, nrs, layers
 
@@ -228,19 +229,19 @@ class WebGLScene:
         return faces, normals.tolist()
 
 
-def Draw(tps, filename='output.html'):
+def Draw(tps, filename='output.html', show_timing=False):
     scene = WebGLScene(tps)
     if _IN_IPYTHON:
         if _IN_GOOGLE_COLAB:
             from IPython.display import display, HTML
-            html = scene.GenerateHTML()
+            html = scene.GenerateHTML(show_timing=show_timing)
             display(HTML(html))
         else:
             # render scene using widgets.DOMWidget
-            scene.Draw()
+            scene.Draw(show_timing=show_timing)
             return scene
     else:
-        scene.GenerateHTML(filename=filename)
+        scene.GenerateHTML(filename=filename, show_timing=show_timing)
         return scene
 
 
