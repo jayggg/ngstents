@@ -157,6 +157,8 @@ class WebGLScene:
         but doing it this way ensures that the times match the vertices.
         """
         mesh = self.mesh
+        msdict = dict((item[0] for item in
+                       mesh.GetPeriodicNodePairs(ngs.VERTEX)))
         data, times, ntents, nlayers = self.tps.DrawPitchedTentsGL()
         d['ntents'] = ntents
         d['nlayers'] = nlayers
@@ -188,7 +190,8 @@ class WebGLScene:
                 vpt.append(tbots[j])
                 vertices.append(vpt)
                 # central vertex also has a top time
-                if v.nr == vnr:
+                # handle case when vnr is master vertex and not in element
+                if v.nr == vnr or (vnr in msdict and v.nr == msdict[vnr]):
                     vpt_top = vpt[:]
                     vpt_top[2] = ttop
                     vertices.append(vpt_top)

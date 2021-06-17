@@ -1062,7 +1062,7 @@ DrawPitchedTentsGL(Array<int> & tentdata, Array<double> & tenttimes, int & nleve
             auto verts = ma->GetElVertices(ElementId(VOL,tent.els[el]));
             for(auto v : verts)
               {
-                auto pos = tent.nbv.Pos(v);
+                auto pos = tent.nbv.Pos(vmap[v]);
                 if (pos != tent.nbv.ILLEGAL_POSITION)
                   tenttimes.Append(tent.nbtime[pos]);
                 else
