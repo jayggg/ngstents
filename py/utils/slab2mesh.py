@@ -89,7 +89,8 @@ class SlabConverter:
         self.surfels = []    # list of surface elements (ccw vertex tuples)
         self.f2vs = []       # nested list, where outer index is front
         self.v2fs = []       # nested list, where outer index is vertex
-        self.bverts = None   # set of spacetime boundary vertices
+        self.bverts = None   # dict: spacetime boundary vertex: spatial vertex
+        self.bdinfo = None   # dict: index : set of spatial vertices
         self.mesh = None     # ngsolve N-D mesh
         self.gfixmap = None  # dict {(front, vtx): index into st vertices}
 
@@ -108,6 +109,9 @@ class SlabConverter:
         start = time()
         self._AddSurfaceElements()
         print("add surface elements {:.5f}".format(time()-start))
+        start = time()
+        self._HandlePeriodicity()
+        print("Handle periodicity {:.5f}".format(time()-start))
         start = time()
         self.mesh = ng.Mesh(self.ngmesh)
         print("make ngsolve mesh {:.5f}".format(time()-start))
@@ -136,14 +140,21 @@ class SlabConverter:
         bvs = {v.nr for el in spmesh.Elements(ng.BND)
                for v in spmesh[el].vertices}
         vs = []
-        bverts = []
+        bverts = {}  # dict of stvertex: spvertex
+        msdict = dict((item[0] for item in
+                       self.spatialmesh.GetPeriodicNodePairs(ng.VERTEX)))
+        # dict with key boundary index, value set of spatial boundary vertices
+        self.bdinfo = defaultdict(set)
+        for el in spmesh.ngmesh.Elements1D():
+            self.bdinfo[el.index] |= set(v.nr-1 for v in el.vertices)
+
         for v in self.vertices:
             stv = STv(mesh, v, 0)
             vdata[(0, v.nr)] = stv
             stpts.append(stv.pt)
             self.v2fs.append([0])
             vs.append(v)
-            bverts.append(stv.stv)
+            bverts[stv.stv] = v.nr
         self.f2vs = [vs] + [[] for i in range(self.nlayers)]
 
         for i in range(self.ntents):
@@ -156,8 +167,19 @@ class SlabConverter:
             self.v2fs[t.vertex].append(ft)
             self.f2vs[ft].append(v)
             if stv.bnd:
-                bverts.append(stv.stv)
-        self.bverts = set(bverts)
+                bverts[stv.stv] = v.nr
+            # handle periodic vertices
+            if v.nr in msdict:
+                v1 = self._tomeshv(msdict[v.nr])
+                stv = STv(mesh, v1, ft, self.tscale, t.ttop, self.dt, bvs)
+                vdata[(ft, v1.nr)] = stv
+                stpts.append(stv.pt)
+                self.v2fs[v1.nr].append(ft)
+                self.f2vs[ft].append(v1)
+                if stv.bnd:
+                    bverts[stv.stv] = v1.nr
+
+        self.bverts = bverts
 
     def _AddVolumeElements(self):
         """
@@ -195,23 +217,39 @@ class SlabConverter:
         Generate element facet tuples whose vertices are all surface vertices.
         Ensure correct orientation, then add them to the mesh.
         """
-        bverts = self.bverts
+        stbverts = set(self.bverts.keys())
         ElementsND = (self.ngmesh.Elements2D if self.N == 2
                       else self.ngmesh.Elements3D)
-        idx_surf = self.ngmesh.AddRegion("surf", dim=self.N-1)
+        # get the boundary indices for the spatial mesh
+        bds = self.spatialmesh.GetBoundaries()
+        indices = [self.ngmesh.AddRegion(bd, dim=self.N-1) for bd in bds]
+        idx_base = self.ngmesh.AddRegion("base", dim=self.N-1)
+        idx_final = self.ngmesh.AddRegion("final", dim=self.N-1)
+
         for i, elNd in enumerate(ElementsND()):
             vlist = [v.nr for v in elNd.vertices]
             facets = self._facetvs(vlist)
             for facet in facets:
                 # ensure that all vertices are on the surface
-                if len(set(facet)-bverts) == 0:
+                if set(facet).issubset(stbverts):
                     self.surfels.append(facet)
         self._OrientSurfaceElements()
         for elt in self.surfels:
+            added = False
             if self.N == 2:
                 el = nm.Element1D([*elt], index=idx_surf)
             else:
-                el = nm.Element2D(idx_surf, elt)
+                for idx, vset in self.bdinfo.items():
+                    spelt = set(self.bverts[v] for v in elt)
+                    if spelt.issubset(vset):
+                        el = nm.Element2D(indices[idx-1], elt)
+                        added = True
+                if not added:
+                    if elt[0] <= len(self.vertices):
+                        el = nm.Element2D(idx_base, elt)
+                    else:
+                        el = nm.Element2D(idx_final, elt)
+
             self.ngmesh.Add(el)
 
     def _OrientSurfaceElements(self):
@@ -243,6 +281,20 @@ class SlabConverter:
         self.surfels = [elt if test[i] else [elt[1], elt[0]] + elt[2:]
                         for i, elt in enumerate(self.surfels)]
 
+    def _HandlePeriodicity(self):
+        vpairs = self.spatialmesh.GetPeriodicNodePairs(ng.VERTEX)
+        if len(vpairs) == 0:
+            return
+        # get spacetime masters, servants and identifiers
+        for (m, s), idt in vpairs:
+            for f in range(self.nfronts):
+                # master and servant vertices must be on the same fronts.
+                if (f, m) in self.vdata:
+                    stvm = self.vdata[(f, m)].stv
+                    stvs = self.vdata[(f, s)].stv
+                    # change identifier from 0 to 1 based; 2=periodic
+                    self.ngmesh.AddPointIdentification(stvm, stvs, idt+1, 2)
+
     def _MakeMap(self):
         smesh = self.spatialmesh
         mesh = self.mesh
@@ -262,7 +314,7 @@ class SlabConverter:
             Z = ng.HCurl(smesh, order=0)
             fd = Z.FreeDofs()
             true_edges = [e for i, e in enumerate(smesh.edges) if fd[i]]
-             
+
             minedgenr = min(e.nr for e in true_edges)
             # extend gfixmap to include edge dof indices
             # Note that edge.vertices always returns a pair
