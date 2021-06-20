@@ -128,6 +128,33 @@ class SlabConverter:
         """
         return self.spatialmesh[ng.NodeId(ng.VERTEX, vnr)]
 
+    def periodic_dict(self):
+        """
+        Return a dictionary { vertex.nr : [vertex.nr] }
+        where the value list contains all direct or indirect
+        servant vertices for the master vertex key
+        """
+        idents = self.spatialmesh.GetPeriodicNodePairs(ng.VERTEX)
+        msdicts = [dict(f for f, s in idents if s == i)
+                   for i in set(idnr for pr, idnr in idents)]
+        if len(msdicts) > 1:
+            d = {k: [v] for k, v in msdicts[0].items()}
+            for msdict in msdicts[1:]:
+                for k, v in msdict.items():
+                    if k in d:
+                        d[k].append(v)
+                    else:
+                        d[k] = [v]
+            for k, v in d.items():
+                for vi in v:
+                    if vi in d.keys():
+                        d[k] = v + d[vi]
+        elif len(msdicts) == 1:
+            d = {k: [v] for k, v in msdicts[0].items()}
+        else:
+            d = {}
+        return d
+
     def _AddVertices(self):
         """
         Add all 3D vertices to the mesh, first those associated with
@@ -141,8 +168,8 @@ class SlabConverter:
                for v in spmesh[el].vertices}
         vs = []
         bverts = {}  # dict of stvertex: spvertex
-        msdict = dict((item[0] for item in
-                       self.spatialmesh.GetPeriodicNodePairs(ng.VERTEX)))
+        # master to servants dict (periodic)
+        d = self.periodic_dict()
         # dict with key boundary index, value set of spatial boundary vertices
         self.bdinfo = defaultdict(set)
         for el in spmesh.ngmesh.Elements1D():
@@ -169,16 +196,16 @@ class SlabConverter:
             if stv.bnd:
                 bverts[stv.stv] = v.nr
             # handle periodic vertices
-            if v.nr in msdict:
-                v1 = self._tomeshv(msdict[v.nr])
-                stv = STv(mesh, v1, ft, self.tscale, t.ttop, self.dt, bvs)
-                vdata[(ft, v1.nr)] = stv
-                stpts.append(stv.pt)
-                self.v2fs[v1.nr].append(ft)
-                self.f2vs[ft].append(v1)
-                if stv.bnd:
-                    bverts[stv.stv] = v1.nr
-
+            if v.nr in d:
+                for vv in d[v.nr]:
+                    vi = self._tomeshv(vv)
+                    stv = STv(mesh, vi, ft, self.tscale, t.ttop, self.dt, bvs)
+                    vdata[(ft, vi.nr)] = stv
+                    stpts.append(stv.pt)
+                    self.v2fs[vi.nr].append(ft)
+                    self.f2vs[ft].append(vi)
+                    if stv.bnd:
+                        bverts[stv.stv] = vi.nr
         self.bverts = bverts
 
     def _AddVolumeElements(self):
@@ -384,6 +411,41 @@ def Trigmesh(maxh=.1):
     return geo.GenerateMesh(maxh=maxh)
 
 
+def Periodicmesh(maxh=0.2):
+    """
+    Generates an unstructured periodic trig mesh of the unit square
+    with specified max diameter
+    """
+    geo = SplineGeometry()
+    pnts = [(0, 0), (1, 0), (1, 1), (0, 1)]
+    pnums = [geo.AppendPoint(*p) for p in pnts]
+    geo.Append(["line", pnums[0], pnums[1]], bc="bottom")
+    lright = geo.Append(["line", pnums[1], pnums[2]], bc="periodic")
+    geo.Append(["line", pnums[2], pnums[3]], bc="top")
+    geo.Append(["line", pnums[0], pnums[3]], leftdomain=0, rightdomain=1,
+               copy=lright, bc="periodic")
+    return geo.GenerateMesh(maxh=0.2)
+
+
+def Periodicmesh2(xint, yint, maxh):
+    """
+    Generate an unstructured periodic trig mesh in both the x and y
+    directions for the specified x and y intervals and max diameter.
+    """
+    from netgen.geom2d import SplineGeometry
+    periodic = SplineGeometry()
+    pnts = [(xint[0], yint[0]), (xint[1], yint[0]),
+            (xint[1], yint[1]), (xint[0], yint[1])]
+    pnums = [periodic.AppendPoint(*p) for p in pnts]
+    lbot = periodic.Append(["line", pnums[0], pnums[1]], bc="bottom")
+    lright = periodic.Append(["line", pnums[1], pnums[2]], bc="right")
+    periodic.Append(["line", pnums[0], pnums[3]], leftdomain=0,
+                    rightdomain=1, bc="left", copy=lright)
+    periodic.Append(["line", pnums[3], pnums[2]], leftdomain=0,
+                    rightdomain=1, bc="top", copy=lbot)
+    return periodic.GenerateMesh(maxh=maxh)
+
+
 if __name__ == '__main__':
     # SIMULATION SETTINGS
     dim = 3
@@ -394,6 +456,7 @@ if __name__ == '__main__':
     tscale = 5.0
     # settings used only when dim = 3
     geotype = "ring"
+    periodic = False
     maxh = .2
     order_hd = 2
 
@@ -402,7 +465,11 @@ if __name__ == '__main__':
         mesh = ng.Mesh(Make1DMesh([[0, 1]], [10]))
     else:
         if geotype == "square":
-            msh = unit_square.GenerateMesh(maxh=maxh)
+            if periodic:
+                # msh = Periodicmesh(maxh=maxh)
+                msh = Periodicmesh2((0, 1), (0, 1), maxh=maxh)
+            else:
+                msh = unit_square.GenerateMesh(maxh=maxh)
         elif geotype == "trig":
             msh = Trigmesh(maxh=maxh)
         elif geotype == "disk":
