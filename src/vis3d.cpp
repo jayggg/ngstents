@@ -10,7 +10,22 @@ void Visualization3D::SetInitialHd(
     int order = hdfes->GetOrder();
 
     shared_ptr<MeshAccess> ma = fes->GetMeshAccess();
-    tmph1 = CreateFESpace("h1ho", ma, Flags()
+
+    // Note that tmph1 and vtmp are attributes of the class
+    if  (ma->GetNPeriodicIdentifications() > 0) {
+
+      auto tmph1a = CreateFESpace("h1ho", ma, Flags()
+                            .SetFlag("order", order)
+                            .SetFlag("dim", fes->GetDimension()));
+      tmph1a->Update();
+      tmph1a->FinalizeUpdate();
+      Flags flags = tmph1a->GetFlags();
+      Array<int> emptyarray;
+      shared_ptr<Array<int>> used_idnrs = make_shared<Array<int>>(emptyarray);
+      tmph1 = make_shared<PeriodicFESpace>(tmph1a, flags, used_idnrs);
+    }
+    else
+      tmph1 = CreateFESpace("h1ho", ma, Flags()
                             .SetFlag("order", order)
                             .SetFlag("dim", fes->GetDimension()));
 
@@ -19,10 +34,10 @@ void Visualization3D::SetInitialHd(
     auto gftmp = CreateGridFunction(tmph1,"gftmp",Flags().SetFlag("novisual"));
     gftmp->Update();
     vtmp = gftmp->GetVectorPtr(0);
-    
+
     ngcomp::SetValues (gfu, *gftmp, VOL, NULL, lh, false, true, 0);
 
-    // Transfer vertex values from vtmp to vhd
+    // Transfer dof values from vtmp to vhd.
     shared_ptr<BaseVector> vhd = hdgf->GetVectorPtr(0);
     int entrysize = vtmp->EntrySize();
     for (auto i : IntRange(vtmp->Size())) {
@@ -50,7 +65,6 @@ void Visualization3D::SetForTent(
     int order = hdfes->GetOrder();
     shared_ptr<MeshAccess> ma = fes->GetMeshAccess();
     int NV = ma->GetNV();
-    bool use_simd = true;
     int dim = tmph1->GetDimension();
 
     Array<int> cnti(tmph1->GetNDof());
@@ -150,7 +164,7 @@ void Visualization3D::SetForTent(
          }
     });
 
-    // Restore simd evaluate 
+    // Restore simd evaluate
     bli->SetSimdEvaluate(bli_uses_simd);
     single_bli->SetSimdEvaluate(sbli_uses_simd);
 
@@ -171,7 +185,7 @@ void Visualization3D::SetForTent(
                vtmp->SetIndirect (dnums, fluxi);
              }
        });
-    
+
     // Transfer dof values from vtmp to vhd
     Array<int> vtmp_nrs;
     Array<int> vhd_nrs;
@@ -183,10 +197,8 @@ void Visualization3D::SetForTent(
         vtmp_nrs.Append(NV+f);
     }
 
-    for (auto n : vtmp_nrs)
-      vhd_nrs.Append((*(idx3d[tent.level+1]))[n][0]);
-
-    int tv = tent.vertex;
+    for (auto i : vtmp_nrs)
+      vhd_nrs.Append((*(idx3d[tent.level+1]))[i][0]);
 
     shared_ptr<BaseVector> vhd = hdgf->GetVectorPtr(0);
     int entrysize = vtmp->EntrySize();
