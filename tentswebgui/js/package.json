@@ -61,7 +61,7 @@
     "webpack": "^4.39.1",
     "webpack-cli": "^3.3.6",
     "dat.gui": "^0.7.7",
-    "three": "^0.115"
+    "three": "^0.125"
   },
   "jupyterlab": {
     "extension": "labextension/plugin"
