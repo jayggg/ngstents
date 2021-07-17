@@ -1,9 +1,14 @@
-## NGSTents
+# Spacetime Tents in NGSolve: `ngstents`
 
-This project is based heavily on an earlier 'ConservationLaw' project by Christoph Wintersteiger, Joachim Schöberl and Jay Gopalakrishnan.  The near term goals of this project are to make the code more flexible, for example, to allow new conservation laws, defined by their fluxes and numerical fluxes, to be defined in Python, to allow experimentation with different tent-pitching methods different propagation methods.  Another goal is to implement so-called 'super-tents', each of which will be pitched on a portion of the spatial mesh and solved by an MPI process.
+`ngstents` is an c++ extension of the [NGSolve](https://ngsolve.org)
+finite element library designed to ease experimentation with
+tent-based methods for hyperbolic systems. The python front-end allows
+new equations (linear or nonlinear conservation laws) and schemes to
+be easily defined using their fluxes and numerical fluxes in a few
+lines of code.
 
 
-### Installation
+## Installation
 
 NGSolve is required
 
@@ -14,19 +19,18 @@ After cloning this repository, do the following:
 * `cmake ..`
 * `make -j4 install`
 
-### Testing
+Check if your installation is working by running the code in 
+the 'tests' fodler (say, by using an automated tester like
+pytest).
 
-The 'tests' directory contains tests that can be run using pytest.
+## Visualization
 
-### Sample Simulations
+### 1D + time 
 
-Currently the only conservation law implemented is the Burgers equation.  The 'burgers' directory contains simple Python scripts for one and two spatial dimensions.
+A simple Matplotlib-based code provides visualization of  a (2D) spacetime 
+slab in this case.
 
-### 1D Visualization
-
-A simple Matplotlib-based code provides visualization of the slab in this case.
-
-### 2D Visualization
+### 2D + time 
 
 Several methods are available for visualizing tent-pitched slabs in two spatial dimensions plus time:
 
@@ -34,7 +38,7 @@ Several methods are available for visualizing tent-pitched slabs in two spatial 
 * `tentsngsgui` is a plugin to NGSolve/ngsgui which adds a tent scene for visualizing a tent-pitched slab
 * The tent slab geometry can also be exported to a VTK file for viewing with Paraview.
 
-### 3D Visualization
+### 3D + time
 
 `tentsngsgui` currently supports a tent-pitched slab on a 3D spatial mesh, but gives very incomplete visualization of the tents and layers.
 
