@@ -1,5 +1,8 @@
 #include "tents.hpp"
 #include <limits>
+#include <h1lofe.hpp> // seems needed for ScalarFE (post 2021-06-22 NGSolve update)
+
+
 
 ///////////////////// GradPhiCoefficientFunction ///////////////////////////
 
