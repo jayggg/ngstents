@@ -10,8 +10,8 @@ void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u0,
 	      FlatMatrixFixWidth<COMP> flux, double tstar, int derive_cf_bnd, LocalHeap & lh)
 {
-  static Timer tflux ("CalcFluxTent", 2);
-  ThreadRegionTimer reg(tflux, TaskManager::GetThreadId());
+  // static Timer tflux ("CalcFluxTent", 2);
+  // ThreadRegionTimer reg(tflux, TaskManager::GetThreadId());
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -678,8 +678,8 @@ Cyl2Tent (const Tent & tent, double tstar,
 	  FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
 	  LocalHeap & lh)
 {
-  static Timer tcyl2tent ("Cyl2Tent", 2);
-  ThreadRegionTimer reg(tcyl2tent, TaskManager::GetThreadId());
+  // static Timer tcyl2tent ("Cyl2Tent", 2);
+  // ThreadRegionTimer reg(tcyl2tent, TaskManager::GetThreadId());
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -724,8 +724,8 @@ void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
          FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
 {
-  static Timer tapplym1 ("ApplyM1", 2);
-  ThreadRegionTimer reg(tapplym1, TaskManager::GetThreadId());
+  // static Timer tapplym1 ("ApplyM1", 2);
+  // ThreadRegionTimer reg(tapplym1, TaskManager::GetThreadId());
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -780,8 +780,8 @@ Tent2Cyl (const Tent & tent, double tstar,
 	  FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> uhat,
           bool solvemass, LocalHeap & lh)
 {
-  static Timer ttent2cyl ("Tent2Cyl", 2);
-  ThreadRegionTimer reg(ttent2cyl, TaskManager::GetThreadId());
+  // static Timer ttent2cyl ("Tent2Cyl", 2);
+  // ThreadRegionTimer reg(ttent2cyl, TaskManager::GetThreadId());
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -841,7 +841,7 @@ template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 Propagate(LocalHeap & lh, shared_ptr<GridFunction> hdgf)
 {
-  static Timer tprop ("Propagate", 2); RegionTimer reg(tprop);
+  // static Timer tprop ("Propagate", 2); RegionTimer reg(tprop);
 
   if (hdgf != nullptr)
       vis3d->SetInitialHd(gfu, hdgf, lh);

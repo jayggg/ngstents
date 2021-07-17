@@ -13,8 +13,8 @@ template <typename TCONSLAW>
 void SAT<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
 				  const BaseVector & hu0, LocalHeap & lh)
 {
-  static Timer tproptent ("SAT::Propagate Tent", 2);
-  ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
+  // static Timer tproptent ("SAT::Propagate Tent", 2);
+  // ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
 
   tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), lh);
   tent.InitTent(tcl->gftau);
@@ -63,8 +63,8 @@ template <typename TCONSLAW>
 void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
 				   const BaseVector & hu0, LocalHeap & lh)
 {
-  static Timer tproptent ("SARK::Propagate Tent", 2);
-  ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
+  // static Timer tproptent ("SARK::Propagate Tent", 2);
+  // ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
 
   tent.fedata = new (lh) TentDataFE(tent, *(tcl->fes), lh);
   tent.InitTent(tcl->gftau);
