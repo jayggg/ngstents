@@ -13,13 +13,8 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX ${NGSOLVE_INSTALL_DIR}/${NGSOLVE_INSTALL_DIR_PYTHON} CACHE PATH "Install dir" FORCE)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
-install (FILES
-        __init__.py 
-        DESTINATION ngstrefftz
-        COMPONENT ngstrefftz
-        )
 
-add_ngsolve_python_module(ngstrefftz 
+add_ngsolve_python_module(_trefftz 
     python_trefftz.cpp
     diffopmapped.hpp
     scalarmappedfe.cpp
@@ -33,4 +28,8 @@ add_ngsolve_python_module(ngstrefftz
 #add_compile_options(-g -O0)
 
 message("With 'make install' the python package will be installed to: ${CMAKE_INSTALL_PREFIX}")
-install(TARGETS ngstrefftz DESTINATION ngstrefftz)
+install(TARGETS _trefftz DESTINATION ngstents/trefftz)
+install (FILES
+        __init__.py 
+        DESTINATION ngstents/trefftz
+        )

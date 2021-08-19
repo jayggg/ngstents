@@ -1,7 +1,6 @@
-from ngstrefftz.ngstrefftz import *
-from ngsolve import *
-from ngsolve.fem import CoordCF
-from types import MethodType
+from ngsolve.fem import ET,IntegrationRule
+from ngsolve.comp import L2,BilinearForm,LinearForm,SymbolicBFI,SymbolicLFI
+from ._trefftz import *
 
 def GetWave(self,U):
     order=self.GetOrder()
@@ -30,7 +29,7 @@ def GetWave(self,U):
         u,v = fes.TnT()
         wavefront = self.GetWavefront()
         a = BilinearForm(fes)
-        a += SymbolicBFI(InnerProduct(u,v))
+        a += SymbolicBFI(u*v)
         a.Assemble()
 
         sirsize = int(wavefront.Width()/(D+1))
@@ -47,5 +46,3 @@ setattr(TWaveTents2, 'GetWave', GetWave)
 # setattr(TWaveTents3, 'GetWave', GetWave)
 setattr(QTWaveTents1, 'GetWave', GetWave)
 setattr(QTWaveTents2, 'GetWave', GetWave)
-# = MethodType(GetWave, None, TrefftzTent)
-# TrefftzTent.GetWave = classmethod(GetWave)

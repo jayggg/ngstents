@@ -1,6 +1,6 @@
 from ngsolve.internal import visoptions
 from ngstents import TentSlab
-from ngstrefftz import *
+from ngstents.trefftz import TWave
 from ngsolve.TensorProductTools import *
 from ngsolve import *
 import time
