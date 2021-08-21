@@ -15,7 +15,6 @@ add_ngsolve_python_module(_pytents
   )
 add_ngsolve_python_module(_pyconslaw
   python_conslaw.cpp
-  symbolicDG.cpp
   burgers.cpp
   euler.cpp
   wave.cpp

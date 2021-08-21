@@ -1,5 +1,5 @@
 from ngsolve import Mesh, Draw, Redraw
-from ngsolve import CoefficientFunction, IfPos, sqrt, sin, cos, exp, x, y, z, InnerProduct
+from ngsolve import CoefficientFunction, IfPos, exp, x, y, InnerProduct
 from ngsolve import L2, GridFunction, TaskManager
 from ngsolve import specialcf as scf
 from ngsolve.internal import visoptions
@@ -7,20 +7,25 @@ from ngstents import TentSlab
 from ngstents.conslaw import ConservationLaw
 import time
 
+
 def Make2DPeriodicMesh(xint, yint, maxh):
     # generate periodic mesh for xint x yint = [xmin, xmax] x [ymin, ymax]
     from netgen.geom2d import SplineGeometry
     periodic = SplineGeometry()
-    pnts = [(xint[0],yint[0]),(xint[1],yint[0]),(xint[1],yint[1]),(xint[0],yint[1])]
+    pnts = [(xint[0], yint[0]), (xint[1], yint[0]),
+            (xint[1], yint[1]), (xint[0], yint[1])]
     pnums = [periodic.AppendPoint(*p) for p in pnts]
-    lbot = periodic.Append ( ["line", pnums[0], pnums[1]], bc="bottom")
-    lright = periodic.Append ( ["line", pnums[1], pnums[2]], bc="right")
-    periodic.Append ( ["line", pnums[0], pnums[3]], leftdomain=0, rightdomain=1, bc="left", copy=lright)
-    periodic.Append ( ["line", pnums[3], pnums[2]], leftdomain=0, rightdomain=1, bc="top", copy=lbot)
+    lbot = periodic.Append(["line", pnums[0], pnums[1]], bc="bottom")
+    lright = periodic.Append(["line", pnums[1], pnums[2]], bc="right")
+    periodic.Append(["line", pnums[0], pnums[3]], leftdomain=0,
+                    rightdomain=1, bc="left", copy=lright)
+    periodic.Append(["line", pnums[3], pnums[2]], leftdomain=0,
+                    rightdomain=1, bc="top", copy=lbot)
     return periodic.GenerateMesh(maxh=maxh)
 
+
 maxh = 0.1
-mesh = Mesh(Make2DPeriodicMesh([0,1], [0,1], maxh))
+mesh = Mesh(Make2DPeriodicMesh([0, 1], [0, 1], maxh))
 
 # setting the problem
 tend = 1
@@ -44,6 +49,7 @@ u = GridFunction(V)
 b = CoefficientFunction((1, 0.1))
 n = scf.normal(mesh.dim)
 
+
 def Flux(u):
     """
     Compute the flux for given TrialFunction u,
@@ -52,6 +58,7 @@ def Flux(u):
     w should correspond to the dimension of the mesh/space
     """
     return CoefficientFunction(b*u, dims=(V.dim, mesh.dim))
+
 
 def NumFlux(um, up):
     """
@@ -64,18 +71,21 @@ def NumFlux(um, up):
     bn = b*n
     return IfPos(bn, bn*um, bn*up)
 
+
 def InverseMap(y):
     """
     solves "y = u - (b*u,gradphi)" for u
     """
-    return y/(1-InnerProduct(b,ts.gradphi))
+    return y/(1-InnerProduct(b, ts.gradphi))
+
 
 cl = ConservationLaw(u, ts, flux=Flux, numflux=NumFlux, inversemap=InverseMap)
 
-cl.SetTentSolver("SAT",stages=order+1, substeps=2*order)
+cl.SetTentSolver("SAT", stages=order+1, substeps=2*order)
 
-pos = (0.5,0.5)
-u0 = CoefficientFunction( exp(-100* ((x-pos[0])*(x-pos[0])+(y-pos[1])*(y-pos[1])) ))
+pos = (0.5, 0.5)
+u0 = CoefficientFunction(
+    exp(-100 * ((x-pos[0])*(x-pos[0])+(y-pos[1])*(y-pos[1]))))
 cl.SetInitial(u0)
 
 Draw(u)
@@ -85,7 +95,6 @@ t = 0
 cnt = 0
 redraw = 1
 
-import time
 input("press enter to start")
 t1 = time.time()
 with TaskManager():
@@ -93,15 +102,7 @@ with TaskManager():
         cl.Propagate()
         t += dt
         cnt += 1
-        if cnt%redraw == 0:
+        if cnt % redraw == 0:
             print("{:5f}".format(t))
             Redraw(True)
-print("total time = ",time.time()-t1)
-
-for t in Timers():
-    if t['name'] == 'ApplyM1' or\
-       t['name'] == 'CalcFluxTent' or\
-       t['name'] == 'Cyl2Tent' or\
-       t['name'] == 'Propagate' or\
-       t['name'] == 'SAT::Propagate Tent':
-        print(t)
+print("total time = ", time.time()-t1)
