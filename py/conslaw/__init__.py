@@ -1,11 +1,11 @@
 from ._pyconslaw import ConservationLaw
-from ._pyconslaw import ApplyDG
+
 
 class Burgers(ConservationLaw):
     def __init__(self, gfu, tentslab, **kwargs):
         """
         INPUTS:
-        
+
         gridfunction : GridFunction
         tentslab     : TentSlab
         outflow      : Optional[Region]
@@ -14,11 +14,12 @@ class Burgers(ConservationLaw):
         """
         ConservationLaw.__init__(self, gfu, tentslab, "burgers", **kwargs)
 
+
 class Euler(ConservationLaw):
     def __init__(self, gfu, tentslab, **kwargs):
         """
         INPUTS:
-        
+
         gridfunction : GridFunction
         tentslab     : TentSlab
         outflow      : Optional[Region]
@@ -27,11 +28,12 @@ class Euler(ConservationLaw):
         """
         ConservationLaw.__init__(self, gfu, tentslab, "euler", **kwargs)
 
+
 class Wave(ConservationLaw):
     def __init__(self, gfu, tentslab, **kwargs):
         """
         INPUTS:
-        
+
         gridfunction : GridFunction
         tentslab     : TentSlab
         outflow      : Optional[Region]
@@ -41,11 +43,12 @@ class Wave(ConservationLaw):
         """
         ConservationLaw.__init__(self, gfu, tentslab, "wave", **kwargs)
 
+
 class Advection(ConservationLaw):
     def __init__(self, gfu, tentslab, **kwargs):
         """
         INPUTS:
-        
+
         gridfunction : GridFunction
         tentslab     : TentSlab
         outflow      : Optional[Region]
@@ -55,11 +58,12 @@ class Advection(ConservationLaw):
         """
         ConservationLaw.__init__(self, gfu, tentslab, "advection", **kwargs)
 
+
 class Maxwell(ConservationLaw):
     def __init__(self, gfu, tentslab, **kwargs):
         """
         INPUTS:
-        
+
         gridfunction : GridFunction
         tentslab     : TentSlab
         outflow      : Optional[Region]

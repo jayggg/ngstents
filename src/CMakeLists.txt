@@ -30,11 +30,11 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX ${NGSOLVE_INSTALL_DIR}/${NGSOLVE_INSTALL_DIR_PYTHON} CACHE PATH "Install dir" FORCE)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
-option(BUILD_STUB_FILES "Generate stub files for better autocompletion support" ON)
+option(BUILD_STUB_FILES "Generate stub files for better autocompletion support" OFF)
 if(BUILD_STUB_FILES)
   execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import pybind11_stubgen; print(pybind11_stubgen.__file__)" OUTPUT_VARIABLE stubgen_path RESULT_VARIABLE pybind11_stubgen)
   if(pybind11_stubgen AND NOT ${pybind11_stubgen} EQUAL 0)    
-    message(WARNING "pybind11-stubgen not found, if you want to create stub files
+    message(WARNING "pybind11-stubgeN not found, if you want to create stub files
 for better autocompletion support install it with pip.")
   else()
     message("-- Found pybind11-stubgen: ${stubgen_path}")
