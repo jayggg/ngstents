@@ -7,11 +7,11 @@
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
-CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u, FlatMatrixFixWidth<COMP> u0,
-	      FlatMatrixFixWidth<COMP> flux, double tstar, int derive_cf_bnd, LocalHeap & lh)
+CalcFluxTent(const Tent & tent, const FlatMatrixFixWidth<COMP> u,
+	     FlatMatrixFixWidth<COMP> u0,
+	     FlatMatrixFixWidth<COMP> flux, double tstar, int derive_cf_bnd,
+	     LocalHeap & lh)
 {
-  // static Timer tflux ("CalcFluxTent", 2);
-  // ThreadRegionTimer reg(tflux, TaskManager::GetThreadId());
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
@@ -675,48 +675,62 @@ CalcViscosityCoefficientTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 Cyl2Tent (const Tent & tent, double tstar,
-	  FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
+	  const FlatMatrixFixWidth<COMP> uhat,
+	  FlatMatrixFixWidth<COMP> u,
 	  LocalHeap & lh)
 {
-  // static Timer tcyl2tent ("Cyl2Tent", 2);
-  // ThreadRegionTimer reg(tcyl2tent, TaskManager::GetThreadId());
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");
 
-  for (size_t i : Range(tent.els))
-    {
-      HeapReset hr(lh);
-      auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[i]);
+  for (size_t i : Range(tent.els)) {
+    
+    HeapReset hr(lh);
+    auto & fel = static_cast<const BaseScalarFiniteElement&> (*fedata->fei[i]);
 
-      auto & simd_mir = *fedata->miri[i];
-      IntRange dn = fedata->ranges[i];
+    auto & simd_mir = *fedata->miri[i];
+    IntRange dn = fedata->ranges[i];
 
-      FlatMatrix<SIMD<double>> u_ipts(COMP, simd_mir.Size(),lh);
-      FlatMatrix<SIMD<double>> gradphi_mat(DIM, simd_mir.Size(), lh);
-      gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
-                    tstar*fedata->agradphi_top[i];
-      if constexpr(SYMBOLIC)
-	{
-	  ProxyUserData * ud = new (lh) ProxyUserData(1, 1, lh); //ntrial = 1, ncf = 1
-	  auto & trafo = *fedata->trafoi[i];
-	  const_cast<ElementTransformation&>(trafo).userdata = ud;
-	  ud->fel = &fel;
-	  auto nip = simd_mir.IR().GetNIP();
-	  ud->AssignMemory (proxy_u.get(), nip, COMP, lh);
-	  ud->AssignMemory (tps->cfgradphi.get(), nip, DIM, lh);
-	}
-      fel.Evaluate (simd_mir.IR(), uhat.Rows(dn), u_ipts);
-      Cast().InverseMap(simd_mir, gradphi_mat, u_ipts);
+    // Let x[k] denote the k-th mapped integration point on this tent element.
+    // We compute 
+    //    u_ipts[k] = U(x[k])
+    //    gradphi_mat[j, k] = grad(φ)[j] (x[k], tstar)
+    FlatMatrix<SIMD<double>> u_ipts(COMP, simd_mir.Size(),lh);
+    FlatMatrix<SIMD<double>> gradphi_mat(DIM, simd_mir.Size(), lh);
+    gradphi_mat = (1-tstar)*fedata->agradphi_bot[i] +
+      tstar*fedata->agradphi_top[i];
 
-      for(size_t k = 0; k < simd_mir.Size(); k++)
-        u_ipts.Col(k) *= simd_mir[k].GetWeight();
+    if constexpr(SYMBOLIC) {
+      // Make ProxyUserData to embed in mir's trafo with space to store 
+      // u-values  and grad(φ)-values for τ = tstar (given).
+      // So we create ProxyUserData with
+      //   number of trial proxy functions = 1,  and 
+      //   number of coefficient functions = 1:       
+      ProxyUserData * ud = new (lh) ProxyUserData(1, 1, lh); 
+      auto & trafo = *fedata->trafoi[i];
+      const_cast<ElementTransformation&>(trafo).userdata = ud;
+      ud->fel = &fel;
+      auto nip = simd_mir.IR().GetNIP();
 
-      u.Rows(dn) = 0.0;
-      fel.AddTrans (simd_mir.IR(), u_ipts, u.Rows(dn));
+      // reserve space for u-values of the size nip x COMP
+      ud->AssignMemory(proxy_u.get(), nip, COMP, lh);
 
-      SolveM (tent, i, u.Rows (dn), lh);
+      // reserve space for gradphi-values of the size nip x DIM	
+      ud->AssignMemory(tps->cfgradphi.get(), nip, DIM, lh);
     }
+    
+    fel.Evaluate(simd_mir.IR(), uhat.Rows(dn), u_ipts);
+    Cast().InverseMap(simd_mir, gradphi_mat, u_ipts);
+
+    for(size_t k = 0; k < simd_mir.Size(); k++)
+      u_ipts.Col(k) *= simd_mir[k].GetWeight();
+
+    // u[i] += ∑ₖ u_ipts[k] * shape[i]( x[k] )
+    u.Rows(dn) = 0.0;  
+    fel.AddTrans(simd_mir.IR(), u_ipts, u.Rows(dn));
+      
+    SolveM(tent, i, u.Rows (dn), lh);
+  }
 }
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
@@ -724,8 +738,6 @@ void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
          FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
 {
-  // static Timer tapplym1 ("ApplyM1", 2);
-  // ThreadRegionTimer reg(tapplym1, TaskManager::GetThreadId());
 
   auto fedata = tent.fedata;
   if (!fedata) throw Exception("fedata not set");

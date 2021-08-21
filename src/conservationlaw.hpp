@@ -74,31 +74,45 @@ public:
 };
 
 
-/*Template for conservation law classes.
-Any conservation law to be used in the MTP scheme should derive
-from this class.
-The template parameters are as follows:
-EQUATION: the class representing the equation
-DIM: spatial dimension in which the conservation law is prescribed upon
-COMP: number of state variables/equations
-ECOMP: number of state variables/equations for entropy residual (non-linear eqs)
-*/
+////////////////////////////////////////////////////////////////////////////
+///
+/// TEMPLATE FOR CONSERVATION LAW SPECIFICATION IN MTP SCHEMES.
+///
+/// Any conservation law to be used in the MTP scheme should derive
+/// from this class. The template parameters are as follows: 
+///   EQUATION: the class representing the equation
+///   DIM: spatial dimension in which the conservation law is prescribed upon
+///   COMP: number of state variables/equations
+///   ECOMP: number of state variables/equations for entropy residual (non-linear eqs)
+///
+/// The equation is
+///
+///      d_t u + div_x F(u) = 0,     on Omega, 
+///
+/// where
+///
+///   -  Omega = An DIM-space dimensional domain,
+///   -      u = Solution, an COMP x 1 vector function,
+///   -      F = Flux, an COMP x DIM matrix function,
+///   -    d_t = time derivative,
+///   -   div_x = row-wise spatial divergence.
+///
+
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC=false>
-class T_ConservationLaw : public ConservationLaw,
-			  public enable_shared_from_this<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP,SYMBOLIC>>
+class T_ConservationLaw :
+  public ConservationLaw,
+  public enable_shared_from_this<T_ConservationLaw<EQUATION,DIM,COMP,ECOMP,SYMBOLIC>>
 {
 protected:
-  FlatVector<> nu;  // viscosity coefficient
 
-  bool def_bcnr = false; // check if the array below is properly set
-  Array<int> bcnr;       // array of boundary condition numbers
-  Array<shared_ptr<CoefficientFunction>> cf_bnd; // CoefficientFunction used for boundary values
+  bool def_bcnr = false; ///< check if the array below is properly set
+  Array<int> bcnr;       ///< array of boundary condition numbers
+  Array<shared_ptr<CoefficientFunction>> cf_bnd; ///< CF used for boundary values
   bool cf_bnd_deriv = false;
-  BitArray scale_deriv; // scale time-dependent boundary coefficient function by tent height (SAT)
-
+  BitArray scale_deriv; ///< scale time-dependent boundary CF by tent height (for SAT)
+  FlatVector<> nu;  ///< viscosity coefficient (for nonlinear case)
   shared_ptr<CoefficientFunction> cf_numentropyflux = nullptr;
-
-  // collection of tents in timeslab
+  /// collection of tents in timeslab
   Table<int> & tent_dependency = tps->tent_dependency;
 
   const EQUATION & Cast() const {return static_cast<const EQUATION&> (*this);}
@@ -173,7 +187,7 @@ public:
 
   virtual ~T_ConservationLaw() { ; }
 
-  // set boundary boundary condition numbers for given region
+  // set boundary condition numbers for given region
   void SetBC(int bc, const BitArray & region)
   {
     def_bcnr = true;
@@ -220,8 +234,10 @@ public:
       return;
 
     // check if cf_bnd is time-dependent
-    auto dtau_cf = cf_bnd[0]->Diff(cftau.get(),make_shared<ConstantCoefficientFunction>(1.0));
+    auto dtau_cf = cf_bnd[0]->Diff(cftau.get(),
+				   make_shared<ConstantCoefficientFunction>(1.0));
     auto components = dtau_cf->InputCoefficientFunctions();
+    
     for( auto i : Range(components.Size()))
       if(components[i])
 	if( components[i]->GetDescription() != "ZeroCF")
@@ -229,7 +245,9 @@ public:
 
     for(size_t i : Range(stages-1))
       {
-	auto dtau = cf_bnd[i]->Diff(cftau.get(), make_shared<ConstantCoefficientFunction>(1.0/(i+1)));
+	auto dtau =
+	  cf_bnd[i]->Diff(cftau.get(),
+			  make_shared<ConstantCoefficientFunction>(1.0/(i+1)));
 	auto temp = cf_bnd[i]->Diff(proxy_u.get(), proxy_u); // identity
 	cf_bnd.Append(dtau + temp);
       }
@@ -383,9 +401,9 @@ public:
     throw Exception ("Transparent boundary just available for wave equation!");
   }
 
-  void CalcFluxTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
-                     FlatMatrixFixWidth<COMP> u0, FlatMatrixFixWidth<COMP> flux,
-                     double tstar, int derive_cf_bnd, LocalHeap & lh);
+  void CalcFluxTent(const Tent & tent, const FlatMatrixFixWidth<COMP> u,
+		    FlatMatrixFixWidth<COMP> u0, FlatMatrixFixWidth<COMP> flux,
+		    double tstar, int derive_cf_bnd, LocalHeap & lh);
 
   ////////////////////////////////////////////////////////////////
   // entropy viscosity for nonlinear conservation laws
@@ -447,7 +465,7 @@ public:
   }
 
   void Cyl2Tent (const Tent & tent, double tstar,
-		 FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
+		 const FlatMatrixFixWidth<COMP> uhat, FlatMatrixFixWidth<COMP> u,
 		 LocalHeap & lh);
 
   void ApplyM1 (const Tent & tent, double tstar,
