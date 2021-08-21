@@ -13,17 +13,18 @@ shared_ptr<ConservationLaw> CreateMaxwell(const shared_ptr<GridFunction> & gfu,
 					  const shared_ptr<TentPitchedSlab> & tps);
 
 typedef CoefficientFunction CF;
-shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction> & gfu,
-						   const shared_ptr<TentPitchedSlab> & tps,
-						   const shared_ptr<ProxyFunction> & proxy_u,
-						   const shared_ptr<ProxyFunction> & proxy_uother,
-						   const shared_ptr<CF> & flux,
-						   const shared_ptr<CF> & numflux,
-						   const shared_ptr<CF> & invmap,
-						   const shared_ptr<CF> & entropy,
-						   const shared_ptr<CF> & entropyflux,
-						   const shared_ptr<CF> & numentropyflux,
-						   const bool compile);
+shared_ptr<ConservationLaw>
+CreateSymbolicConsLaw(const shared_ptr<GridFunction> & gfu,
+		      const shared_ptr<TentPitchedSlab> & tps,
+		      const shared_ptr<ProxyFunction> & proxy_u,
+		      const shared_ptr<ProxyFunction> & proxy_uother,
+		      const shared_ptr<CF> & flux,
+		      const shared_ptr<CF> & numflux,
+		      const shared_ptr<CF> & invmap,
+		      const shared_ptr<CF> & entropy,
+		      const shared_ptr<CF> & entropyflux,
+		      const shared_ptr<CF> & numentropyflux,
+		      const bool compile);
 
 typedef ConservationLaw CL;
 shared_ptr<CL> CreateConsLaw(const shared_ptr<GridFunction> & gfu,
@@ -279,12 +280,9 @@ void ExportConsLaw(py::module & m)
     ;
 }
 
-// Just for initial proof of concept (we need to move from DG -> MTP)
-extern void ExportSymbolicDG (py::module & m); 
 
 PYBIND11_MODULE(_pyconslaw, m) {
   m.attr("__name__") = "ngstents.conslaw";
   m.attr("__package__") = "ngstents";
   ExportConsLaw(m);
-  ExportSymbolicDG(m);
 }
