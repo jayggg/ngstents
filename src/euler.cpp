@@ -283,13 +283,13 @@ public:
         auto rhol = ula(0,i);
         Vec<D,SIMD<double>> ul = ula.Col(i).Range(1,D+1);
         auto Tl = 2.0*(2.0*rhol*ula(D+1,i) - L2Norm2(ul)) / (dim_*rhol*rhol);
-        Tl = IfPos(Tl,Tl,1e-10);
+        Tl = IfPos(Tl,Tl,SIMD<double>(1e-10));
         auto Sl = (log(rhol) - dim_/2.0 * log(Tl) - dim_/2.0 * log (M_PI) - dim_/2.0);
         
         auto rhor = ura(0,i);
         Vec<D,SIMD<double>> ur = ura.Col(i).Range(1,D+1);
         auto Tr = 2.0*(2.0*rhor*ura(D+1,i) - L2Norm2(ur)) / (dim_*rhor*rhor);
-        Tr = IfPos(Tr,Tr,1e-10);
+        Tr = IfPos(Tr,Tr,SIMD<double>(1e-10));
         auto Sr = (log(rhor) - dim_/2.0 * log(Tr) - dim_/2.0 * log (M_PI) - dim_/2.0);
 
         Vec<D,SIMD<double>> n = normals.Col(i);
