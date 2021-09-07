@@ -13,21 +13,29 @@ namespace ngcomp
 
     TrefftzTents::~TrefftzTents() {};
 
-    /*template<int D>*/
-    /*inline void  TWaveTents<D> :: LapackSolve(SliceMatrix<double> a, SliceVector<double> b)*/
-    /*{*/
-        /*integer n = a.Width();*/
-        /*integer lda = a.Dist();*/
-        /*integer success;*/
-        /*char trans = 'T';*/
-        /*integer nrhs = 1;*/
-        /*ArrayMem<integer,100> ipiv(n);*/
+#ifdef LAPACK
+    template<int D>
+    inline void  TWaveTents<D> :: Solve(SliceMatrix<double> a, SliceVector<double> b)
+    {
+        integer n = a.Width();
+        integer lda = a.Dist();
+        integer success;
+        char trans = 'T';
+        integer nrhs = 1;
+        ArrayMem<integer,100> ipiv(n);
 
-        /*dgetrf_(&n,&n,&a(0,0),&lda,&ipiv[0],&success);*/
-        /*dgetrs_(&trans,&n,&nrhs,&a(0,0),&lda,&ipiv[0],&b[0],&lda,&success);*/
-        /*if(success!=0) cout << "Lapack error: " << success << endl;*/
-    /*}*/
-
+        dgetrf_(&n,&n,&a(0,0),&lda,&ipiv[0],&success);
+        dgetrs_(&trans,&n,&nrhs,&a(0,0),&lda,&ipiv[0],&b[0],&lda,&success);
+        if(success!=0) cout << "Lapack error: " << success << endl;
+    }
+#else
+    template<int D>
+    inline void  TWaveTents<D> :: Solve(SliceMatrix<double> a, SliceVector<double> b)
+    {
+        CalcInverse(elmat);
+        elvec = elmat*elvec;
+    }
+#endif
     template<int D>
     void TWaveTents<D> :: Propagate()
     {
@@ -106,9 +114,7 @@ namespace ngcomp
             }
 
             // solve
-            /*LapackSolve(elmat,elvec);*/
-            CalcInverse(elmat);
-            elvec = elmat*elvec;
+            Solve(elmat,elvec);
             FlatVector<> sol(ndomains*nbasis, &elvec(0));
 
             // eval solution on top of tent
@@ -880,9 +886,7 @@ namespace ngcomp
             }
 
             // solve
-            /*LapackSolve(elmat,elvec);*/
-            CalcInverse(elmat);
-            elvec = elmat*elvec;
+            Solve(elmat,elvec);
             FlatVector<> sol(nbasis, &elvec(0));
 
             // eval solution on top of tent
