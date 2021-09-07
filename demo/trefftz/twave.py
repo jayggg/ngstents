@@ -26,7 +26,7 @@ ts = TentSlab(mesh, method="edge", heapsize=heapsize)
 ts.SetMaxWavespeed(wavespeed)
 ts.PitchTents(dt=dt, local_ct=local_ctau, global_ct=global_ctau)
 
-order=5
+order=4
 mu0 = CoefficientFunction(cos(x)*cos(y))
 q0 = CoefficientFunction((0, 0))
 cf = CoefficientFunction((q0, mu0))
