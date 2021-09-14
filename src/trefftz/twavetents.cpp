@@ -13,29 +13,14 @@ namespace ngcomp
 
     TrefftzTents::~TrefftzTents() {};
 
-#ifdef LAPACK
     template<int D>
-    inline void  TWaveTents<D> :: Solve(SliceMatrix<double> a, SliceVector<double> b)
+    inline void  TWaveTents<D> :: Solve(FlatMatrix<double> a, FlatVector<double> b)
     {
-        integer n = a.Width();
-        integer lda = a.Dist();
-        integer success;
-        char trans = 'T';
-        integer nrhs = 1;
-        ArrayMem<integer,100> ipiv(n);
+        CalcInverse(a,INVERSE_LIB::INV_LAPACK);
+        Vector<> c = a*b;
+        b=c;
+    }
 
-        dgetrf_(&n,&n,&a(0,0),&lda,&ipiv[0],&success);
-        dgetrs_(&trans,&n,&nrhs,&a(0,0),&lda,&ipiv[0],&b[0],&lda,&success);
-        if(success!=0) cout << "Lapack error: " << success << endl;
-    }
-#else
-    template<int D>
-    inline void  TWaveTents<D> :: Solve(SliceMatrix<double> a, SliceVector<double> b)
-    {
-        CalcInverse(elmat);
-        elvec = elmat*elvec;
-    }
-#endif
     template<int D>
     void TWaveTents<D> :: Propagate()
     {
