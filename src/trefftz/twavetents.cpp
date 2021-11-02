@@ -33,7 +33,6 @@ namespace ngcomp
         double max_wavespeed = wavespeed[0];
         for(double c : wavespeed) max_wavespeed = max(c,max_wavespeed);
 
-        cout << "solving " << tps->GetNTents() << " tents ";
         static Timer ttent("tent");
         static Timer ttentel("tentel");
         static Timer ttentbnd("tentbnd");
@@ -110,9 +109,7 @@ namespace ngcomp
                 CalcTentElEval(tent->els[elnr], tent, tel, sir, slh, sol.Range(eli*nbasis,(eli+1)*nbasis), topdshapes[elnr]);
             }
         }); // end loop over tents
-        cout<<"solved from " << timeshift;
         timeshift += tps->GetSlabHeight();
-        cout<<" to " << timeshift<<endl;
     }
 
 
@@ -763,8 +760,6 @@ namespace ngcomp
 
         QTWaveBasis<D> basis;
 
-        cout << "solving qt " << (this->tps)->GetNTents() << " tents in " << D << "+1 dimensions..." << endl;
-
         RunParallelDependency ((this->tps)->tent_dependency, [&] (int tentnr) {
             LocalHeap slh = lh.Split();  // split to threads
             const Tent* tent =& (this->tps)->GetTent(tentnr);
@@ -880,9 +875,7 @@ namespace ngcomp
                 this->CalcTentElEval(tent->els[elnr], tent, tel, sir, slh, sol, topdshapes[elnr]);
             }
         }); // end loop over tents
-        cout<<"solved from " << this->timeshift;
         this->timeshift += (this->tps)->GetSlabHeight();
-        cout<<" to " << this->timeshift<<endl;
     }
 
     template<int D>
