@@ -2,6 +2,7 @@
 #include <h1lofe.hpp>
 #include <paralleldepend.hpp>
 #include "trefftzfespace.hpp"
+#include "intrule4.cpp"
 
 namespace ngcomp
 {
@@ -33,6 +34,7 @@ namespace ngcomp
         double max_wavespeed = wavespeed[0];
         for(double c : wavespeed) max_wavespeed = max(c,max_wavespeed);
 
+        //cout << "solving " << tps->GetNTents() << " tents ";
         static Timer ttent("tent");
         static Timer ttentel("tentel");
         static Timer ttentbnd("tentbnd");
@@ -109,7 +111,9 @@ namespace ngcomp
                 CalcTentElEval(tent->els[elnr], tent, tel, sir, slh, sol.Range(eli*nbasis,(eli+1)*nbasis), topdshapes[elnr]);
             }
         }); // end loop over tents
+        //cout<<"solved from " << timeshift;
         timeshift += tps->GetSlabHeight();
+        //cout<<" to " << timeshift<<endl;
     }
 
 
@@ -161,7 +165,7 @@ namespace ngcomp
                 }
             }
         tel.CalcDShape(smir,simddshapes);
-        FlatMatrix<> bbmat(nbasis,(D+1)*snip,&simddshapes(0,0)[0]);
+        FlatMatrix<> bbmat(nbasis,(D+1)*snip,reinterpret_cast<double*>(&simddshapes(0,0)));
         elvec -= bbmat * bdbvec;
 
         // stabilization to recover second order solution
@@ -174,7 +178,7 @@ namespace ngcomp
             AddABt(simdshapes,simdshapes,elmat);
             for(size_t imip=0;imip<sir.Size();imip++)
                 simdshapes.Col(imip) *= sqrt(area*sir[imip].Weight());
-            FlatMatrix<> shapes(nbasis,snip,&simdshapes(0,0)[0]);
+            FlatMatrix<> shapes(nbasis,snip,reinterpret_cast<double*>(&simdshapes(0,0)));
             elvec += shapes*wavefront.Row(elnr).Range(0,snip);
         }
 
@@ -253,7 +257,7 @@ namespace ngcomp
 
         FlatMatrix<SIMD<double>> simddshapes((D+1)*nbasis,sir.Size(),slh);
         tel.CalcDShape(smir,simddshapes);
-        FlatMatrix<double> bbmat(nbasis,(D+1)*snip,&simddshapes(0,0)[0]);
+        FlatMatrix<double> bbmat(nbasis,(D+1)*snip,reinterpret_cast<double*>(&simddshapes(0,0)));
 
 
         for(size_t imip=0;imip<smir.Size();imip++)
@@ -353,12 +357,12 @@ namespace ngcomp
         tel.SetWavespeed(this->wavespeed[elnums[0]]);
         FlatMatrix<SIMD<double>> simddshapes1((D+1)*nbasis,sir.Size(),slh);
         tel.CalcDShape(smir,simddshapes1);
-        bbmat[0] = new FlatMatrix<>(nbasis,(D+1)*snip,&simddshapes1(0,0)[0]);
+        bbmat[0] = new FlatMatrix<>(nbasis,(D+1)*snip,reinterpret_cast<double*>(&simddshapes1(0,0)));
 
         tel.SetWavespeed(this->wavespeed[elnums[1]]);
         FlatMatrix<SIMD<double>> simddshapes2((D+1)*nbasis,sir.Size(),slh);
         tel.CalcDShape(smir,simddshapes2);
-        bbmat[1] = new FlatMatrix<>(nbasis,(D+1)*snip,&simddshapes2(0,0)[0]);
+        bbmat[1] = new FlatMatrix<>(nbasis,(D+1)*snip,reinterpret_cast<double*>(&simddshapes2(0,0)));
 
         FlatMatrix<>* bdbmat[4];
         for(int i=0;i<4;i++)
@@ -417,8 +421,8 @@ namespace ngcomp
         if(!fosystem)
         tel.CalcShape(smir,simdshapes);
         //tel.CalcDShape(smir,simddshapes);
-        FlatMatrix<> dshapes(nbasis,(D+1)*snip,&simddshapes(0,0)[0]);
-        FlatMatrix<> shapes(nbasis,snip,&simdshapes(0,0)[0]);
+        FlatMatrix<> dshapes(nbasis,(D+1)*snip,reinterpret_cast<double*>(&simddshapes(0,0)));
+        FlatMatrix<> shapes(nbasis,snip,reinterpret_cast<double*>(&simdshapes(0,0)));
         if(!fosystem)
         wavefront.Row(elnr).Range(0,snip) = Trans(shapes)*sol;
         wavefront.Row(elnr).Range(snip*(!fosystem),snip*(!fosystem)+snip*(D+1)) = Trans(dshapes)*sol;
@@ -760,6 +764,8 @@ namespace ngcomp
 
         QTWaveBasis<D> basis;
 
+        //cout << "solving qt " << (this->tps)->GetNTents() << " tents in " << D << "+1 dimensions..." << endl;
+
         RunParallelDependency ((this->tps)->tent_dependency, [&] (int tentnr) {
             LocalHeap slh = lh.Split();  // split to threads
             const Tent* tent =& (this->tps)->GetTent(tentnr);
@@ -875,7 +881,9 @@ namespace ngcomp
                 this->CalcTentElEval(tent->els[elnr], tent, tel, sir, slh, sol, topdshapes[elnr]);
             }
         }); // end loop over tents
+        //cout<<"solved from " << this->timeshift;
         this->timeshift += (this->tps)->GetSlabHeight();
+        //cout<<" to " << this->timeshift<<endl;
     }
 
     template<int D>
@@ -903,7 +911,7 @@ namespace ngcomp
 
     template class TWaveTents<1>;
     template class TWaveTents<2>;
-    //template class TWaveTents<3>;
+    template class TWaveTents<3>;
 
     template class QTWaveTents<1>;
     template class QTWaveTents<2>;
@@ -945,7 +953,7 @@ void ExportTWaveTents(py::module m)
 
     DeclareETClass<TWaveTents<1>, 1>(m, "TWaveTents1");
     DeclareETClass<TWaveTents<2>, 2>(m, "TWaveTents2");
-    //DeclareETClass<TWaveTents<3>, 3>(m, "TWaveTents3");
+    DeclareETClass<TWaveTents<3>, 3>(m, "TWaveTents3");
     DeclareETClass<QTWaveTents<1>, 1>(m, "QTWaveTents1");
     DeclareETClass<QTWaveTents<2>, 2>(m, "QTWaveTents2");
 
@@ -959,8 +967,8 @@ void ExportTWaveTents(py::module m)
                       tr = make_shared<TWaveTents<1>>(order,tps,wavespeedcf);
                   else if(D==2)
                       tr = make_shared<TWaveTents<2>>(order,tps,wavespeedcf);
-                  //else if(D==3)
-                      //tr = make_shared<TWaveTents<3>>(order,tps,wavespeedcf);
+                  else if(D==3)
+                      tr = make_shared<TWaveTents<3>>(order,tps,wavespeedcf);
               } else {
                   if(D==1)
                       tr = make_shared<QTWaveTents<1>>(order,tps,wavespeedcf,BBcf);

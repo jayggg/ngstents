@@ -13,6 +13,13 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX ${NGSOLVE_INSTALL_DIR}/${NGSOLVE_INSTALL_DIR_PYTHON} CACHE PATH "Install dir" FORCE)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 
+if (NOT TARGET _pytents)
+add_ngsolve_python_module(_pytents
+  ../python_tents.cpp
+  ../tents.cpp
+  )
+install(TARGETS _pytents DESTINATION ngstents)
+endif()
 
 add_ngsolve_python_module(_trefftz 
     python_trefftz.cpp
@@ -20,9 +27,9 @@ add_ngsolve_python_module(_trefftz
     scalarmappedfe.cpp
     trefftzfespace.cpp
     specialcoefficientfunction.cpp
-    ../tents.cpp
     twavetents.cpp
     )
+target_link_libraries(_trefftz PRIVATE _pytents)
 
 #add_compile_options(PRIVATE -Wall -Wextra -pedantic)
 #add_compile_options(-g -O0)

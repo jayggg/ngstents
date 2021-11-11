@@ -1,5 +1,7 @@
 from ngsolve.fem import ET,IntegrationRule
-from ngsolve.comp import L2,BilinearForm,LinearForm,SymbolicBFI,SymbolicLFI
+from ngsolve.comp import L2,BilinearForm,LinearForm,SymbolicBFI,SymbolicLFI,FESpace
+from ngsolve.fem import CoordCF
+from ngstents._pytents import TentSlab, Tent
 from ._trefftz import *
 
 def GetWave(self,U):
@@ -29,7 +31,7 @@ def GetWave(self,U):
         u,v = fes.TnT()
         wavefront = self.GetWavefront()
         a = BilinearForm(fes)
-        a += SymbolicBFI(u*v)
+        a += SymbolicBFI(InnerProduct(u,v))
         a.Assemble()
 
         sirsize = int(wavefront.Width()/(D+1))
@@ -43,6 +45,6 @@ def GetWave(self,U):
 
 setattr(TWaveTents1, 'GetWave', GetWave)
 setattr(TWaveTents2, 'GetWave', GetWave)
-# setattr(TWaveTents3, 'GetWave', GetWave)
+setattr(TWaveTents3, 'GetWave', GetWave)
 setattr(QTWaveTents1, 'GetWave', GetWave)
 setattr(QTWaveTents2, 'GetWave', GetWave)
