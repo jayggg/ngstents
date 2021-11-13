@@ -70,4 +70,4 @@ if(FOUND_STUBGEN)
 endif(FOUND_STUBGEN)
 
 
-add_subdirectory(./trefftz/)
+# add_subdirectory(./trefftz/)
