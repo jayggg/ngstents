@@ -68,6 +68,3 @@ if(FOUND_STUBGEN)
   install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pybind11_stubgen --no-setup-py  ngstents)")
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/stubs/ngstents-stubs/ DESTINATION ngstents)
 endif(FOUND_STUBGEN)
-
-
-# add_subdirectory(./trefftz/)
