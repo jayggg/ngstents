@@ -1,7 +1,6 @@
 name: build
 on:
   push:
-    branches: [ master ]
   pull_request:
     branches: [ master ]
 
@@ -23,15 +22,13 @@ jobs:
         run: |
              echo "PYTHONPATH=/usr/lib/python3/dist-packages/" >> $GITHUB_ENV
              echo "NETGENDIR=/usr/bin/" >> $GITHUB_ENV
-      #- uses: actions/checkout@v2
-      - name: get source
-        run: git clone https://github.com/jayggg/ngstents ~/work/ngstents
+      - uses: actions/checkout@v2
       - name: cmake ngstents
-        run: cmake -B~/work/ngstents/make -S~/work/ngstents/src/
+        run: cmake -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src
       - name: compile ngstents
         run: |
-             make -C~/work/ngstents/make
-             sudo make -C/home/runner/work/ngstents/make install  
+             make -C$GITHUB_WORKSPACE/make
+             sudo make -C$GITHUB_WORKSPACE/make install  
         
   macos-nightly:
     runs-on: macos-latest
@@ -49,13 +46,11 @@ jobs:
              echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$NETGENDIR" >> $GITHUB_ENV
              echo "DYLD_FRAMEWORK_PATH=$DYLD_FRAMEWORK_PATH:$NETGENDIR/../Frameworks" >> $GITHUB_ENV
              echo "$NETGENDIR" >> $GITHUB_PATH
-      #- uses: actions/checkout@v2
-      - name: get source
-        run: git clone https://github.com/jayggg/ngstents ~/work/ngstents
+      - uses: actions/checkout@v2
       - name: cmake ngstents
-        run: cmake -B~/work/ngstents/make -S~/work/ngstents/src/
+        run: cmake -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src
       - name: compile ngstents
         run: |
-             make -C~/work/ngstents/make
-             sudo make -C~/work/ngstents/make install  
+             make -C$GITHUB_WORKSPACE/make
+             sudo make -C$GITHUB_WORKSPACE/make install  
 
