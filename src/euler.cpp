@@ -196,7 +196,7 @@ public:
             n(k) = normals(k,i)[j];
           Vec<D+2> fn = NumFlux(ul,ur,n);
           for (size_t k : Range(D+2))
-            fna(k,i)[j] = fn(k);
+            reinterpret_cast<double*>(&fna(k,i))[j] = fn(k);
         }
   }
 
@@ -241,7 +241,7 @@ public:
               n(k) = normals(k,i)[j];
             u_reflect(uvec,n,uvec_refl);
             for(auto k : Range(D+2))
-              u_refl(k,i)[j] = uvec_refl(k);
+              reinterpret_cast<double*>(&u_refl(k,i))[j] = uvec_refl(k);
           }
       }
   }
