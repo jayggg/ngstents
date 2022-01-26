@@ -638,10 +638,10 @@ CalcViscosityCoefficientTent (const Tent & tent, FlatMatrixFixWidth<COMP> u,
 
       // clear overhead
       FlatMatrix<double> temp(ECOMP,simd_ir.Size()*SIMD<double>::Size(),
-                              &resi(0,0)[0]);
+                              reinterpret_cast<double*>(&resi(0,0)));
       temp.Cols(simd_ir.GetNIP(),simd_ir.Size()*SIMD<double>::Size()) = 0.0;
       FlatMatrix<double> tempu(COMP,simd_ir.Size()*SIMD<double>::Size(),
-                               &ui(0,0)[0]);
+                              reinterpret_cast<double*>(&ui(0,0)));
       tempu.Cols(simd_ir.GetNIP(),simd_ir.Size()*SIMD<double>::Size()) = 0.0;
 
       FlatMatrix<SIMD<double>> gradphi_mat(DIM, simd_mir.Size(), lh);
