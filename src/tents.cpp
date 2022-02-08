@@ -60,6 +60,17 @@ void GradPhiCoefficientFunction::GenerateCode(Code &code, FlatArray<int> inputs,
       body += Var(index, i,j).Assign(CodeExpr(values), false);
     });
 
+
+  //for (int i = 0; i < Dimension(); i++){
+      //body += Var(index, i,dims).Declare("{scal_type}", 0.0);
+      //string values = "{values}";
+      //if(code.is_simd)
+    //values += "(" + ToLiteral(i) + ",i)";
+      //else
+    //values += "(i," + ToLiteral(i) + ")";
+      //body += Var(index, i,dims).Assign(CodeExpr(values), false);
+  //}
+
   std::map<string,string> variables;
   variables["ud"] = "tmp_"+ToLiteral(index)+"_0";
   variables["this"] = "reinterpret_cast<CoefficientFunction*>("+code.AddPointer(this)+")";
