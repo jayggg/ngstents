@@ -5,6 +5,28 @@
 
 
 ///////////////////// GradPhiCoefficientFunction ///////////////////////////
+template<typename TFunc>
+void TraverseDimensions_old( FlatArray<int> dims, const TFunc &func)
+
+{
+switch(dims.Size())
+{
+  case 0:
+    func(0,0,0);
+    break;
+  case 1:
+    for (int i : Range(max2(1, dims[0])))
+      func(i,i,0);
+    break;
+  case 2:
+    for (int i : Range(max2(1, dims[0])))
+      for (int j : Range(max2(1, dims[1])))
+        func(i*dims[1]+j, i, j);
+    break;
+  default:
+    throw Exception("TraverseDimensions: too many dimensions!");
+}
+}
 
 void GradPhiCoefficientFunction::GenerateCode(Code &code, FlatArray<int> inputs, int index) const
 {
@@ -28,7 +50,7 @@ void GradPhiCoefficientFunction::GenerateCode(Code &code, FlatArray<int> inputs,
   header += "}\n";
 
   string body = "";
-  TraverseDimensions( dims, [&](int ind, int i, int j) {
+  TraverseDimensions_old( dims, [&](int ind, int i, int j) {
       body += Var(index, i,j).Declare("{scal_type}", 0.0);
       string values = "{values}";
       if(code.is_simd)
@@ -37,6 +59,17 @@ void GradPhiCoefficientFunction::GenerateCode(Code &code, FlatArray<int> inputs,
 	values += "(i," + ToLiteral(ind) + ")";
       body += Var(index, i,j).Assign(CodeExpr(values), false);
     });
+
+
+  //for (int i = 0; i < Dimension(); i++){
+      //body += Var(index, i,dims).Declare("{scal_type}", 0.0);
+      //string values = "{values}";
+      //if(code.is_simd)
+    //values += "(" + ToLiteral(i) + ",i)";
+      //else
+    //values += "(i," + ToLiteral(i) + ")";
+      //body += Var(index, i,dims).Assign(CodeExpr(values), false);
+  //}
 
   std::map<string,string> variables;
   variables["ud"] = "tmp_"+ToLiteral(index)+"_0";
