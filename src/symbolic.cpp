@@ -6,13 +6,16 @@ using namespace ngsolve;
 typedef CoefficientFunction CF;
 
 template <int D, int COMP, int ECOMP>
-class SymbolicConsLaw : public T_ConservationLaw<SymbolicConsLaw<D,COMP,ECOMP>, D, COMP, ECOMP, true>
+class SymbolicConsLaw :
+  public T_ConservationLaw<SymbolicConsLaw<D,COMP,ECOMP>, D, COMP, ECOMP, true>
 {
-  typedef T_ConservationLaw<SymbolicConsLaw<D, COMP, ECOMP>, D, COMP, ECOMP, true> BASE;
+  typedef T_ConservationLaw<SymbolicConsLaw<D, COMP, ECOMP>, D, COMP, ECOMP, true>
+  BASE;
 
   shared_ptr<CF> cf_flux = nullptr;
   shared_ptr<CF> cf_numflux = nullptr;
   shared_ptr<CF> cf_invmap = nullptr;
+
   // cf's for entropy residual
   shared_ptr<CF> cf_entropy = nullptr;
   shared_ptr<CF> cf_entropyflux = nullptr;
@@ -70,14 +73,23 @@ public:
   using BASE::NumFlux;
   using BASE::InverseMap;
 
-  // solve for û: Û = ĝ(x̂, t̂, û) - ∇̂ φ(x̂, t̂) ⋅ f̂(x̂, t̂, û)
-  // at all points in an integration rule
+
+  /// Given values of grad(φ) (at some fixed pseudotime τ) in "gradphi", 
+  /// return the values of "u" at points of a mapped integration rule "mir"
+  /// using the saved inverse map y –to–> u where y = g(u) - grad(φ) f(u).  
+  
   void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
-		  FlatMatrix<SIMD<double>> gradphi, FlatMatrix<SIMD<double>> u) const
-  {
-    ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
-    ud.GetAMemory(proxy_u.get()) = u;                  // set values for u
-    ud.GetAMemory(BASE::tps->cfgradphi.get()) = gradphi;  // set values for grad(phi)
+		  FlatMatrix<SIMD<double>> gradphi,
+		  FlatMatrix<SIMD<double>> u) const   {
+
+    // Load the values of u & grad(φ) into the ProxyUserData object of "mir"
+    ProxyUserData & ud =
+      *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
+    ud.GetAMemory(proxy_u.get()) = u;                
+    ud.GetAMemory(BASE::tps->cfgradphi.get()) = gradphi;
+
+    // Compute y –to–> u using the inverse map data member (evaluation of its
+    // expression tree will use the data we loaded into  "ud" above.
     cf_invmap->Evaluate(mir, u);
   }
 
@@ -88,10 +100,10 @@ public:
 		  FlatMatrix<SIMD<double>> ut) const
   {
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
-    ud.GetAMemory(proxy_u.get()) = u;                  // set values for u
-    ud.GetAMemory(proxy_uother.get()) = ut;            // abuse other proxy for derivatives
-    ud.GetAMemory(BASE::tps->cfgradphi.get()) = gradphi;  // set values for grad(phi)
-    ud.GetAMemory(proxy_graddelta.get()) = graddelta;     // set values for graddelta
+    ud.GetAMemory(proxy_u.get()) = u;         // set values for u
+    ud.GetAMemory(proxy_uother.get()) = ut;   // abuse other proxy for derivatives
+    ud.GetAMemory(BASE::tps->cfgradphi.get()) = gradphi; // set values for grad(phi)
+    ud.GetAMemory(proxy_graddelta.get()) = graddelta;    // set values for graddelta
 
     STACK_ARRAY(SIMD<double>, mem, COMP*mir.Size());
     FlatMatrix<SIMD<double>> temp(COMP, mir.Size(), mem);

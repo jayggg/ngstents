@@ -29,8 +29,8 @@ public:
   SAT (const shared_ptr<TCONSLAW> & atcl, int astages, int asubsteps)
     : tcl{atcl}, stages{astages}, substeps{asubsteps}
   {
-    cout << "set up structure-aware Taylor time stepping with "+
-      ToString(stages)+" stages and "+ToString(substeps)+" substeps within each tent" << endl;
+    cout << "set up SAT timestepping with "+
+      ToString(stages)+" stages and "+ToString(substeps)+" substeps/tent" << endl;
 
     shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(atcl->fes);
     if(!fes_check)
@@ -73,9 +73,10 @@ public:
       throw Exception("Structure-aware Runge-Kutta time stepping available for L2 spaces only");
 
     cout << "set up " + ToString(stages) + "-stage ";
-    // coefficients for SARK methods derived in disseration
-    // "Mapped Tent Pitching Schemes for Hyperbolic Systems"
-    // by C. Wintersteiger (2020)
+
+    // SARK coefficients below are derived from order conditions in
+    // https://doi.org/10.1007/s42985-020-00020-4
+    
     switch(stages)
       {
       case 1:
@@ -92,7 +93,7 @@ public:
 		   {0.5, 0.0} };
 	bcoeff = { 0.0, 1.0 };
 	ccoeff = { 0.0, 0.5 };
-	cout << "(second first order) ";
+	cout << "(second order) ";
 	break;
       case 3:
 	acoeff = { {0.0, 0.0, 0.0},
@@ -106,6 +107,11 @@ public:
 	cout << "(third order) ";
 	break;
       case 5:
+	
+	// Fourth order 5-stage SARK method can be found in the dissertation
+	// "Mapped Tent Pitching Schemes for Hyperbolic Systems"
+	// by C. Wintersteiger (2020)
+
 	acoeff = { {0.0, 0.0, 0.0, 0.0, 0.0},
 		   {1.0/3.0, 0.0, 0.0, 0.0, 0.0},
 		   {-1.0/3.0, 1.0, 0.0, 0.0, 0.0},
@@ -123,8 +129,8 @@ public:
       default:
 	throw Exception("no "+ToString(stages)+"-stage SARK method implemented");
       }
-    cout << "structure-aware Runge-Kutta time stepping with "
-      + ToString(substeps) + " substeps within each tent" << endl;
+    cout << "SARK timestepping with "
+      + ToString(substeps) + " substeps/tent" << endl;
   };
 
   void PropagateTent(const Tent & tent, BaseVector & hu,

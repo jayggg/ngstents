@@ -9,9 +9,9 @@ FlatVector<> AsFV (T & mat)
 };
 
 ////// structure-aware Taylor time stepping //////
-template <typename TCONSLAW>
-void SAT<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
-				  const BaseVector & hu0, LocalHeap & lh)
+template <typename TCONSLAW> void SAT<TCONSLAW>::
+PropagateTent(const Tent & tent, BaseVector & hu,
+	      const BaseVector & hu0, LocalHeap & lh)
 {
   // static Timer tproptent ("SAT::Propagate Tent", 2);
   // ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
@@ -59,9 +59,9 @@ void SAT<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
 };
 
 ////// structure-aware Runge-Kutta time stepping //////
-template <typename TCONSLAW>
-void SARK<TCONSLAW>::PropagateTent(const Tent & tent, BaseVector & hu,
-				   const BaseVector & hu0, LocalHeap & lh)
+template <typename TCONSLAW> void SARK<TCONSLAW>::
+PropagateTent(const Tent & tent, BaseVector & hu,
+	      const BaseVector & hu0, LocalHeap & lh)
 {
   // static Timer tproptent ("SARK::Propagate Tent", 2);
   // ThreadRegionTimer reg(tproptent, TaskManager::GetThreadId());
