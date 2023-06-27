@@ -9,11 +9,11 @@ Note: In all tests, setting the global_ct slightly less than 1 ensures
 """
 from ngsolve import Mesh
 from ngstents import TentSlab
-from ngstents.utils import Make1DMesh
+from ngsolve.meshes import Make1DMesh
 
 
 def Get1DMesh():
-    return Mesh(Make1DMesh([[0, 1]], [10], bcname=['left', 'right']))
+    return Make1DMesh(10)
 
 
 def Get2DMesh():
@@ -36,13 +36,13 @@ def test_1D_vol_causal():
     c = 1
     global_ct = 0.999
     method = "vol"
-    heapsize = 5*1000*1000
+    heapsize = 5 * 1000 * 1000
     tentslab = TentSlab(mesh, method, heapsize)
     tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
-    expected = 1.0/c
+    expected = 1.0 / c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
 
@@ -53,13 +53,13 @@ def test_1D_edge_causal():
     c = 1
     global_ct = 0.999
     method = "edge"
-    heapsize = 5*1000*1000
+    heapsize = 5 * 1000 * 1000
     tentslab = TentSlab(mesh, method, heapsize)
     tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
-    expected = 1.0/c
+    expected = 1.0 / c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
 
@@ -70,13 +70,13 @@ def test_2D_vol_causal():
     c = 1
     global_ct = 0.999
     method = "vol"
-    heapsize = 5*1000*1000
+    heapsize = 5 * 1000 * 1000
     tentslab = TentSlab(mesh, method, heapsize)
     tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
-    expected = 1.0/c
+    expected = 1.0 / c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
 
@@ -87,13 +87,13 @@ def test_2D_edge_causal():
     c = 1
     global_ct = 0.999
     method = "edge"
-    heapsize = 5*1000*1000
+    heapsize = 5 * 1000 * 1000
     tentslab = TentSlab(mesh, method, heapsize)
     tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
-    expected = 1.0/c
+    expected = 1.0 / c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
 
@@ -104,13 +104,13 @@ def test_3D_vol_causal():
     c = 1
     global_ct = 0.999
     method = "vol"
-    heapsize = 5*1000*1000
+    heapsize = 5 * 1000 * 1000
     tentslab = TentSlab(mesh, method, heapsize)
     tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
-    expected = 1.0/c
+    expected = 1.0 / c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg
 
@@ -121,12 +121,12 @@ def test_3D_edge_causal():
     c = 1
     global_ct = 0.999
     method = "edge"
-    heapsize = 5*1000*1000
+    heapsize = 5 * 1000 * 1000
     tentslab = TentSlab(mesh, method, heapsize)
     tentslab.SetMaxWavespeed(c)
     success = tentslab.PitchTents(dt, local_ct=True, global_ct=global_ct)
     assert success, "Slab could not be pitched"
     maxslope = tentslab.MaxSlope()
-    expected = 1.0/c
+    expected = 1.0 / c
     msg = "max slope {} exceeded {}".format(maxslope, expected)
     assert maxslope <= expected, msg

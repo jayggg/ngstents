@@ -6,28 +6,22 @@ from ngsolve import specialcf as scf
 from ngsolve.internal import visoptions, viewoptions
 from ngstents import TentSlab
 from ngstents.conslaw import ConservationLaw
-from ngstents.utils import Make1DMesh
 from math import pi
 import time
 
-dim = 2
-if(dim == 1):
-    N = 100
-    ngmesh = Make1DMesh([[0, pi]], [N], bcname="reflect")
-else:
-    geom = SplineGeometry()
-    geom.AddRectangle((0, 0), (pi, pi), bc="reflect")
-    ngmesh = geom.GenerateMesh(maxh=0.25)
+geom = SplineGeometry()
+geom.AddRectangle((0, 0), (pi, pi), bc="reflect")
+ngmesh = geom.GenerateMesh(maxh=0.25)
 mesh = Mesh(ngmesh)
 
 # setting the problem
-tend = 2/sqrt(dim)*pi
-dt = tend/10
+tend = 2 / sqrt(2) * pi
+dt = tend / 10
 wavespeed = 1
 
 # using causality constant
 local_ctau = True
-global_ctau = 2/3
+global_ctau = 2 / 3
 ts = TentSlab(mesh, method="edge")
 ts.SetMaxWavespeed(wavespeed)
 ts.PitchTents(dt=dt, local_ct=local_ctau, global_ct=global_ctau)
@@ -35,7 +29,7 @@ print("max slope", ts.MaxSlope())
 print("n tents", ts.GetNTents())
 
 order = 2
-V = L2(mesh, order=order, dim=mesh.dim+1)
+V = L2(mesh, order=order, dim=mesh.dim + 1)
 gfu = GridFunction(V, name="u")
 
 # vector-valued coefficient function
@@ -49,7 +43,7 @@ def Flux(u):
     h represents the number of equations and
     w should correspond to the dimension of the mesh/space
     """
-    return CoefficientFunction((Id(mesh.dim)*u[mesh.dim], u[0:mesh.dim]),
+    return CoefficientFunction((Id(mesh.dim) * u[mesh.dim], u[0:mesh.dim]),
                                dims=(V.dim, mesh.dim))
 
 
@@ -61,9 +55,9 @@ def NumFlux(um, up):
     up: trace of u for other element on facet
     """
     # upwind flux
-    flux = 0.5 * (Flux(um) + Flux(up))*n
-    flux_vec = 0.5 * (um[0:mesh.dim] - up[0:mesh.dim])*n * n
-    flux_scal = 0.5 * (um[mesh.dim]-up[mesh.dim])
+    flux = 0.5 * (Flux(um) + Flux(up)) * n
+    flux_vec = 0.5 * (um[0:mesh.dim] - up[0:mesh.dim]) * n * n
+    flux_scal = 0.5 * (um[mesh.dim] - up[mesh.dim])
     return flux + CoefficientFunction((flux_vec, flux_scal))
 
 
@@ -74,8 +68,9 @@ def InverseMap(y):
     assuming wave speed = 1
     """
     norm_sqr = InnerProduct(ts.gradphi, ts.gradphi)
-    mu = (y[mesh.dim] + InnerProduct(y[0:mesh.dim], ts.gradphi))/(1-norm_sqr)
-    q = y[0:mesh.dim] + mu*ts.gradphi
+    mu = (y[mesh.dim] + InnerProduct(y[0:mesh.dim], ts.gradphi)) / (1 -
+                                                                    norm_sqr)
+    q = y[0:mesh.dim] + mu * ts.gradphi
     return CoefficientFunction((q, mu))
 
 
@@ -85,23 +80,24 @@ def BndNumFlux(um):
     um: trace of u for current element on facet
     """
     # set (q,n) = 0
-    return CoefficientFunction((um[mesh.dim]*n, 0))
+    return CoefficientFunction((um[mesh.dim] * n, 0))
 
 
-cl = ConservationLaw(gfu, ts,
+cl = ConservationLaw(gfu,
+                     ts,
                      flux=Flux,
                      numflux=NumFlux,
                      inversemap=InverseMap)
 cl.SetBoundaryCF(mesh.BoundaryCF({"reflect": BndNumFlux(cl.u_minus)}))
 # cl.SetTentSolver("SAT",stages=order+1, substeps=4*order)
-cl.SetTentSolver("SARK", stages=order+1, substeps=4*order)
+cl.SetTentSolver("SARK", stages=order + 1, substeps=4 * order)
 
-mu0 = cos(x) if dim == 1 else cos(x)*cos(y)
-q0 = CoefficientFunction(tuple(dim*[0]))
+mu0 = cos(x) * cos(y)
+q0 = CoefficientFunction(tuple(mesh.dim * [0]))
 cl.SetInitial(CoefficientFunction((q0, mu0)))
 
 Draw(gfu)
-visoptions.scalfunction = "u:{:0}".format(mesh.dim+1)
+visoptions.scalfunction = "u:{:0}".format(mesh.dim + 1)
 viewoptions.drawedges = 1
 
 t = 0
@@ -111,24 +107,20 @@ redraw = 1
 # input("press enter to start")
 t1 = time.time()
 with TaskManager():
-    while t < tend-dt/2:
+    while t < tend - dt / 2:
         cl.Propagate()
         t += dt
         cnt += 1
         if cnt % redraw == 0:
             print("{:5f}".format(t))
             Redraw(True)
-print("total time = ", time.time()-t1)
+print("total time = ", time.time() - t1)
 
-if(dim == 1):
-    exsol = CoefficientFunction((sin(x)*sin(tend),
-                                 cos(x)*cos(tend)))
-else:
-    exsol = CoefficientFunction((sin(x)*cos(y)*sin(sqrt(2)*tend)/sqrt(2),
-                                 cos(x)*sin(y)*sin(sqrt(2)*tend)/sqrt(2),
-                                 cos(x)*cos(y)*cos(sqrt(2)*tend)))
+exsol = CoefficientFunction((sin(x) * cos(y) * sin(sqrt(2) * tend) / sqrt(2),
+                             cos(x) * sin(y) * sin(sqrt(2) * tend) / sqrt(2),
+                             cos(x) * cos(y) * cos(sqrt(2) * tend)))
 
 Draw(exsol, mesh, "exact")
-l2error = sqrt(Integrate(InnerProduct(
-    gfu-exsol, gfu-exsol), mesh, order=3*order))
+l2error = sqrt(
+    Integrate(InnerProduct(gfu - exsol, gfu - exsol), mesh, order=3 * order))
 print("l2error = ", l2error)
