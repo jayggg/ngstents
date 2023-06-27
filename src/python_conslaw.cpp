@@ -250,7 +250,7 @@ void ExportConsLaw(py::module & m)
          [](shared_ptr<CL> self, string method, int stages, int substeps)
          {
            self->SetTentSolver(method, stages, substeps);
-         }, py::arg("method") = "SAT", py::arg("stages") = 2, py::arg("substeps") = 1)
+         }, py::arg("method") = "SARK", py::arg("stages") = 2, py::arg("substeps") = 1)
     .def("SetIdx3d",
          [](shared_ptr<CL> self, py::list lst)
          {
