@@ -51,13 +51,11 @@ install(TARGETS _pyconslaw DESTINATION ngstents/conslaw)
 
 install(FILES
   ../py/__init__.py
-  ../py/_drawtents.py
   DESTINATION ngstents)
 
 install(FILES
   ../py/utils/__init__.py
-  ../py/utils/mesh1d.py
-  ../py/utils/slab2mesh.py
+    ../py/utils/_drawtents.py
   DESTINATION ngstents/utils)
 
 install(FILES
