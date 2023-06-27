@@ -106,7 +106,7 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
   //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
   Table<int> v2v, v2e;
   std::tie(v2v,v2e) = slabpitcher->InitializeMeshData<DIM>(lh,cmax, calc_local_ct, global_ct);
-  cout << "Initialised mesh data" << endl;
+  cout << "Initialized mesh data" << endl;
   
   Array<double> tau(ma->GetNV());  // advancing front values at vertices
   tau = 0.0;

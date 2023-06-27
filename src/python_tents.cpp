@@ -70,7 +70,7 @@ auto ExportTimeSlab(py::module &m)
     ////////////////////////////
     // visualization functions
     ////////////////////////////
-    .def("_TentData1D", [](shared_ptr<TentPitchedSlab> self)
+    .def("TentData1D", [](shared_ptr<TentPitchedSlab> self)
 	 {
 	   py::list ret;
 	   for(int i = 0; i < self->GetNTents(); i++)
@@ -92,27 +92,7 @@ auto ExportTimeSlab(py::module &m)
 	   else
 	     self->DrawPitchedTentsVTK(vtkfilename);
 	 },
-	 py::arg("vtkfilename") = "output")
-    .def("DrawPitchedTentsGL", [](shared_ptr<TentPitchedSlab> self)
-  	 {
-	   if(self->ma->GetDimension() == 1)
-	     throw Exception("Not supported for 1D spatial meshes");
-	   
-  	   int nlevels;
-  	   Array<int> tentdata;
-  	   Array<double> tenttimes;
-  	   self->DrawPitchedTentsGL(tentdata, tenttimes, nlevels);
-  	   py::list data, times;
-  	   for(auto i : Range(tentdata))
-  	     {
-  	       data.append(tentdata[i]);
-  	       // note: time values make sense only in 2D case.
-  	       // They are not used in 3D case, i.e. they are
-  	       // ignored by tents_visualization (ngsgui) and webgui.
-  	       times.append(tenttimes[i]);
-  	     }
-  	   return py::make_tuple(data,times,self->GetNTents(),nlevels);
-  	 })
+      py::arg("vtkfilename") = "output")
     ;
 }
 
