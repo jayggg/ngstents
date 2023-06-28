@@ -1,7 +1,7 @@
 # Spacetime Tents in NGSolve
 
-This `ngstents` package is an c++ extension of the
-[NGSolve](https://ngsolve.org) finite element library designed to ease
+This `ngstents` package is a c++ extension of the
+[NGSolve](https://ngsolve.org) finite element library, designed to ease
 experimentation with solvers based on spacetime tents for hyperbolic
 systems. The python front-end allows new equations (linear or
 nonlinear conservation laws) and schemes to be easily defined using
@@ -18,11 +18,15 @@ the c++ code here and install:
 * `cmake -DNGSolve_DIR=<Path2YourNGSolveInstall>  ..`
 * `make install`
 
+## Use
+
+The `demo` folder contains many examples. 
+
 ## Check
 
-You can check if your installation is working correctly using the test
-suite provided in the 'tests' folder. For example, if you have
-`pytest` installed, move to the `tests` folder and use pytest:
+New code changes can be cross-checked against a test suite provided in
+the 'tests' folder. For example, if you have `pytest` installed, move
+to the `tests` folder and use pytest:
 
 * `pytest .`
 
