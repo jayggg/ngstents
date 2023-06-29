@@ -101,19 +101,19 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
         break;
       }
   }();
+
   if(!slabpitcher) return false;
-  cout << "Created slab pitcher"<<endl;
+  
   //calc wavespeed for each element and perhaps other stuff (i..e, calculating edge gradients, checking fine edges, etc)
   Table<int> v2v, v2e;
   std::tie(v2v,v2e) = slabpitcher->InitializeMeshData<DIM>(lh,cmax, calc_local_ct, global_ct);
-  cout << "Initialized mesh data" << endl;
   
   Array<double> tau(ma->GetNV());  // advancing front values at vertices
   tau = 0.0;
 
   
   slabpitcher->ComputeVerticesReferenceHeight(v2v, v2e, tau, lh);
-  cout << "Computed reference heights" << endl;
+  
   // max time increase allowed at vertex, depends on tau of neighbors
   //at the beginning the advancing front is at a constant t=0
   //so ktilde can be set as vertex_refdt
@@ -145,7 +145,8 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
 
   while ( !slab_complete )
     {
-      cout << "Setting ready vertices" << endl;
+      // cout << "Setting ready vertices" << endl;
+
       const bool found_vertices =
         slabpitcher->GetReadyVertices(adv_factor,reset_adv_factor,ktilde,complete_vertices, vertex_ready,ready_vertices);
       //no possible vertex in which a tent could be pitched was found
@@ -153,7 +154,9 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
       // ---------------------------------------------
       // Main loop: constructs one tent each iteration
       // ---------------------------------------------
-      cout << "Pitching tents..." << endl;      
+
+      // cout << "Pitching tents..." << endl;
+      
       while (ready_vertices.Size())
         {
           int minlevel, posmin;
