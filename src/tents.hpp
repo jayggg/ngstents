@@ -193,7 +193,7 @@ public:
   //calc_local_ct will indicate whether to use a local mesh-dependent
   //constant for the algorithm
   //global_ct is a globalwise constant that can be independently used
-  //its return value will indicate whether the slab was successfully pitched.
+  
   template <int DIM>
   bool PitchTents(const double dt, const bool calc_local_ct, const double global_ct = 1.0);
   
