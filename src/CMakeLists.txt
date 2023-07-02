@@ -55,7 +55,8 @@ install(FILES
 
 install(FILES
   ../py/utils/__init__.py
-    ../py/utils/_drawtents.py
+  ../py/utils/_drawtents.py
+  ../py/utils/_drawtents2d.py
   DESTINATION ngstents/utils)
 
 install(FILES

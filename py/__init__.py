@@ -5,6 +5,8 @@ from . import conslaw
 from . import utils
 
 from .utils._drawtents import DrawPitchedTentsPlt
+from .utils._drawtents2d import DrawPitchedTents
 
 TentSlab.DrawPitchedTentsPlt = DrawPitchedTentsPlt
-del DrawPitchedTentsPlt
+TentSlab.DrawPitchedTents = DrawPitchedTents
+del DrawPitchedTentsPlt, DrawPitchedTents
