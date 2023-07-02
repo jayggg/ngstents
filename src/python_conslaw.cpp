@@ -250,7 +250,18 @@ void ExportConsLaw(py::module & m)
          [](shared_ptr<CL> self, string method, int stages, int substeps)
          {
            self->SetTentSolver(method, stages, substeps);
-         }, py::arg("method") = "SARK", py::arg("stages") = 2, py::arg("substeps") = 1)
+         },
+	 py::arg("method")="SARK",
+	 py::arg("stages")=2, py::arg("substeps")=1,
+	 R"(
+         Parameters:--
+           method: SARK (Structure-Aware Runge Kutta), or 
+                   SAT  (Structure-Aware Taylor).
+           stages: determines the order of time stepper.
+           substeps: number of subtents each tent should be divided into
+             before applying the tent solver method.
+           ----------- )"
+	 )
     .def("SetIdx3d",
          [](shared_ptr<CL> self, py::list lst)
          {

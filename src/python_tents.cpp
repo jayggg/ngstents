@@ -42,7 +42,8 @@ auto ExportTimeSlab(py::module &m)
              throw Exception("wrong argument type in SetMaxWavespeed");
          })
     .def("PitchTents",[](shared_ptr<TentPitchedSlab> self,
-			 const double dt, const bool local_ct, const double global_ct)
+			 const double dt,
+			 const bool local_ct, const double global_ct)
 	 {
 	   int dim = self->ma->GetDimension();
 	   bool success = false;
@@ -57,11 +58,22 @@ auto ExportTimeSlab(py::module &m)
 	     success = self->PitchTents<3>(dt,local_ct,global_ct);
 	     break;
 	   default:
-	     throw Exception("TentPitchedSlab not avaiable for dimension "+ToString(dim));
+	     throw Exception("TentPitchedSlab not available for dimension "+ToString(dim));
 	   }
 	   return success;
 	 },
-	 py::arg("dt"), py::arg("local_ct") = false, py::arg("global_ct") = 1.0)
+	 py::arg("dt"), py::arg("local_ct")=false, py::arg("global_ct")=1.0,
+	 R"(
+         Parameters:--
+           dt: spacetime slab's height in time.
+           local_ct: if True, constrain tent slope by scaling 1/wavespeed
+             with a further local mesh-dependent factor.
+           global_ct: an additional factor to constrain tent slope, which
+             gives flatter tents for smaller values.
+
+         Returns True upon successful tent meshing.
+         -------------)"
+	 )
     .def("GetNTents", &TentPitchedSlab::GetNTents)
     .def("GetNLayers", &TentPitchedSlab::GetNLayers)
     .def("GetSlabHeight", &TentPitchedSlab::GetSlabHeight)
@@ -85,14 +97,19 @@ auto ExportTimeSlab(py::module &m)
 	     }
 	   return ret;
 	 })
-    .def("DrawPitchedTentsVTK", [](shared_ptr<TentPitchedSlab> self, string vtkfilename)
+    .def("DrawPitchedTentsVTK", [](shared_ptr<TentPitchedSlab> self,
+				   string vtkfilename)
 	 {
 	   if(self->ma->GetDimension() != 2)
 	     throw Exception("VTK export is only supported for 2D spatial meshes");
 	   else
 	     self->DrawPitchedTentsVTK(vtkfilename);
 	 },
-      py::arg("vtkfilename") = "output")
+	 py::arg("vtkfilename")="vtkoutput",
+	 R"(
+         Export the mesh of tents and intermediate advancing fronts
+         to VTK file format for visualization in Paraview.)"
+      )
     ;
 }
 
