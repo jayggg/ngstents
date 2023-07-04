@@ -20,6 +20,10 @@ def DrawPitchedTents(self, uptolevel=None):  # self = TentSlab py object
         raise NotImplementedError("Only supported for 2D spatial mesh")
     else:
 
+        if self.mesh.ngmesh.GetNrIdentifications():
+            raise NotImplementedError(
+                "Don't know a good way to show periodic tents")
+
         # Make new a 3D mesh
         m = Mesh()
         fdbot = m.Add(FaceDescriptor(bc=1, domin=1, surfnr=1))
