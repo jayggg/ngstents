@@ -160,10 +160,9 @@ def uex(time):
     return CoefficientFunction((k, 1)) * f(time - InnerProduct(k, pos))
 
 
-tau = cl.tau  # advancing front
 cl.SetBoundaryCF(
     mesh.BoundaryCF({
-        "left": NumFlux(cl.u_minus, uex(tau)),
+        "left": NumFlux(cl.u_minus, uex(cl.time)),
         "bottom|right|top": BndNumFlux(cl.u_minus)
     }))
 

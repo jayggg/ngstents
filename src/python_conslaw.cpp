@@ -198,18 +198,18 @@ void ExportConsLaw(py::module & m)
                            {
   			     return self->proxy_u;
   			   }, "returns trial function u(x-s*n) for s->0^+ and the normal vector n")
-    .def_property_readonly("tau", [](shared_ptr<CL> self)
+    .def_property_readonly("time", [](shared_ptr<CL> self)
 			   {
 			     return self->cftau;
-			   }, "returns coefficient function representing the advancing front")
+			   }, "the time coordinate of a spacetime point in an advancing front")
     .def_property_readonly("res", [](shared_ptr<CL> self)
   			   {
   			     return self->gfres;
-  			   })
+  			   }, "entropy residual for nonlinear hyperbolic eq")
     .def_property_readonly("nu", [](shared_ptr<CL> self)
   			   {
   			     return self->gfnu;
-  			   })
+  			   }, "entropy viscosity for nonlinear hyperbolic eq")
     // Set the initial data
     .def("SetInitial",
          [](shared_ptr<CL> self, shared_ptr<CF> cf)
