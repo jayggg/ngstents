@@ -219,7 +219,8 @@ public:
     if(cf_bnd.Size()==0)
       cf_bnd.Append(cf);
     else
-      throw Exception("boundary coefficient function already set");
+      cout << "Resetting boundary values (discarding prior set values)"
+	   << endl;
   }
 
 
