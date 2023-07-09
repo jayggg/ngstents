@@ -24,6 +24,7 @@ add_ngsolve_python_module(_pyconslaw
   vis3d.cpp
   )
 target_link_libraries(_pyconslaw PRIVATE _pytents)
+target_compile_definitions(_pytents PRIVATE NGSTENT_EXPORTS)
 
 # check if CMAKE_INSTALL_PREFIX is set by user, if not install in NGSolve python dir
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)

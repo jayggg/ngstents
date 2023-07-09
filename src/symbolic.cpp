@@ -214,10 +214,10 @@ shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction
   const auto ecomp = (entropy && entropyflux && numentropyflux) ? 1 : 0;
 
   shared_ptr<ConservationLaw> cl = nullptr;
-  Switch<4>(dim, [&](auto DIM) {
-      Switch<MAXCOMP+1>(comp_space, [&](auto COMP) {
+  Switch<3>(dim-1, [&](auto DIM) {
+      Switch<7>(comp_space, [&](auto COMP) {
 	  Switch<2>(ecomp, [&](auto ECOMP) {
-	      cl = make_shared<SymbolicConsLaw<DIM.value, COMP.value, ECOMP>>(gfu, tps, proxy_u, proxy_uother,
+	      cl = make_shared<SymbolicConsLaw<DIM.value+1, COMP.value, ECOMP>>(gfu, tps, proxy_u, proxy_uother,
 									      flux, numflux, invmap,
 									      entropy, entropyflux, numentropyflux,
 									      compile);
