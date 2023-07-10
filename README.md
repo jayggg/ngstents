@@ -8,10 +8,19 @@ nonlinear conservation laws) to be solved by easily defining
 required fluxes and numerical fluxes in a few lines of code.
 
 
+
+## Install
+
+Binary installers are available for linux, mac, and windows (with
+python >= 3.9).
+
+* `pip install ngstents`
+
+
 ## Build
 
-Ensure that NGSolve is built.  After cloning this repository, compile 
-the c++ code here and install:
+If you built NGSolve from source, you can build and install `ngstents`.
+After cloning this repository, compile  the c++ code here and install:
 
 * `cd src`
 * `mkdir build && cd build`
