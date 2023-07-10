@@ -28,7 +28,9 @@ jobs:
              make -C$GITHUB_WORKSPACE/make
              sudo make -C$GITHUB_WORKSPACE/make install  
       - name: test ngstents
-        run: pytest $GITHUB_WORKSPACE/tests             	     
+        run: |
+             cd $GITHUB_WORKSPACE/tests
+             pytest .
   macos-nightly:
     runs-on: macos-latest
     steps:     
