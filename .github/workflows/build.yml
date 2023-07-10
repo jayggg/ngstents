@@ -18,11 +18,11 @@ jobs:
              pip3 install ngsolve pytest
       - name: set path
         run: |
-             echo "PYTHONPATH=/usr/lib/python3/dist-packages/" >> $GITHUB_ENV
+             echo "PYTHONPATH=/usr/lib/python3/dist-packages/:$GITHUB_WORKSPACE/install" >> $GITHUB_ENV
              echo "NETGENDIR=/usr/bin/" >> $GITHUB_ENV
       - uses: actions/checkout@v2
       - name: cmake ngstents
-        run: cmake -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src
+        run: cmake -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src
       - name: compile ngstents
         run: |
              make -C$GITHUB_WORKSPACE/make
