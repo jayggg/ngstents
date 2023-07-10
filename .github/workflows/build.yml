@@ -18,7 +18,7 @@ jobs:
              sudo add-apt-repository universe
              sudo add-apt-repository ppa:ngsolve/nightly -y
              sudo apt-get install ngsolve -y
-             pip3 install pytest
+             pip3 install pytest matplotlib numpy
       - name: set path
         run: |
              echo "PYTHONPATH=/usr/lib/python3/dist-packages/:$GITHUB_WORKSPACE/install" >> $GITHUB_ENV
@@ -56,9 +56,3 @@ jobs:
         run: |
              make -C$GITHUB_WORKSPACE/make
              sudo make -C$GITHUB_WORKSPACE/make install
-      - name: test ngstents             
-        run: |
-             pip3 install pytest
-             cd $GITHUB_WORKSPACE/tests
-             pytest .
-
