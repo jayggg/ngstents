@@ -4,6 +4,9 @@
 #ifdef WIN32
         #define NGTENT_API_EXPORT __declspec(dllexport)
         #define NGTENT_API_IMPORT __declspec(dllimport)
+#else
+        #define NGTENT_API_EXPORT
+        #define NGTENT_API_IMPORT
 #endif
 
 #ifdef NGSTENT_EXPORTS
