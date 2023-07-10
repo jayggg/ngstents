@@ -1,6 +1,6 @@
-#include "tents.hpp"
 #include <limits>
-#include <h1lofe.hpp> // seems needed for ScalarFE (post 2021-06-22 NGSolve update)
+
+#include "tents.hpp"
 
 
 
@@ -70,7 +70,7 @@ void GradPhiCoefficientFunction::GenerateCode(Code &code, FlatArray<int> inputs,
 
 /////////////////// Tent meshing ///////////////////////////////////////////
 
-constexpr ELEMENT_TYPE EL_TYPE(int DIM)
+constexpr ngfem::ELEMENT_TYPE EL_TYPE(int DIM)
 {
   return DIM == 1 ? ET_SEGM : DIM == 2 ? ET_TRIG : ET_TET;
 }//this assumes that there is only one type of element per mesh
@@ -983,7 +983,7 @@ void TentPitchedSlab::DrawPitchedTentsVTK(string filename)
 {
   ofstream out(filename+".vtk");
   Array<Vec<3>> points;
-  Array<INT<4>> cells;
+  Array<netgen::INT<4>> cells;
   Array<int> level, tentnr;
   int ptcnt = 0;
 
@@ -994,7 +994,7 @@ void TentPitchedSlab::DrawPitchedTentsVTK(string filename)
       Vec<2> pxy = ma->GetPoint<2> (tent.vertex);
       points.Append (Vec<3> (pxy(0), pxy(1), tent.tbot));
       points.Append (Vec<3> (pxy(0), pxy(1), tent.ttop));
-      INT<4> tet(ptcnt,ptcnt+1,0,0);
+      netgen::INT<4> tet(ptcnt,ptcnt+1,0,0);
       ptcnt+=2;
 
       for (int elnr : tent.els)
@@ -1202,7 +1202,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
   // precompute facet data for given tent
   for (size_t i = 0; i < tent.internal_facets.Size(); i++)
     {
-      INT<2> loc_facetnr;
+      netgen::INT<2> loc_facetnr;
 
       ArrayMem<int,2> elnums;
       ArrayMem<int,2> elnums_per;
@@ -1224,7 +1224,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
             }
         }
       
-      felpos[i] = INT<2,size_t>(size_t(-1));
+      felpos[i] = netgen::INT<2,size_t>(size_t(-1));
       for(int j : Range(elnums.Size()))
         {
           felpos[i][j] = tent.els.Pos(elnums[j]);

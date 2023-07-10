@@ -1,7 +1,22 @@
 #ifndef TENTSHEADER
 #define TENTSHEADER
 
+#ifdef WIN32
+        #define NGTENT_API_EXPORT __declspec(dllexport)
+        #define NGTENT_API_IMPORT __declspec(dllimport)
+#else
+        #define NGTENT_API_EXPORT
+        #define NGTENT_API_IMPORT
+#endif
+
+#ifdef NGSTENT_EXPORTS
+        #define NGSTENT_API NGTENT_API_EXPORT
+#else
+        #define NGSTENT_API NGTENT_API_IMPORT
+#endif
+
 #include <solve.hpp>
+#include <h1lofe.hpp> // seems needed for ScalarFE (post 2021-06-22 NGSolve update)
 using namespace ngsolve;
 using namespace std;
 
@@ -65,7 +80,7 @@ ostream & operator<< (ostream & ost, const Tent & tent);
 ///
 /// Class with dofs, finite element & integration info for a tent:
 ///
-class TentDataFE
+class NGSTENT_API TentDataFE
 {
 public:
   int nd;           ///< total # interior and interface dofs in space
@@ -89,7 +104,7 @@ public:
   /// height of the tent in the IP's
   Array<FlatVector<SIMD<double>>> adelta;
   /// local numbers of the neighbors
-  Array<INT<2,size_t>> felpos;
+  Array<netgen::INT<2,size_t>> felpos;
   /// facet integration rules for all facets in the tent
   Array<SIMD_IntegrationRule*> fir;
   /// facet integration rules for all internal facets in the tent
