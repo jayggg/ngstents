@@ -52,5 +52,9 @@ jobs:
       - name: compile ngstents
         run: |
              make -C$GITHUB_WORKSPACE/make
-             sudo make -C$GITHUB_WORKSPACE/make install  
+             sudo make -C$GITHUB_WORKSPACE/make install
+      - name: test ngstents             
+        run: |
+             cd $GITHUB_WORKSPACE/tests
+             pytest .
 
