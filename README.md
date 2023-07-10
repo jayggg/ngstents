@@ -29,7 +29,10 @@ After cloning this repository, compile  the c++ code here and install:
 
 ## Use
 
-The `demo` folder contains many examples. 
+Start with the tutorials in the `doc` folder's
+[contents](./doc/INDEX.ipynb). 
+The `demo` folder contains further example scripts.
+
 
 ## Check
 
