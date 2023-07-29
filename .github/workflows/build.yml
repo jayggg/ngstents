@@ -55,4 +55,22 @@ jobs:
       - name: compile ngstents
         run: |
              make -C$GITHUB_WORKSPACE/make
-             sudo make -C$GITHUB_WORKSPACE/make install
+             sudo make -C$GITHUB_WORKSPACE/make install  
+
+
+  win:
+    runs-on: windows-latest
+    steps:     
+      - name: Get Python 
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: install ngsolve
+        run: pip3 install ngsolve
+      - uses: actions/checkout@v2
+      - name: cmake ngstents
+        run: cmake -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src -DNGSolve_DIR = "$env:Python3_ROOT_DIR\lib\site-packages\ngsolve\cmake" -DNetgen_DIR = "$env:Python3_ROOT_DIR\lib\site-packages\netgen\cmake"
+      - name: compile ngstents
+        run: |
+             make -C$GITHUB_WORKSPACE/make
+             sudo make -C$GITHUB_WORKSPACE/make install  
