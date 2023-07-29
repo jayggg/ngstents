@@ -1,6 +1,7 @@
 name: build
 on:
   push:
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
@@ -34,6 +35,7 @@ jobs:
         run: |
              cd $GITHUB_WORKSPACE/tests
              pytest .
+
   macos-nightly:
     runs-on: macos-latest
     steps:     
@@ -57,20 +59,53 @@ jobs:
              make -C$GITHUB_WORKSPACE/make
              sudo make -C$GITHUB_WORKSPACE/make install  
 
-
-  win:
-    runs-on: windows-latest
-    steps:     
-      - name: Get Python 
-        uses: actions/setup-python@v4
+  docs:
+    needs: [ubuntu-nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
         with:
-          python-version: '3.11'
-      - name: install ngsolve
-        run: pip3 install ngsolve
-      - uses: actions/checkout@v2
-      - name: cmake ngstents
-        run: cmake -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src -DNGSolve_DIR = "$env:Python3_ROOT_DIR\lib\site-packages\ngsolve\cmake" -DNetgen_DIR = "$env:Python3_ROOT_DIR\lib\site-packages\netgen\cmake"
-      - name: compile ngstents
+          fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+          submodules: 'True'
+          path: 'ngstents'
+      - name: apt-get
+        run: sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install libxmu-dev tk-dev tcl-dev git libglu1-mesa-dev libblas-dev liblapack-dev python3 python3-pip python3-distutils python3-tk libpython3-dev python3-testresources npm nodejs pandoc -y
+      - name: pip install requirements
+        run: pip install --user -r $GITHUB_WORKSPACE/ngstents/docs/requirements.txt
+      - name: set path
         run: |
-             make -C$GITHUB_WORKSPACE/make
-             sudo make -C$GITHUB_WORKSPACE/make install  
+             echo "NETGENDIR=/usr/bin/" >> $GITHUB_ENV
+             echo "LD_LIBRARY_PATH=${{ env.LD_LIBRARY_PATH }}:/home/runner/.local/lib:/usr/local/lib/" >> $GITHUB_ENV
+      - name: webgui
+        run: |
+             pip install jupyter_contrib_nbextensions 
+             jupyter contrib nbextension install --user
+             jupyter nbextension install --user --py widgetsnbextension
+             jupyter nbextension enable --user --py widgetsnbextension
+             jupyter nbextension install --user --py webgui_jupyter_widgets
+             jupyter nbextension enable --user --py webgui_jupyter_widgets            
+      - name: Build and Commit
+        uses: sphinx-notes/pages@v2
+        with:
+          repository_path: 'ngstents'
+          publish: false
+          #requirements_path: ./doc/requirements.txt
+      - name: Upload
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: 'ngstents'
+                
+  deploy-docs:
+    needs: docs
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
