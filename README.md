@@ -42,6 +42,15 @@ to the `tests` folder and use pytest:
 
 * `pytest .`
 
+## Docs
+
+To build and test the docs locally run
+``` 
+pip install -r docs/requirements.txt
+sphinx-build -b html . _build
+``` 
+you can then open the docs from `_build/index.html`. 
+
 ## Organization
 
 * `src`: c++ source code
