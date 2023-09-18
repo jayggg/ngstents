@@ -565,7 +565,7 @@ std::tuple<Table<int>,Table<int>> TentSlabPitcher::InitializeMeshData(LocalHeap 
 // Get the periodic vertex associated with a primary vertex in periodic case
 void TentSlabPitcher::GetVertexElements(int vnr_main, Array<int> & elems) const
 {
-  ma->GetVertexElements (vnr_main, elems);
+  elems = ma->GetVertexElements(vnr_main); 
   if(per_verts[vnr_main].Size()==0)
     return;
   else
