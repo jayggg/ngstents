@@ -1,9 +1,11 @@
 name: build
 on:
   push:
-    branches: [ master, pypi ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
+  release:
+    types: [created]
 
 env:
   BUILD_TYPE: Debug
@@ -111,8 +113,7 @@ jobs:
     name: Build wheels for Windows
     strategy:
       matrix:
-        #py: ['3.8', '3.9', '3.10', '3.11']
-        py: ['3.10']
+        py: ['3.8', '3.9', '3.10', '3.11']
     runs-on: windows-2019
     steps:
       - name: Checkout
@@ -145,7 +146,8 @@ jobs:
         name: python-package-distributions
         path: ngstents/wheelhouse/
     - name: Publish binary distributions to PyPI
-      if: github.ref == 'refs/heads/main'
+      #if: github.ref == 'refs/heads/main'
+      if: github.event_name == 'release' && github.event.action == 'created' 
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         skip-existing: true

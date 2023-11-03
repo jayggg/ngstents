@@ -76,22 +76,6 @@ if 'PYDIR' in os.environ and 'win' not in sys.platform:
     _cmake_args += [f'-DPYTHON_EXECUTABLE={os.environ["PYDIR"]}/python3']
     _cmake_args += [f'-DPYTHON_LIBRARY={os.environ["PYDIR"]}/../lib']
     _cmake_args += [f'-DPYTHON_INCLUDE_DIR={os.environ["PYDIR"]}/../include']
-# elif 'PYDIR' in os.environ and 'win' in sys.platform:
-    # print("hello PYDIR",os.environ["PYDIR"])
-    # cmake_prefix_path += os.environ["PYDIR"]
-    # _cmake_args += [f'-DPYTHON_EXECUTABLE={os.environ["PYDIR"]}/python']
-    # _cmake_args += [f'-DPython3_ROOT_DIR:PATH={os.environ["PYDIR"]}']
-    # _cmake_args += [f'-DPython3_LIBRARY:PATH={os.environ["PYDIR"]}/libs']
-    # _cmake_args += [f'-DPython3_INCLUDE_DIR:PATH={os.environ["PYDIR"]}/include/python310.lib']
-    # _cmake_args += [f'-DPython3_INCLUDE_DIRS:PATH={os.environ["PYDIR"]}/include']
-    # _cmake_args += [f'-DPYTHON_LIBRARY:PATH={os.environ["PYDIR"]}/libs/python310.lib']
-    # _cmake_args += [f'-DPYTHON_LIBRARIES:PATH={os.environ["PYDIR"]}/libs']
-    # _cmake_args += [f'-DPYTHON_INCLUDE_DIR:PATH={os.environ["PYDIR"]}/include']
-    # _cmake_args += [f'-DPYTHON_INCLUDE_DIRS:PATH={os.environ["PYDIR"]}/include']
-    # _cmake_args += [ f'-DNGSOLVE_INSTALL_DIR_TCL:PATH=Scripts' ]
-    # _cmake_args += [f'-DCMAKE_PREFIX_PATH={os.environ["PYDIR"]}']
-if 'win' in sys.platform:
-    _cmake_args += [f'-DBUILD_FOR_CONDA=OFF']
 if 'NGSolve_DIR' in os.environ:
     _cmake_args += [f'-DNGSolve_DIR={os.environ["NGSolve_DIR"]}']
 if 'Netgen_DIR' in os.environ:
@@ -100,9 +84,6 @@ if 'CMAKE_PREFIX_PATH' in os.environ:
     cmake_prefix_path += os.environ["CMAKE_PREFIX_PATH"]
 
 _cmake_args += ['-DCMAKE_PREFIX_PATH='+cmake_prefix_path]
-
-print("cmake args:")
-print(_cmake_args)
 
 setup(
     name='ngstents',

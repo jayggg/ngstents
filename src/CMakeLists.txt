@@ -8,53 +8,11 @@ find_package(NGSolve CONFIG REQUIRED
   HINTS $ENV{NETGENDIR}/.. $ENV{NETGENDIR}/../Resources/CMake /opt/netgen/ /Applications/Netgen.app/Contents/Resources/CMake C:/netgen $ENV{NGSolve_DIR}
 )
 
-function(add_ngsolve_python_module2 target)
-    if(NOT CMAKE_BUILD_TYPE)
-      message(STATUS "Setting build type to NGSolve build type: ${NGSOLVE_CMAKE_BUILD_TYPE}")
-      set(CMAKE_BUILD_TYPE ${NGSOLVE_CMAKE_BUILD_TYPE} PARENT_SCOPE)
-    endif()
-    add_library(${target} SHARED ${ARGN})
-
-    #find_package (Python3 COMPONENTS Interpreter Development)
-    #target_include_directories(${target} PRIVATE ${Python3_INCLUDE_DIRS})
-    find_package(PythonInterp 3 REQUIRED)
-    find_package(PythonLibs 3 REQUIRED)
-    target_include_directories(${target} PRIVATE ${PYTHON_INCLUDE_DIR})
-
-    if(NETGEN_BUILD_FOR_CONDA)
-        message(STATUS "netgen build for conda")
-        if(APPLE)
-            target_link_options(${target} PUBLIC -undefined dynamic_lookup)
-        else(APPLE)
-        #target_link_libraries(${target} PUBLIC ${Python3_LIBRARIES})
-        target_link_libraries(${target} PUBLIC ${PYTHON_LIBRARY})
-        endif(APPLE)
-    endif(NETGEN_BUILD_FOR_CONDA)
-
-    set_target_properties(${target} PROPERTIES PREFIX "" CXX_STANDARD 17)
-
-    #if(NETGEN_USE_GUI AND WIN32)
-    target_link_libraries(${target} PUBLIC ngsolve)
-    #else(NETGEN_USE_GUI AND WIN32)
-    #  target_link_libraries(${target} PUBLIC solve)
-    #endif(NETGEN_USE_GUI AND WIN32)
-
-    if(WIN32)
-      set_target_properties( ${target} PROPERTIES SUFFIX ".pyd" )
-    else(WIN32)
-      set_target_properties(${target} PROPERTIES SUFFIX ".so")
-    endif(WIN32)
-
-    set_target_properties(${target} PROPERTIES INSTALL_RPATH "${NGSOLVE_LIBRARY_DIR}")
-endfunction()
-
-find_package (Python3 COMPONENTS Interpreter Development)
-
-add_ngsolve_python_module2(_pytents
+add_ngsolve_python_module(_pytents
   python_tents.cpp
   tents.cpp
   )
-add_ngsolve_python_module2(_pyconslaw
+add_ngsolve_python_module(_pyconslaw
   python_conslaw.cpp
   burgers.cpp
   euler.cpp
@@ -64,6 +22,10 @@ add_ngsolve_python_module2(_pyconslaw
   symbolic.cpp
   vis3d.cpp
   )
+if(WIN32)
+    target_link_libraries(_pytents PUBLIC ${PYTHON_LIBRARY})
+    target_link_libraries(_pyconslaw PUBLIC ${PYTHON_LIBRARY})
+endif(WIN32)
 target_link_libraries(_pyconslaw PRIVATE _pytents)
 target_compile_definitions(_pytents PRIVATE NGSTENT_EXPORTS)
 
