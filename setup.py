@@ -18,6 +18,10 @@ import os
 import re
 import subprocess
 
+
+def is_canonical(version):
+    return re.match(r'^([1-9][0-9]*!)?(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))*((a|b|rc)(0|[1-9][0-9]*))?(\.post(0|[1-9][0-9]*))?(\.dev(0|[1-9][0-9]*))?$', version) is not None
+
 def get_version():
     """
     Gets the current version number.
@@ -39,12 +43,9 @@ def get_version():
         with open(os.devnull, 'w') as fd_devnull:
             subprocess.call(['git', 'status'],
                             stdout=fd_devnull, stderr=fd_devnull)
-        cmd = 'git diff-index --name-only HEAD'.split()
-        try:
-            dirty = subprocess.check_output(cmd).decode().strip()
-        except subprocess.CalledProcessError:
-            print('Unable to get git index status')
-            exit(1)
+        if not is_canonical(version):
+            print('Unable to get version number from git tags, using dummy version v0.0.0')
+            version="v0.0.0"
         version = version[1:]
     else:
         with open(join(d, 'PKG-INFO')) as f:
