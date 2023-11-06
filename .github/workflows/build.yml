@@ -26,7 +26,7 @@ jobs:
         run: |
              echo "PYTHONPATH=/usr/lib/python3/dist-packages/:$GITHUB_WORKSPACE/install" >> $GITHUB_ENV
              echo "NETGENDIR=/usr/bin/" >> $GITHUB_ENV
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: cmake ngstents
         run: cmake -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src
       - name: compile ngstents
@@ -53,7 +53,7 @@ jobs:
              echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$NETGENDIR" >> $GITHUB_ENV
              echo "DYLD_FRAMEWORK_PATH=$DYLD_FRAMEWORK_PATH:$NETGENDIR/../Frameworks" >> $GITHUB_ENV
              echo "$NETGENDIR" >> $GITHUB_PATH
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: cmake ngstents
         run: cmake -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src
       - name: compile ngstents
@@ -63,6 +63,7 @@ jobs:
 
   pypi-linux:
     name: Build wheels for linux
+    needs: [ubuntu-nightly, macos-nightly]
     runs-on: ubuntu-latest
     steps:
       - name: clear cache
@@ -84,6 +85,7 @@ jobs:
 
   pypi-mac:
     name: Build wheels for macOS
+    needs: [ubuntu-nightly, macos-nightly]
     strategy:
       matrix:
         py: ['3.8', '3.9', '3.10', '3.11']
@@ -111,6 +113,7 @@ jobs:
 
   pypi-win:
     name: Build wheels for Windows
+    needs: [ubuntu-nightly, macos-nightly]
     strategy:
       matrix:
         py: ['3.8', '3.9', '3.10', '3.11']
@@ -155,7 +158,7 @@ jobs:
         packages-dir: ngstents/wheelhouse/
 
   docs:
-    needs: [ubuntu-nightly]
+    needs: [publish-pypi]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
