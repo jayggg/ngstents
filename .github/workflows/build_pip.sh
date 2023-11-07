@@ -22,7 +22,7 @@ do
 
     rm -rf _skbuild
     $PYDIR/pip install pytest-check numpy wheel scikit-build mkl==2023.* mkl-devel==2023.* setuptools
-    $PYDIR/pip install ngsolve --pre
+    $PYDIR/pip install ngsolve 
 
     $PYDIR/pip wheel -vvv .
     rename linux_ manylinux_2_17_x86_64.manylinux2014_ ngstents*.whl

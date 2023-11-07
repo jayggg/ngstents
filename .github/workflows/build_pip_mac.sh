@@ -14,6 +14,6 @@ export CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH:$NGSolve_Dir:$NETGEN_Dir
 $PYDIR/pip3 install scikit-build wheel
 
 export CMAKE_OSX_ARCHITECTURES='arm64;x86_64'
-$PYDIR/pip3 install ngsolve --pre
+$PYDIR/pip3 install ngsolve
 
 $PYDIR/python3 setup.py bdist_wheel --plat-name macosx-10.15-universal2 -d wheelhouse
