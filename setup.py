@@ -43,7 +43,7 @@ def get_version():
         with open(os.devnull, 'w') as fd_devnull:
             subprocess.call(['git', 'status'],
                             stdout=fd_devnull, stderr=fd_devnull)
-        if not is_canonical(version):
+        if not is_canonical(version[1:]):
             print('Unable to get version number from git tags, using dummy version v0.0.0')
             version="v0.0.0"
         version = version[1:]
