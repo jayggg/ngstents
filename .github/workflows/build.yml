@@ -4,6 +4,8 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  release:
+    types: [created]
 
 env:
   BUILD_TYPE: Debug
@@ -24,7 +26,7 @@ jobs:
         run: |
              echo "PYTHONPATH=/usr/lib/python3/dist-packages/:$GITHUB_WORKSPACE/install" >> $GITHUB_ENV
              echo "NETGENDIR=/usr/bin/" >> $GITHUB_ENV
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: cmake ngstents
         run: cmake -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src
       - name: compile ngstents
@@ -51,7 +53,7 @@ jobs:
              echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$NETGENDIR" >> $GITHUB_ENV
              echo "DYLD_FRAMEWORK_PATH=$DYLD_FRAMEWORK_PATH:$NETGENDIR/../Frameworks" >> $GITHUB_ENV
              echo "$NETGENDIR" >> $GITHUB_PATH
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: cmake ngstents
         run: cmake -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src
       - name: compile ngstents
@@ -59,8 +61,104 @@ jobs:
              make -C$GITHUB_WORKSPACE/make
              sudo make -C$GITHUB_WORKSPACE/make install  
 
+  pypi-linux:
+    name: Build wheels for linux
+    needs: [ubuntu-nightly, macos-nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: clear cache
+        run: rm -rf /opt/hostedtoolcache
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'True'
+          path: 'ngstents'
+          fetch-depth: 0 # otherwise, you will fail to push refs to dest repo
+      - name: pull manylinux
+        run: docker pull sameli/manylinux2014_x86_64_cuda_11.7
+      - name: build pip
+        run: docker run -v $GITHUB_WORKSPACE:/workspace sameli/manylinux2014_x86_64_cuda_11.7 /bin/sh /workspace/ngstents/.github/workflows/build_pip.sh 
+      - name: Store the binary wheel
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-package-distributions
+          path: ngstents/wheelhouse
+
+  pypi-mac:
+    name: Build wheels for macOS
+    needs: [ubuntu-nightly, macos-nightly]
+    strategy:
+      matrix:
+        py: ['3.8', '3.9', '3.10', '3.11']
+    runs-on: macos-11
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '10.15'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          path: 'ngstents'
+      - name: Get Python ${{ matrix.py }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.py }}
+      - name: Run build script
+        run: cd ngstents/.github/workflows && bash build_pip_mac.sh ${{ matrix.py }}
+      - name: Store the binary wheel
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-package-distributions
+          path: ngstents/wheelhouse
+
+  pypi-win:
+    name: Build wheels for Windows
+    needs: [ubuntu-nightly, macos-nightly]
+    strategy:
+      matrix:
+        py: ['3.8', '3.9', '3.10', '3.11']
+    runs-on: windows-2019
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          path: 'ngstents'
+      - name: Get Python ${{ matrix.py }}
+        id: python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.py }}
+      - name: Run build script
+        run: Set-Location ngstents/.github/workflows; ./build_pip.ps1 ${{ env.pythonLocation }}
+      - name: Store the binary wheel
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-package-distributions
+          path: ngstents/wheelhouse
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [pypi-mac, pypi-linux, pypi-win]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v2
+      with:
+        name: python-package-distributions
+        path: ngstents/wheelhouse/
+    - name: Publish binary distributions to PyPI
+      if: github.ref == 'refs/heads/master'
+      #if: github.event_name == 'release' && github.event.action == 'created' 
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        skip-existing: true
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        packages-dir: ngstents/wheelhouse/
+
   docs:
-    needs: [ubuntu-nightly]
+    needs: [publish-pypi]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -104,7 +202,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    #if: github.ref == 'refs/heads/master'
+    if: github.event_name == 'release' && github.event.action == 'created' 
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

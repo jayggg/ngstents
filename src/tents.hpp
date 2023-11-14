@@ -34,7 +34,7 @@ using namespace std;
 /// vertices.
 ///
 
-class Tent {
+class NGSTENT_API Tent {
 
 public:
   Tent(const Array<int> &avmap) : vmap(avmap){}
@@ -176,7 +176,7 @@ namespace ngstents{
   enum PitchingMethod {EVolGrad =1, EEdgeGrad};
 }
 
-class TentPitchedSlab {
+class NGSTENT_API TentPitchedSlab {
 protected:
   double dt;                              // time step between two time slices
   shared_ptr<CoefficientFunction> cmax;   // wavespeed
@@ -235,7 +235,7 @@ public:
 };
 
 //Abstract class with the interface of methods used for pitching a tent
-class TentSlabPitcher{
+class NGSTENT_API TentSlabPitcher{
 protected:
   //access to base spatial mesh
   shared_ptr<MeshAccess> ma;
