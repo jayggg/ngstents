@@ -5,9 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(NGSolve CONFIG REQUIRED
-  HINTS $ENV{NETGENDIR}/.. $ENV{NETGENDIR}/../Resources/CMake /opt/netgen/ /Applications/Netgen.app/Contents/Resources/CMake C:/netgen
+  HINTS $ENV{NETGENDIR}/.. $ENV{NETGENDIR}/../Resources/CMake /opt/netgen/ /Applications/Netgen.app/Contents/Resources/CMake C:/netgen $ENV{NGSolve_DIR}
 )
-
 
 add_ngsolve_python_module(_pytents
   python_tents.cpp
@@ -23,6 +22,10 @@ add_ngsolve_python_module(_pyconslaw
   symbolic.cpp
   vis3d.cpp
   )
+if(WIN32)
+    target_link_libraries(_pytents PUBLIC ${PYTHON_LIBRARY})
+    target_link_libraries(_pyconslaw PUBLIC ${PYTHON_LIBRARY})
+endif(WIN32)
 target_link_libraries(_pyconslaw PRIVATE _pytents)
 target_compile_definitions(_pytents PRIVATE NGSTENT_EXPORTS)
 
