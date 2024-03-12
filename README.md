@@ -16,6 +16,8 @@ python >= 3.9).
 
 * `pip install ngstents`
 
+But note that the binaries are not generally kept up to date. The
+recommended option is to build from source (see below).
 
 ## Build
 
