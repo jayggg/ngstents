@@ -983,7 +983,7 @@ void TentPitchedSlab::DrawPitchedTentsVTK(string filename)
 {
   ofstream out(filename+".vtk");
   Array<Vec<3>> points;
-  Array<ngcore::INT<4>> cells;
+  Array<ngcore::IVec<4>> cells;
   Array<int> level, tentnr;
   int ptcnt = 0;
 
@@ -994,7 +994,7 @@ void TentPitchedSlab::DrawPitchedTentsVTK(string filename)
       Vec<2> pxy = ma->GetPoint<2> (tent.vertex);
       points.Append (Vec<3> (pxy(0), pxy(1), tent.tbot));
       points.Append (Vec<3> (pxy(0), pxy(1), tent.ttop));
-      ngcore::INT<4> tet(ptcnt,ptcnt+1,0,0);
+      ngcore::IVec<4> tet(ptcnt,ptcnt+1,0,0);
       ptcnt+=2;
 
       for (int elnr : tent.els)
@@ -1202,7 +1202,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
   // precompute facet data for given tent
   for (size_t i = 0; i < tent.internal_facets.Size(); i++)
     {
-      ngcore::INT<2> loc_facetnr;
+      ngcore::IVec<2> loc_facetnr;
 
       ArrayMem<int,2> elnums;
       ArrayMem<int,2> elnums_per;
@@ -1224,7 +1224,7 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
             }
         }
       
-      felpos[i] = ngcore::INT<2,size_t>(size_t(-1));
+      felpos[i] = ngcore::IVec<2,size_t>(size_t(-1));
       for(int j : Range(elnums.Size()))
         {
           felpos[i][j] = tent.els.Pos(elnums[j]);

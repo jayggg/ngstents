@@ -34,6 +34,7 @@ using namespace std;
 /// vertices.
 ///
 
+
 class NGSTENT_API Tent {
 
 public:
@@ -104,7 +105,7 @@ public:
   /// height of the tent in the IP's
   Array<FlatVector<SIMD<double>>> adelta;
   /// local numbers of the neighbors
-  Array<ngcore::INT<2,size_t>> felpos;
+  Array<ngcore::IVec<2,size_t>> felpos;
   /// facet integration rules for all facets in the tent
   Array<SIMD_IntegrationRule*> fir;
   /// facet integration rules for all internal facets in the tent
