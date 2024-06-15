@@ -1,153 +1,68 @@
 name: build
+
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
-  release:
-    types: [created]
-
-env:
-  BUILD_TYPE: Debug
+    branches:
+      - master
+    tags:
+      - '*'
 
 jobs:
-  ubuntu-nightly:
-    runs-on: ubuntu-latest
-    steps:     
-      - name: install pkgs
-        run: |
-             sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install vim python3 python3-pip python3-distutils python3-tk libpython3-dev libxmu-dev tk-dev tcl-dev cmake git g++ libglu1-mesa-dev libblas-dev liblapack-dev
-             sudo apt-get install -y software-properties-common
-             sudo add-apt-repository universe
-             sudo add-apt-repository ppa:ngsolve/nightly -y
-             sudo apt-get install ngsolve -y
-             pip3 install pytest matplotlib numpy
-      - name: set path
-        run: |
-             echo "PYTHONPATH=/usr/lib/python3/dist-packages/:$GITHUB_WORKSPACE/install" >> $GITHUB_ENV
-             echo "NETGENDIR=/usr/bin/" >> $GITHUB_ENV
-      - uses: actions/checkout@v3
-      - name: cmake ngstents
-        run: cmake -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src
-      - name: compile ngstents
-        run: |
-             make -C$GITHUB_WORKSPACE/make
-             sudo make -C$GITHUB_WORKSPACE/make install  
-      - name: test ngstents
-        run: |
-             cd $GITHUB_WORKSPACE/tests
-             pytest .
-
-  macos-nightly:
-    runs-on: macos-latest
-    steps:     
-      - name: install ngsolve
-        run: |
-             wget https://www.asc.tuwien.ac.at/~mhochsteger/ngsolve/macos/NGSolve_nightly.dmg
-             hdiutil attach NGSolve_nightly.dmg
-             cp -R /Volumes/NGSolve/* /Applications
-      - name: set path
-        run: |
-             echo "PYTHONPATH=$PYTHONPATH:/Applications/Netgen.app/Contents/Resources/lib/python3.8/site-packages:." >> $GITHUB_ENV
-             echo "NETGENDIR=/Applications/Netgen.app/Contents/MacOS" >> $GITHUB_ENV
-             echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$NETGENDIR" >> $GITHUB_ENV
-             echo "DYLD_FRAMEWORK_PATH=$DYLD_FRAMEWORK_PATH:$NETGENDIR/../Frameworks" >> $GITHUB_ENV
-             echo "$NETGENDIR" >> $GITHUB_PATH
-      - uses: actions/checkout@v3
-      - name: cmake ngstents
-        run: cmake -B$GITHUB_WORKSPACE/make -S$GITHUB_WORKSPACE/src
-      - name: compile ngstents
-        run: |
-             make -C$GITHUB_WORKSPACE/make
-             sudo make -C$GITHUB_WORKSPACE/make install  
-
-  pypi-linux:
-    name: Build wheels for linux
-    needs: [ubuntu-nightly, macos-nightly]
-    runs-on: ubuntu-latest
-    steps:
-      - name: clear cache
-        run: rm -rf /opt/hostedtoolcache
-      - uses: actions/checkout@v3
-        with:
-          submodules: 'True'
-          path: 'ngstents'
-          fetch-depth: 0 # otherwise, you will fail to push refs to dest repo
-      - name: pull manylinux
-        run: docker pull sameli/manylinux2014_x86_64_cuda_11.7
-      - name: build pip
-        run: docker run -v $GITHUB_WORKSPACE:/workspace sameli/manylinux2014_x86_64_cuda_11.7 /bin/sh /workspace/ngstents/.github/workflows/build_pip.sh 
-      - name: Store the binary wheel
-        uses: actions/upload-artifact@v3
-        with:
-          name: python-package-distributions
-          path: ngstents/wheelhouse
-
-  pypi-mac:
-    name: Build wheels for macOS
-    needs: [ubuntu-nightly, macos-nightly]
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        py: ['3.8', '3.9', '3.10', '3.11']
-    runs-on: macos-11
-    env:
-      MACOSX_DEPLOYMENT_TARGET: '10.15'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          submodules: recursive
-          path: 'ngstents'
-      - name: Get Python ${{ matrix.py }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.py }}
-      - name: Run build script
-        run: cd ngstents/.github/workflows && bash build_pip_mac.sh ${{ matrix.py }}
-      - name: Store the binary wheel
-        uses: actions/upload-artifact@v3
-        with:
-          name: python-package-distributions
-          path: ngstents/wheelhouse
+        os: [ubuntu-latest, macos-13]
+        include:
+          - os: windows-2019
+            cibw-arch: AMD64
+            cmake-generator: "Visual Studio 16 2019"
+            cmake_generator_platform: "x64"
 
-  pypi-win:
-    name: Build wheels for Windows
-    needs: [ubuntu-nightly, macos-nightly]
-    strategy:
-      matrix:
-        py: ['3.8', '3.9', '3.10', '3.11']
-    runs-on: windows-2019
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
+          ref: ${{  github.ref_name }}
+          fetch-tags: 'true'
           fetch-depth: 0
-          submodules: recursive
-          path: 'ngstents'
-      - name: Get Python ${{ matrix.py }}
-        id: python
-        uses: actions/setup-python@v4
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.19.0
+
+      - uses: actions/upload-artifact@v4
         with:
-          python-version: ${{ matrix.py }}
-      - name: Run build script
-        run: Set-Location ngstents/.github/workflows; ./build_pip.ps1 ${{ env.pythonLocation }}
-      - name: Store the binary wheel
-        uses: actions/upload-artifact@v3
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
+
+  build_sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: python-package-distributions
-          path: ngstents/wheelhouse
+          ref: ${{  github.ref_name }}
+          fetch-tags: 'true'
+          fetch-depth: 0
+
+      - name: Build sdist
+        run: pipx run build --sdist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-sdist
+          path: dist/*.tar.gz
 
   publish-pypi:
     name: Publish to PyPI
-    needs: [pypi-mac, pypi-linux, pypi-win]
+    needs: [build_wheels]
     runs-on: ubuntu-latest
     steps:
     - name: Download all the dists
       uses: actions/download-artifact@v2
       with:
         name: python-package-distributions
-        path: ngstents/wheelhouse/
+        path: ./wheelhouse/
     - name: Publish binary distributions to PyPI
       if: github.ref == 'refs/heads/master'
       #if: github.event_name == 'release' && github.event.action == 'created' 
@@ -155,56 +70,31 @@ jobs:
       with:
         skip-existing: true
         password: ${{ secrets.PYPI_API_TOKEN }}
-        packages-dir: ngstents/wheelhouse/
+        packages-dir: ./wheelhouse/
 
   docs:
-    needs: [publish-pypi]
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
-          submodules: 'True'
-          path: 'ngstents'
+          submodules: 'False'
+          path: '.'
       - name: apt-get
-        run: sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install libxmu-dev tk-dev tcl-dev git libglu1-mesa-dev libblas-dev liblapack-dev python3 python3-pip python3-distutils python3-tk libpython3-dev python3-testresources npm nodejs pandoc -y
+        run: sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install python3-testresources npm nodejs pandoc -y
       - name: pip install requirements
-        run: pip install --user -r $GITHUB_WORKSPACE/ngstents/docs/requirements.txt
-      - name: set path
         run: |
-             echo "NETGENDIR=/usr/bin/" >> $GITHUB_ENV
-             echo "LD_LIBRARY_PATH=${{ env.LD_LIBRARY_PATH }}:/home/runner/.local/lib:/usr/local/lib/" >> $GITHUB_ENV
-      - name: webgui
-        run: |
-             pip install jupyter_contrib_nbextensions 
-             jupyter contrib nbextension install --user
-             jupyter nbextension install --user --py widgetsnbextension
-             jupyter nbextension enable --user --py widgetsnbextension
-             jupyter nbextension install --user --py webgui_jupyter_widgets
-             jupyter nbextension enable --user --py webgui_jupyter_widgets            
-      - name: Build and Commit
-        uses: sphinx-notes/pages@v2
-        with:
-          repository_path: 'ngstents'
-          publish: false
-          #requirements_path: ./doc/requirements.txt
-      - name: Upload
-        uses: actions/upload-pages-artifact@v2
-        with:
-          path: 'ngstents'
-                
-  deploy-docs:
-    needs: docs
-    permissions:
-      pages: write      # to deploy to Pages
-      id-token: write   # to verify the deployment originates from an appropriate source
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    #if: github.ref == 'refs/heads/master'
-    if: github.event_name == 'release' && github.event.action == 'created' 
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
+          python3 -m pip install build
+          python3 -m build -w .
+          python3 -m pip install dist/*.whl
+          python3 -c 'import ngstents'
+      - id: build_docs
+        if: github.ref == 'refs/heads/master'
+        name: Build and upload docu
+        uses: sphinx-notes/pages@v3

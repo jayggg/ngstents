@@ -1,0 +1,47 @@
+[project]
+name = "ngstents"
+dynamic = ["version", "dependencies"]
+authors = [{name="Jay Gopalakrishnan", email= "gjay@pdx.edu"}]
+description = "Spacetime tent facilities for solving hyperbolic equations"
+urls = {github="https://github.com/jayggg/ngstents"}
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["matplotlib"]
+classifiers = [
+  "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)"
+]
+
+[build-system]
+requires = ["ngsolve>=6.2.2404.post16", "matplotlib", "setuptools>=45", "setuptools_scm[toml]>=8", "toml", "scikit-build-core>=0.3.3", "pybind11_stubgen", "cmake>=3.26.1"]
+build-backend = "scikit_build_core.build"
+
+##########################################################################
+# Settings for cibuildwheel to build .whl files for Windows/Mac/Linxu
+# DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
+##########################################################################
+
+[tool.scikit-build]
+cmake.source-dir = "src" # set this if the root CMakeLists.txt is in a subdirectory
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+# This adds ngsolve (with exact build-time version) to the dependencies
+experimental = true
+metadata.dependencies.provider="ngsolve._scikit_build_core_dependencies"
+
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+
+[tool.cibuildwheel]
+skip = """
+  pp*
+  *_i686
+  *musllinux*
+  *win32
+"""
+
+[tool.cibuildwheel.linux]
+repair-wheel-command = "mv {wheel} {dest_dir} && rename linux_x86_64 manylinux_2_17_x86_64.manylinux2014_x86_64 {dest_dir}/*-linux_x86_64*.whl"
+
+[tool.cibuildwheel.macos]
+environment = {MACOSX_DEPLOYMENT_TARGET="10.15"}
+repair-wheel-command = ""
+archs = ["universal2"]
