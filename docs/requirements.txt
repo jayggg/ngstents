@@ -101,10 +101,7 @@ typing_extensions==4.4.0
 urllib3==1.26.12
 wcwidth==0.2.5
 webencodings==0.5.1
-webgui-jupyter-widgets==0.2.14
+webgui-jupyter-widgets==0.2.35
 websocket-client==1.4.1
 widgetsnbextension==4.0.3
 scipy>=1.11.1 
-
-ngsolve==6.2.2304
-ngstents==0.0.1.post2
