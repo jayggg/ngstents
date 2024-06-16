@@ -58,11 +58,12 @@ jobs:
     needs: [build_wheels]
     runs-on: ubuntu-latest
     steps:
-    - name: Download all the dists
-      uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v4
       with:
-        name: python-package-distributions
-        path: ./wheelhouse/
+        # unpacks all CIBW artifacts into dist/
+        pattern: cibw-*
+        path: dist
+        merge-multiple: true
     - name: Publish binary distributions to PyPI
       if: github.ref == 'refs/heads/master'
       #if: github.event_name == 'release' && github.event.action == 'created' 
@@ -70,7 +71,6 @@ jobs:
       with:
         skip-existing: true
         password: ${{ secrets.PYPI_API_TOKEN }}
-        packages-dir: ./wheelhouse/
 
   docs:
     runs-on: ubuntu-latest
