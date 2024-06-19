@@ -11,23 +11,36 @@ required fluxes and numerical fluxes in a few lines of code.
 
 ## Install
 
-Binary installers are available for linux, mac, and windows (with
-python >= 3.9).
 
-* `pip install ngstents`
 
-But note that the binaries are not generally kept up to date. The
-recommended option is to build from source (see below).
+This package can be installed by
 
-## Build
+* `!python3 -m pip install git+https://github.com/jayggg/ngstents.git`
 
-If you built NGSolve from source, you can build and install `ngstents`.
-After cloning this repository, compile  the c++ code here and install:
+If you do not have the dependency [`ngsolve`](https://ngsolve.org)
+installed, this will attempt to install ngsolve first. If you prefer
+to use your own existing install of ngsolve, please use the
+`--no-build-isolation` argument:
+
+* `!python3 -m pip install --no-build-isolation git+https://github.com/jayggg/ngstents.git`
+
+
+If you built ngsolve from source, you can also build and install
+`ngstents` in the traditional manner. After cloning this repository,
+compile the c++ code here and install as follows:
 
 * `cd src`
 * `mkdir build && cd build`
 * `cmake -DNGSolve_DIR=<Path2YourNGSolveInstallCMake>  ..`
 * `make install`
+
+
+Binary installers are also available for linux, mac, and windows (with
+python >= 3.9):
+
+* `pip install --pre ngstents`
+
+
 
 ## Use
 
