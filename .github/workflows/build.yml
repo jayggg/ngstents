@@ -73,7 +73,7 @@ jobs:
         password: ${{ secrets.PYPI_API_TOKEN }}
 
   docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -90,11 +90,20 @@ jobs:
         run: sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install python3-testresources npm nodejs pandoc -y
       - name: pip install requirements
         run: |
-          python3 -m pip install build
+          python3 -m pip install --break-system-packages build
           python3 -m build -w .
-          python3 -m pip install dist/*.whl
+          python3 -m pip install --break-system-packages dist/*.whl
           python3 -c 'import ngstents'
-      - id: build_docs
+      - name: Build the book
+        run: |
+          cd docs
+          pip install --break-system-packages jupyter-book
+          jupyter-book build .
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: "docs/_build/html"
+      - name: Deploy to GitHub Pages
         if: github.ref == 'refs/heads/master'
-        name: Build and upload docu
-        uses: sphinx-notes/pages@v3
+        id: deployment
+        uses: actions/deploy-pages@v2
