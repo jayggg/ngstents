@@ -2,19 +2,13 @@
 # Learn more at https://jupyterbook.org/customize/toc.html
 
 format: jb-book
-root: intro
+root: index.rst
 
 parts:
-  - caption: tba
-    numbered: True
+  - caption: Notebooks on ngstents
+    numbered: False
     chapters:        
     - file: INDEX.ipynb
     - file: BurgersMTP.ipynb 
     - file: StartPitching.ipynb
-
-
-  # - caption: Fluids
-  # - caption: Cell-Method
-  # - caption: Tent-pitching
-  # - caption: PETSc
 
