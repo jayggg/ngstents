@@ -90,8 +90,8 @@ jobs:
         run: sudo apt-get update && DEBIAN_FRONTEND="noninteractive" sudo apt-get -y install python3-testresources npm nodejs pandoc -y
       - name: pip install requirements
         run: |
-          python3 -m pip install --break-system-packages build webgui_jupyter_widgets
-          python3 -m build -w .
+          python3 -m pip install --break-system-packages build webgui_jupyter_widgets scikit-build pybind11_stubgen cmake "numpy<2"
+          python3 -m build -wn .
           python3 -m pip install --break-system-packages dist/*.whl
           python3 -c 'import ngstents'
       - name: Build the book
