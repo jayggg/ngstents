@@ -23,6 +23,7 @@ extensions = ["sphinx.ext.autodoc","sphinx.ext.mathjax","sphinx.ext.todo","sphin
               "nbsphinx",
               "myst_parser",
               "sphinxemoji.sphinxemoji",
+              "myst_nb.sphinx_ext",
               ]
 
 # Run notebook configuration
