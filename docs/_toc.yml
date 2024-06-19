@@ -1,0 +1,20 @@
+# Table of contents
+# Learn more at https://jupyterbook.org/customize/toc.html
+
+format: jb-book
+root: intro
+
+parts:
+  - caption: tba
+    numbered: True
+    chapters:        
+    - file: INDEX.ipynb
+    - file: BurgersMTP.ipynb 
+    - file: StartPitching.ipynb
+
+
+  # - caption: Fluids
+  # - caption: Cell-Method
+  # - caption: Tent-pitching
+  # - caption: PETSc
+
