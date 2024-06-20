@@ -97,7 +97,6 @@ jobs:
       - name: Build the book
         run: |
           cd docs
-          python3 -m pip install --break-system-packages webgui_jupyter_widgets
           python3 -m pip install --break-system-packages jupyter-book
           jupyter-book build .
       - name: Upload artifact
