@@ -1,6 +1,6 @@
 # Spacetime Tents in NGSolve
 
-This `ngstents` package is a c++ extension of the
+This NGS-Tents (`ngstents`) package is a c++ extension of the
 [NGSolve](https://ngsolve.org) finite element library, designed to ease
 experimentation with solvers based on spacetime tents for hyperbolic
 systems. A python front-end allows new equations (linear or
@@ -13,38 +13,57 @@ required fluxes and numerical fluxes in a few lines of code.
 
 
 
-This package can be installed by
+### Build using pip
 
-* `!python3 -m pip install git+https://github.com/jayggg/ngstents.git`
+On a computer with a build system (compiler etc), you can install  NGS-Tents by 
+
+``` sh
+python3 -m pip install git+https://github.com/jayggg/ngstents.git
+```
 
 If you do not have the dependency [`ngsolve`](https://ngsolve.org)
-installed, this will attempt to install ngsolve first. If you prefer
-to use your own existing install of ngsolve, please use the
-`--no-build-isolation` argument:
+installed, this command will attempt to install ngsolve first, before
+proceeding to install `ngstents`. If you prefer to use your own
+existing install of ngsolve, please use the `--no-build-isolation`
+argument:
 
-* `!python3 -m pip install --no-build-isolation git+https://github.com/jayggg/ngstents.git`
+```sh
+python3 -m pip install --no-build-isolation git+https://github.com/jayggg/ngstents.git
+```
 
+### Build using CMake
 
 If you built ngsolve from source, you can also build and install
 `ngstents` in the traditional manner. After cloning this repository,
 compile the c++ code here and install as follows:
 
-* `cd src`
-* `mkdir build && cd build`
-* `cmake -DNGSolve_DIR=<Path2YourNGSolveInstallCMake>  ..`
-* `make install`
+```sh
+cd src
+mkdir build && cd build
+cmake -DNGSolve_DIR=<Path2YourNGSolveInstallCMake>  ..
+make install
+```
+
+(Often CMake is able to correctly detect the path to your NGSolve installation in which case you do not have to specify the `NGSolve_DIR` variable.)
 
 
-Binary installers are also available for linux, mac, and windows (with
-python >= 3.9):
+### Binary install 
 
-* `pip install --pre ngstents`
+If you do not have a compiler, then you can install NGS-Tents using
+a binary installer. To do so on linux, mac, and windows (with python>= 3.9),
+use the following command.
+
+```sh
+pip install --pre ngstents
+```
+
+	
 
 
 
 ## Use
 
-To start using this code, import the module after installation:
+To start using this code's python interface, import the module after installation:
 
 ``` python
 import ngstents
@@ -71,10 +90,21 @@ the [`docs` folder](./docs/INDEX.ipynb).
 Offline, to build and test the docs locally, navigate to the `ngstents/docs` 
 folder and run these:
 
-* `pip install -r requirements.txt`
-* `sphinx-build -b html . _build_docs`
+``` sh
+pip install -r requirements.txt
+sphinx-build -b html . _build_docs
+```
 
 You can then open the docs from `ngstents/docs/_build_docs/INDEX.html`. 
+
+Alternately, you can build a jupyter book of the documentation by
+navigating to the `ngstents/docs` folder and issuing 
+
+``` sh
+jupyter-book build .
+```
+
+which creates documentation in `ngstents/docs/_build/INDEX.html`. 
 
 
 ## Check
@@ -84,7 +114,10 @@ against a test suite provided in the 'tests' folder. For example, if
 you have `pytest` installed, move to the `ngstents/tests` folder and use
 pytest:
 
-* `pytest .`
+``` sh
+pytest .
+```
+
 
 ## Organization
 
