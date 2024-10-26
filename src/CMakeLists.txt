@@ -42,4 +42,4 @@ install(FILES
   ../py/conslaw/__init__.py
   DESTINATION ${install_dir}/conslaw)
 
-ngsolve_generate_stub_files(ngstents)
+# ngsolve_generate_stub_files(ngstents)
