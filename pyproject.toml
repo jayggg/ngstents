@@ -1,11 +1,11 @@
 [project]
 name = "ngstents"
-dynamic = ["version", "dependencies"]
+dynamic = ["dependencies"]
 authors = [{name="Jay Gopalakrishnan", email= "gjay@pdx.edu"}]
 description = "Spacetime tent facilities for solving hyperbolic equations"
 urls = {github="https://github.com/jayggg/ngstents"}
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = ["matplotlib"]
 classifiers = [
   "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)"
