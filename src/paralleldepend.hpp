@@ -5,9 +5,13 @@
 using namespace ngsolve;
 #include "concurrentqueue.h"
 
+
+namespace ngstents {
+
 typedef moodycamel::ConcurrentQueue<int> TQueue;
 typedef moodycamel::ProducerToken TPToken;
 typedef moodycamel::ConsumerToken TCToken;
+
 
 static TQueue queue;
 
@@ -126,5 +130,5 @@ void RunParallelDependency (const Table<int> & dag, TFUNC func)
   */
 }
 
-
+}
 #endif

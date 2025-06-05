@@ -5,6 +5,9 @@
 #include "paralleldepend.hpp"
 #include "tentsolver_impl.hpp"
 
+using namespace ngstents;
+
+
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
 CalcFluxTent(const Tent & tent, const FlatMatrixFixWidth<COMP> u,
