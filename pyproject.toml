@@ -12,7 +12,7 @@ classifiers = [
 ]
 
 [build-system]
-requires = ["ngsolve>=6.2.2404.post16", "matplotlib", "setuptools>=45", "setuptools_scm[toml]>=8", "toml", "scikit-build-core>=0.3.3", "pybind11_stubgen", "cmake>=3.26.1"]
+requires = ["ngsolve>=6.2.2503", "matplotlib", "setuptools>=45", "setuptools_scm[toml]>=8", "toml", "scikit-build-core>=0.3.3", "pybind11_stubgen", "cmake>=3.26.1"]
 build-backend = "scikit_build_core.build"
 
 ##########################################################################
