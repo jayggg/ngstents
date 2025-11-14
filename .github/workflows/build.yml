@@ -96,9 +96,14 @@ jobs:
           python3 -c 'import ngstents'
       - name: Build the book
         run: |
-          cd docs
           python3 -m pip install --break-system-packages jupyter-book
-          jupyter-book build .
+          jupyter-book build docs
+      - name: Show docs build output
+        run: |
+          echo "Listing docs/_build"
+          ls -la docs/_build || true
+          echo "Listing docs/_build/html"
+          ls -la docs/_build/html || true
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
