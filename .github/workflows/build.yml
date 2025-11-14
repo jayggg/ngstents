@@ -81,7 +81,7 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
           submodules: 'False'
@@ -100,10 +100,10 @@ jobs:
           python3 -m pip install --break-system-packages jupyter-book
           jupyter-book build .
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           path: "docs/_build/html"
       - name: Deploy to GitHub Pages
         if: github.ref == 'refs/heads/master'
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4

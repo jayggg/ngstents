@@ -1,18 +1,18 @@
 [project]
 name = "ngstents"
-dynamic = ["dependencies"]
+dynamic = ["dependencies", "version"]
 authors = [{name="Jay Gopalakrishnan", email= "gjay@pdx.edu"}]
 description = "Spacetime tent facilities for solving hyperbolic equations"
 urls = {github="https://github.com/jayggg/ngstents"}
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = ["matplotlib"]
+# dependencies = ["matplotlib"]
 classifiers = [
   "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)"
 ]
 
 [build-system]
-requires = ["ngsolve>=6.2.2503", "matplotlib", "setuptools>=45", "setuptools_scm[toml]>=8", "toml", "scikit-build-core>=0.3.3", "pybind11_stubgen", "cmake>=3.26.1"]
+requires = ["ngsolve>=6.2.2503", "matplotlib", "cmake", "setuptools>=45", "setuptools_scm[toml]>=8", "toml", "scikit-build-core>=0.3.3", "pybind11_stubgen", "cmake>=3.26.1"]
 build-backend = "scikit_build_core.build"
 
 ##########################################################################
@@ -31,6 +31,7 @@ metadata.dependencies.provider="ngsolve._scikit_build_core_dependencies"
 local_scheme = "no-local-version"
 
 [tool.cibuildwheel]
+manylinux-x86_64-image = "cerbsim/manylinux_2_28_x86_64_cuda_12.8"
 skip = """
   pp*
   *_i686
@@ -39,7 +40,7 @@ skip = """
 """
 
 [tool.cibuildwheel.linux]
-repair-wheel-command = "mv {wheel} {dest_dir} && rename linux_x86_64 manylinux_2_17_x86_64.manylinux2014_x86_64 {dest_dir}/*-linux_x86_64*.whl"
+repair-wheel-command = "mv {wheel} {dest_dir} && rename linux_x86_64 manylinux_2_28_x86_64.manylinux2014_x86_64 {dest_dir}/*-linux_x86_64*.whl"
 
 [tool.cibuildwheel.macos]
 environment = {MACOSX_DEPLOYMENT_TARGET="10.15"}
