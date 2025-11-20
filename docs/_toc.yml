@@ -1,11 +1,10 @@
 # Table of contents
-# Learn more at https://jupyterbook.org/customize/toc.html
 
 format: jb-book
-root: readme
+root: INDEX.ipynb
 
 parts:
-  - caption: NGS-Tents Concepts & Usage
+  - caption: Concepts & Usage
     numbered: False
     chapters:
     - file: StartPitching.ipynb
