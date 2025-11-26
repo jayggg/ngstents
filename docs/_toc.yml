@@ -1,7 +1,7 @@
 # Table of contents
 
 format: jb-book
-root: INDEX.ipynb
+root: index.ipynb
 
 parts:
   - caption: Concepts & Usage
