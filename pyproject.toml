@@ -5,7 +5,7 @@ authors = [{name="Jay Gopalakrishnan", email= "gjay@pdx.edu"}]
 description = "Spacetime tent facilities for solving hyperbolic equations"
 urls = {github="https://github.com/jayggg/ngstents"}
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.14"
 # dependencies = ["matplotlib"]
 classifiers = [
   "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)"
