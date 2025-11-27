@@ -1,7 +1,7 @@
 # Book settings
 # Learn more at https://jupyterbook.org/customize/config.html
 
-title: NGS-Tents
+title: ngsTents
 author: Jay Gopalakrishnan
 logo: figs/ngsTentsLogo.png
 copyright : "2024"  # Copyright year to be placed in the footer
