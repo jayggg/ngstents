@@ -412,7 +412,7 @@ public:
   void UpdateVisualisation(const BaseVector & hu, LocalHeap & lh) const
   {
     HeapReset hr(lh);
-    int ndof_total = gfrho->GetVector().FVDouble().Size();
+    int ndof_total = gfrho->GetVector().template FV<double>().Size();
     
     FlatMatrixFixWidth<D+2> u (ndof_total, &hu.FV<double>()(0));
     FlatMatrixFixWidth<D+3> pUT (ndof_total,lh);
@@ -424,11 +424,11 @@ public:
       for(int m = 0; m < D; m++)
 	vecU(D*l+m) = pUT(l,m+1);
     
-    gfrho->GetVector().FVDouble() = u.Col(0);
-    gfp->GetVector().FVDouble() = pUT.Col(0);
-    gfU->GetVector().FVDouble() = vecU;
-    gfT->GetVector().FVDouble() = pUT.Col(D+1);
-    gfmach->GetVector().FVDouble() = pUT.Col(D+2);
+    gfrho->GetVector().template FV<double>() = u.Col(0);
+    gfp->GetVector().template FV<double>() = pUT.Col(0);
+    gfU->GetVector().template FV<double>() = vecU;
+    gfT->GetVector().template FV<double>() = pUT.Col(D+1);
+    gfmach->GetVector().template FV<double>() = pUT.Col(D+2);
   }
 
   template <typename MIP=BaseMappedIntegrationPoint, typename TA, typename TB>

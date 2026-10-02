@@ -169,8 +169,8 @@ public:
     	fes_lo->FinalizeUpdate();
     	gfnu = CreateGridFunction(fes_lo,"nu",Flags());
     	gfnu->Update();
-	nu.AssignMemory(gfnu->GetVector().FVDouble().Size(),
-                        &gfnu->GetVector().FVDouble()(0));
+	nu.AssignMemory(gfnu->GetVector().FV<double>().Size(),
+                        &gfnu->GetVector().FV<double>()(0));
     	nu = 0.0;
       }
 

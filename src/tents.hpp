@@ -67,7 +67,7 @@ public:
 
   void InitTent(shared_ptr<GridFunction> gftau) const
   {
-    time = &(gftau->GetVector().FVDouble()(vertex));
+    time = &(gftau->GetVector().FV<double>()(vertex));
     timebot = *time;
   }
 

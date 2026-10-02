@@ -44,7 +44,7 @@ void Visualization3D::SetInitialHd(
       int idx = (*(idx3d[0]))[i][0];
       if(entrysize == 1)
       {
-         auto fv = vtmp->FVDouble();
+         auto fv = vtmp->FV<double>();
          vhd->Range(idx,idx+1) = fv[i];
       }
       else
@@ -207,7 +207,7 @@ void Visualization3D::SetForTent(
     {
       for (auto i : IntRange(vtmp_nrs.Size()))
       {
-        auto fv = vtmp->FVDouble();
+        auto fv = vtmp->FV<double>();
         auto vi = vhd_nrs[i];
         vhd->Range(vi,vi+1) = fv[vtmp_nrs[i]];
       }
