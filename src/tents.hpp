@@ -141,7 +141,7 @@ public:
     : CoefficientFunction(adim)
   { }
 
-  double Evaluate(const BaseMappedIntegrationPoint & ip) const
+  double Evaluate(const BaseMappedIntegrationPoint & /* ip */) const
   {
     throw Exception ("Evaluate not implemented for BaseMappedIntegrationPoint!");
   }
@@ -199,8 +199,8 @@ public:
 
   // Constructor and initializers
   TentPitchedSlab(shared_ptr<MeshAccess> ama, int heapsize) :
-    dt(0), ma(ama), cmax(nullptr), nlayers(0),
-    has_been_pitched(false), lh(heapsize, "Tents heap")
+    dt(0), cmax(nullptr), has_been_pitched(false), nlayers(0),
+    lh(heapsize, "Tents heap"), ma(ama)
   {
     cfgradphi = make_shared<GradPhiCoefficientFunction>(ma->GetDimension());
   };

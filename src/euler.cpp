@@ -6,13 +6,13 @@ using namespace ngsolve;
 double dim_ = 5; // degrees of freedom of gas molecules
 double gamma_ = 1.4; // (dim_+2)/dim_
 
-double erf(double x)
+double erf_approx(double x)
 {
   /* erf(z) = 2/sqrt(pi) * Integral(0..x) exp( -t^2) dt
      erf(0.01) = 0.0112834772 erf(3.7) = 0.9999998325
      Abramowitz/Stegun: p299, |erf(z)-erf| <= 1.5*10^(-7)
   */
-  if (x < 0) return -erf(-x);
+  if (x < 0) return -erf_approx(-x);
   
   double y = 1.0 / ( 1.0 + 0.3275911 * x);
   return 1 - (((((
@@ -28,7 +28,7 @@ inline void Int_x_infty (double x, double & int0, double & int1, double & int2, 
 {
   // int_x^\infty  exp(-v^2) v^i dv
   
-  int0 = sqrt(M_PI)/2 * (1-erf(x));
+  int0 = sqrt(M_PI)/2 * (1-erf_approx(x));
   int1 = 0.5 * exp(-x*x);
   int2 = 0.5 * int0 + x * int1;
   int3 = int1 * (1+x*x);
@@ -94,7 +94,7 @@ public:
     return flux;
   }
 
-  void Flux (const SIMD_BaseMappedIntegrationRule & mir,
+  void Flux (const SIMD_BaseMappedIntegrationRule & /* mir */,
              FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> flux) const
   {
     for(int i : Range(u.Width()))
@@ -200,7 +200,7 @@ public:
         }
   }
 
-  void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
+  void NumFlux(const SIMD_BaseMappedIntegrationRule & /* mir */,
             FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
             FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
@@ -224,7 +224,7 @@ public:
     U_refl(D+1) = rho * ( e + 0.5 * L2Norm2(u_refl));
   }
 
-  void u_reflect(const SIMD_BaseMappedIntegrationRule & mir,
+  void u_reflect(const SIMD_BaseMappedIntegrationRule & /* mir */,
 		 FlatMatrix<SIMD<double>> u,
 		 FlatMatrix<SIMD<double>> normals,
 		 FlatMatrix<SIMD<double>> u_refl) const
@@ -301,7 +301,7 @@ public:
       }
   }
 
-  void CalcViscCoeffEl(const SIMD_BaseMappedIntegrationRule & mir,
+  void CalcViscCoeffEl(const SIMD_BaseMappedIntegrationRule & /* mir */,
                        FlatMatrix<SIMD<double>> elu_ipts,
                        FlatMatrix<SIMD<double>> res_ipts,
                        const double hi, double & coeff) const
@@ -432,7 +432,7 @@ public:
   }
 
   template <typename MIP=BaseMappedIntegrationPoint, typename TA, typename TB>
-  void InverseMap(const MIP & mip, const TA & grad,
+  void InverseMap(const MIP & /* mip */, const TA & grad,
 		  const TB & u) const
   {
     auto InnerProduct = [](auto a, auto b)

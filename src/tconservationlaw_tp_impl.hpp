@@ -738,7 +738,7 @@ Cyl2Tent (const Tent & tent, double tstar,
 
 template <typename EQUATION, int DIM, int COMP, int ECOMP, bool SYMBOLIC>
 void T_ConservationLaw<EQUATION, DIM, COMP, ECOMP, SYMBOLIC>::
-ApplyM1 (const Tent & tent, double tstar, FlatMatrixFixWidth<COMP> u,
+ApplyM1 (const Tent & tent, double /* tstar */, FlatMatrixFixWidth<COMP> u,
          FlatMatrixFixWidth<COMP> res, LocalHeap & lh)
 {
 

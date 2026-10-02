@@ -44,8 +44,8 @@ public:
   ConservationLaw (const shared_ptr<GridFunction> & agfu,
 		   const shared_ptr<TentPitchedSlab> & atps,
 		   const string & eqn)
-    : gfu{agfu}, fes{agfu->GetFESpace()}, tps {atps}, ma {atps->ma},
-      equation {eqn}, order{agfu->GetFESpace()->GetOrder()}
+    : ma{atps->ma}, tps{atps}, order{agfu->GetFESpace()->GetOrder()},
+      equation{eqn}, fes{agfu->GetFESpace()}, gfu{agfu}
   { };
   
   virtual ~ConservationLaw() { ; }
@@ -214,7 +214,7 @@ public:
         }
   }
 
-  void SetBoundaryCF(int bcnr, shared_ptr<CoefficientFunction> cf)
+  void SetBoundaryCF(int /* bcnr */, shared_ptr<CoefficientFunction> cf)
   {
     if(cf_bnd.Size()==0)
       cf_bnd.Append(cf);
@@ -256,23 +256,23 @@ public:
     cf_bnd_deriv = true;
   }
 
-  virtual void SetVectorField(shared_ptr<CoefficientFunction> cf)
+  virtual void SetVectorField(shared_ptr<CoefficientFunction> /* cf */)
   {
     throw Exception("SetVectorField just available for Advection equation");
   }
 
-  virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> cf_mu,
-                                     shared_ptr<CoefficientFunction> cf_eps)
+  virtual void SetMaterialParameters(shared_ptr<CoefficientFunction> /* cf_mu */,
+                                     shared_ptr<CoefficientFunction> /* cf_eps */)
   {
     throw Exception("SetMaterialParameters just available for Wave equation");
   }
 
-  virtual void SetViscosityCoefficient(shared_ptr<CoefficientFunction> cf_visc)
+  virtual void SetViscosityCoefficient(shared_ptr<CoefficientFunction> /* cf_visc */)
   {
     throw Exception("SetViscosityCoefficient just available for SymbolicConsLaw");
   }
 
-  virtual void SetNumEntropyFlux(shared_ptr<CoefficientFunction> cf_numentropyflux)
+  virtual void SetNumEntropyFlux(shared_ptr<CoefficientFunction> /* cf_numentropyflux */)
   {
     throw Exception("SetNumEntropyFlux just available for SymbolicConsLaw");
   }
@@ -361,43 +361,43 @@ public:
   }
 
   template <typename SCAL>
-  Mat<COMP,DIM,SCAL> Flux (const BaseMappedIntegrationPoint & mip,
-                           const FlatVec<COMP,SCAL> & u) const
+  Mat<COMP,DIM,SCAL> Flux (const BaseMappedIntegrationPoint & /* mip */,
+                           const FlatVec<COMP,SCAL> & /* u */) const
   {
     throw Exception ("flux not implemented");
   }
 
-  void Flux (const SIMD_BaseMappedIntegrationRule & mir,
-             FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> flux) const
+  void Flux (const SIMD_BaseMappedIntegrationRule & /* mir */,
+             FlatMatrix<SIMD<double>> /* u */, FlatMatrix<SIMD<double>> /* flux */) const
   {
     throw Exception ("flux for FlatMatrix<SIMD> not implemented");
   }
   
-  void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
-	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+  void NumFlux(const SIMD_BaseMappedIntegrationRule & /* mir */,
+	       FlatMatrix<SIMD<double>> /* ul */, FlatMatrix<SIMD<double>> /* ur */,
+	       FlatMatrix<SIMD<double>> /* normals */, FlatMatrix<SIMD<double>> /* fna */) const
   {
     throw Exception ("numerical flux for FlatMatrix<SIMD> not implemented");
   }
 
-  Vec<COMP> NumFlux (const BaseMappedIntegrationPoint & mip,
-		     const FlatVec<COMP> & ul, const FlatVec<COMP> & ur,
-		     const Vec<DIM> & nv) const
+  Vec<COMP> NumFlux (const BaseMappedIntegrationPoint & /* mip */,
+		     const FlatVec<COMP> & /* ul */, const FlatVec<COMP> & /* ur */,
+		     const Vec<DIM> & /* nv */) const
   {
     throw Exception ("numerical flux not implemented");
   }
 
-  void u_reflect(const SIMD_BaseMappedIntegrationRule & mir,
-		 FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
-                 FlatMatrix<SIMD<double>> u_refl) const
+  void u_reflect(const SIMD_BaseMappedIntegrationRule & /* mir */,
+		 FlatMatrix<SIMD<double>> /* u */, FlatMatrix<SIMD<double>> /* normals */,
+                 FlatMatrix<SIMD<double>> /* u_refl */) const
   {
     throw Exception ("reflecting boundary conditions not implemented for "
 		     + ToString(this->equation) + " equation!");
   }
 
-  void u_transparent(const SIMD_BaseMappedIntegrationRule & mir,
-                     FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
-                     FlatMatrix<SIMD<double>> u_transp) const
+  void u_transparent(const SIMD_BaseMappedIntegrationRule & /* mir */,
+                     FlatMatrix<SIMD<double>> /* u */, FlatMatrix<SIMD<double>> /* normals */,
+                     FlatMatrix<SIMD<double>> /* u_transp */) const
   {
     throw Exception ("Transparent boundary just available for wave equation!");
   }
@@ -412,18 +412,18 @@ public:
 
   // evaluation of the temporal derivative of the entropy E
   // and evaluation the entropy flux F
-  void CalcEntropy(FlatMatrix<AutoDiff<1,SIMD<double>>> adu,
-                   FlatMatrix<AutoDiff<1,SIMD<double>>> grad,
-		   FlatMatrix<SIMD<double>> dEdt,
-                   FlatMatrix<SIMD<double>> F) const
+  void CalcEntropy(FlatMatrix<AutoDiff<1,SIMD<double>>> /* adu */,
+                   FlatMatrix<AutoDiff<1,SIMD<double>>> /* grad */,
+		   FlatMatrix<SIMD<double>> /* dEdt */,
+                   FlatMatrix<SIMD<double>> /* F */) const
   {
     cout << "no overload for CalcEntropy for tent pitching" << endl;
   }
 
   // numerical flux for the entropy flux
-  void NumEntropyFlux (FlatMatrix<SIMD<double>> ml, FlatMatrix<SIMD<double>> mr,
-		       FlatMatrix<SIMD<double>> n,
-		       FlatMatrix<SIMD<double>> flux) const
+  void NumEntropyFlux (FlatMatrix<SIMD<double>> /* ml */, FlatMatrix<SIMD<double>> /* mr */,
+		       FlatMatrix<SIMD<double>> /* n */,
+		       FlatMatrix<SIMD<double>> /* flux */) const
   {
     cout << "no overload for NumEntropyFlux for FlatMatrix<SIMD>" << endl;
   }
@@ -446,10 +446,10 @@ public:
 				       double tstar, LocalHeap & lh);
 
   // calculate viscosity coefficient based on the entropy residual on an element
-  void CalcViscCoeffEl(const SIMD_BaseMappedIntegrationRule & mir,
-                       FlatMatrix<SIMD<double>> elu_ipts,
-                       FlatMatrix<SIMD<double>> res_ipts,
-                       const double hi, double & coeff) const
+  void CalcViscCoeffEl(const SIMD_BaseMappedIntegrationRule & /* mir */,
+                       FlatMatrix<SIMD<double>> /* elu_ipts */,
+                       FlatMatrix<SIMD<double>> /* res_ipts */,
+                       const double /* hi */, double & /* coeff */) const
   {
     cout << "no overload for CalcViscCoeffEl with FlatMatrix<SIMD>" << endl;
   }
@@ -459,8 +459,8 @@ public:
   ////////////////////////////////////////////////////////////////
 
   template <typename T = SIMD<double>>
-  void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
-		  FlatMatrix<T> grad, FlatMatrix<T> u) const
+  void InverseMap(const SIMD_BaseMappedIntegrationRule & /* mir */,
+		  FlatMatrix<T> /* grad */, FlatMatrix<T> /* u */) const
   {
     throw Exception ("TransformBack for FlatMatrix<SIMD> not available");
   }

@@ -92,7 +92,7 @@ public:
       }
   }
 
-  void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
+  void NumFlux(const SIMD_BaseMappedIntegrationRule & /* mir */,
 	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
@@ -114,7 +114,7 @@ public:
       }
   }
   
-  void u_reflect(const SIMD_BaseMappedIntegrationRule & mir,
+  void u_reflect(const SIMD_BaseMappedIntegrationRule & /* mir */,
 		 FlatMatrix<SIMD<double>> u,
                  FlatMatrix<SIMD<double>> normals,
                  FlatMatrix<SIMD<double>> u_refl) const

@@ -72,7 +72,7 @@ void RunParallelDependency (const Table<int> & dag, TFUNC func)
 
 
   task_manager -> CreateJob
-    ([&] (const TaskInfo & ti)
+    ([&] (const TaskInfo & /* ti */)
      {
        TPToken ptoken(queue);
        TCToken ctoken(queue);
