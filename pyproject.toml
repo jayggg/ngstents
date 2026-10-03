@@ -18,8 +18,7 @@ requires = ["ngsolve>=6.2.2506",
 	    "setuptools_scm>=8",
 	    "toml;  python_version >= '3.11'",
             "tomli>=1.1.0; python_version < '3.11'",
-	    "scikit-build-core>=0.9.0",
-	    "cmake>=3.26.1"]
+	    "scikit-build-core>=0.9.0"]
 build-backend = "scikit_build_core.build"
 
 ##########################################################################

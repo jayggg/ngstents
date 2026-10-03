@@ -1,7 +1,7 @@
 #ifndef TENTSHEADER
 #define TENTSHEADER
 
-#ifdef WIN32
+#if defined(_WIN32) || defined(WIN32)
         #define NGTENT_API_EXPORT __declspec(dllexport)
         #define NGTENT_API_IMPORT __declspec(dllimport)
 #else
@@ -74,7 +74,7 @@ public:
   void SetFinalTime() const { *time = timebot + (ttop - tbot); }
 };
 
-ostream & operator<< (ostream & ost, const Tent & tent);
+NGSTENT_API ostream & operator<< (ostream & ost, const Tent & tent);
 
 
 ////////////////////////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@ public:
 /// φ(x, τ) = (1-τ) φbot(x) + τ φtop(x)
 ///
 
-class GradPhiCoefficientFunction : public CoefficientFunction
+class NGSTENT_API GradPhiCoefficientFunction : public CoefficientFunction
 {
 public:
   GradPhiCoefficientFunction (int adim)
