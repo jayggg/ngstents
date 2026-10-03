@@ -35,7 +35,7 @@ public:
     return mat;
   }
 
-  void Flux (const SIMD_BaseMappedIntegrationRule & mir,
+  void Flux (const SIMD_BaseMappedIntegrationRule & /* mir */,
              FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> flux) const
   {
     for(size_t i : Range(u.Width()))
@@ -77,7 +77,7 @@ public:
     return flux;
   }
 
-  void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
+  void NumFlux(const SIMD_BaseMappedIntegrationRule & /* mir */,
 	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
@@ -122,8 +122,8 @@ public:
       u.Col(i) = MapBack (i, u.Col(i));
   }
 
-  void u_reflect(const SIMD_BaseMappedIntegrationRule & mir,
-		 FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> normals,
+  void u_reflect(const SIMD_BaseMappedIntegrationRule & /* mir */,
+		 FlatMatrix<SIMD<double>> u, FlatMatrix<SIMD<double>> /* normals */,
                  FlatMatrix<SIMD<double>> u_refl) const
   {
     // dirichlet bcs

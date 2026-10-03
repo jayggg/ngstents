@@ -105,8 +105,8 @@ public:
     ud.GetAMemory(BASE::tps->cfgradphi.get()) = gradphi; // set values for grad(phi)
     ud.GetAMemory(proxy_graddelta.get()) = graddelta;    // set values for graddelta
 
-    STACK_ARRAY(SIMD<double>, mem, COMP*mir.Size());
-    FlatMatrix<SIMD<double>> temp(COMP, mir.Size(), mem);
+    ArrayMem<SIMD<double>,100> mem(COMP*mir.Size());
+    FlatMatrix<SIMD<double>> temp(COMP, mir.Size(), &mem[0]);
 
     // map derivative
     ddu_invmap->Evaluate(mir, ut);
@@ -128,7 +128,7 @@ public:
   // numerical flux
   void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
 	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+	       FlatMatrix<SIMD<double>> /* normals */, FlatMatrix<SIMD<double>> fna) const
   {
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = ul; // set values for ul
@@ -158,7 +158,7 @@ public:
   // numerical entropy flux
   void NumEntropyFlux(const SIMD_BaseMappedIntegrationRule & mir,
 		      FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
-		      FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
+		      FlatMatrix<SIMD<double>> /* normals */, FlatMatrix<SIMD<double>> fna) const
   {
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = ul;      // set values for ul
@@ -180,7 +180,7 @@ public:
   void CalcViscCoeffEl(const SIMD_BaseMappedIntegrationRule & mir,
                        FlatMatrix<SIMD<double>> u,
                        FlatMatrix<SIMD<double>> res,
-                       const double hi, double & coeff) const
+                       const double /* hi */, double & coeff) const
   {
     ProxyUserData & ud = *static_cast<ProxyUserData*>(mir.GetTransformation().userdata);
     ud.GetAMemory(proxy_u.get()) = u; // set values for u
@@ -209,7 +209,6 @@ shared_ptr<ConservationLaw> CreateSymbolicConsLaw (const shared_ptr<GridFunction
 						   const bool compile)
 {
   const int dim = tps->ma->GetDimension();
-  constexpr int MAXCOMP = 6;
   const int comp_space = gfu->GetFESpace()->GetDimension();
   const auto ecomp = (entropy && entropyflux && numentropyflux) ? 1 : 0;
 

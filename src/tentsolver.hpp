@@ -7,6 +7,7 @@ class TentSolver
 {
 public:
   TentSolver() = default;
+  virtual ~TentSolver() = default;
 
   virtual void Setup() { };
 
@@ -27,7 +28,7 @@ protected:
   
 public:
   SAT (const shared_ptr<TCONSLAW> & atcl, int astages, int asubsteps)
-    : tcl{atcl}, stages{astages}, substeps{asubsteps}
+    : stages{astages}, substeps{asubsteps}, tcl{atcl}
   {
     cout << "set up SAT timestepping with "+
       ToString(stages)+" stages and "+ToString(substeps)+" substeps/tent" << endl;
@@ -66,7 +67,7 @@ public:
   Vector<> ccoeff;
 
   SARK (const shared_ptr<TCONSLAW> & atcl, int astages, int asubsteps)
-    : tcl{atcl}, stages{astages}, substeps{asubsteps}
+    : stages{astages}, substeps{asubsteps}, tcl{atcl}
   {
     shared_ptr<L2HighOrderFESpace> fes_check = dynamic_pointer_cast<L2HighOrderFESpace>(atcl->fes);
     if(!fes_check)

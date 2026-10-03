@@ -29,8 +29,8 @@ public:
   void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
 		  FlatMatrix<SIMD<double>> grad, FlatMatrix<SIMD<double>> u) const
   {
-    STACK_ARRAY(SIMD<double>, mem, D*mir.Size());
-    FlatMatrix<SIMD<double>> bmat(D, mir.Size(), mem);
+    ArrayMem<SIMD<double>,100> mem(D*mir.Size());
+    FlatMatrix<SIMD<double>> bmat(D, mir.Size(), &mem[0]);
 
     bfield->Evaluate (mir, bmat);
     for (size_t i : Range(mir))
@@ -56,8 +56,8 @@ public:
 	       FlatMatrix<SIMD<double>> ul, FlatMatrix<SIMD<double>> ur,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
-    STACK_ARRAY(SIMD<double>, mem, D*mir.Size());
-    FlatMatrix<SIMD<double>> bmat(D, mir.Size(), mem);
+    ArrayMem<SIMD<double>,100> mem(D*mir.Size());
+    FlatMatrix<SIMD<double>> bmat(D, mir.Size(), &mem[0]);
     bfield->Evaluate(mir, bmat);
 
     for(size_t i : Range(mir))

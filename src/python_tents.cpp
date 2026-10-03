@@ -91,7 +91,7 @@ auto ExportTimeSlab(py::module &m)
 	       py::list reti;
 	       reti.append(py::make_tuple(tent.vertex, tent.ttop,
 					  tent.tbot, tent.level));
-	       for(int j = 0; j< tent.nbv.Size(); j++)
+	       for(auto j : Range(tent.nbv))
 		 reti.append(py::make_tuple(tent.nbv[j],tent.nbtime[j]));
 	       ret.append(reti);
 	     }

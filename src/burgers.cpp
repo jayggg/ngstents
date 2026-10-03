@@ -30,7 +30,7 @@ public:
   // in this case, û = 2 Û / [ 1 + √(1 - 2 Û ⋅∇̂ φ(x̂, t̂)) ]
   //
   template <typename T>
-  void InverseMap(const SIMD_BaseMappedIntegrationRule & mir,
+  void InverseMap(const SIMD_BaseMappedIntegrationRule & /* mir */,
 		  FlatMatrix<T> grad, FlatMatrix<T> u) const
   {
     for (int i : Range(grad.Width()))
@@ -53,7 +53,7 @@ public:
   // Numerical Flux on a facet.  ul and ur are the values at integration points
   // of the two elements adjacent to an internal facet
   // of the spatial mesh of a tent.
-  void NumFlux(const SIMD_BaseMappedIntegrationRule & mir,
+  void NumFlux(const SIMD_BaseMappedIntegrationRule & /* mir */,
 	       FlatMatrix<SIMD<double>> ula, FlatMatrix<SIMD<double>> ura,
 	       FlatMatrix<SIMD<double>> normals, FlatMatrix<SIMD<double>> fna) const
   {
