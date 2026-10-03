@@ -1,76 +1,70 @@
-name: build
-
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
     tags:
-      - '*'
+      - 'v*'
+
+permissions:
+  contents: read
 
 jobs:
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        include:
-	  - os: ubuntu-latest
-            cibw_build: cp313-*
-          - os: windows-2022
-            cibw-arch: AMD64
-            cmake-generator: "Visual Studio 17 2022"
-            cmake_generator_platform: "x64"
-
+        os: [ubuntu-latest, macos-15-intel, windows-2022]
+    env:
+      CIBW_BUILD: cp310-* cp311-* cp312-* cp313-* cp314-*
+      CIBW_ARCHS_WINDOWS: AMD64
+      CIBW_ENVIRONMENT_WINDOWS: >
+        CMAKE_GENERATOR='Visual Studio 17 2022'
+        CMAKE_GENERATOR_PLATFORM=x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          ref: ${{  github.ref_name }}
+          persist-credentials: false
           fetch-tags: 'true'
           fetch-depth: 0
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@@v2.23.2
+      - uses: pypa/cibuildwheel@v4.2.1
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cibw-wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
 
   build_sdist:
-    name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
-          ref: ${{  github.ref_name }}
+          persist-credentials: false
           fetch-tags: 'true'
           fetch-depth: 0
 
-      - name: Build sdist
-        run: pipx run build --sdist
+      - run: pipx run build --sdist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cibw-sdist
           path: dist/*.tar.gz
 
   publish-pypi:
-    name: Publish to PyPI
-    needs: [build_wheels]
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/download-artifact@v4
-      with:
-        # unpacks all CIBW artifacts into dist/
-        pattern: cibw-*
-        path: dist
-        merge-multiple: true
-    - name: Publish binary distributions to PyPI
-      if: github.ref == 'refs/heads/master'
-      #if: github.event_name == 'release' && github.event.action == 'created' 
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        skip-existing: true
-        password: ${{ secrets.PYPI_API_TOKEN }}
-
+      - uses: actions/download-artifact@v8
+        with:
+          # unpacks all CIBW artifacts into dist/
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+          password: ${{ secrets.PYPI_API_TOKEN }}
