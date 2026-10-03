@@ -37,6 +37,30 @@ jobs:
           name: cibw-wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
 
+  test_wheels:
+    needs: build_wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15-intel, windows-2022]
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v8
+        with:
+          name: cibw-wheels-${{ matrix.os }}
+          path: wheelhouse
+      - run: python -m pip install wheelhouse/*cp313-cp313*.whl
+        shell: bash
+      - run: python -m pip install pytest
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: python -m pytest .
+        working-directory: tests
+
   build_sdist:
     runs-on: ubuntu-latest
     steps:
@@ -55,7 +79,7 @@ jobs:
 
   publish-pypi:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build_wheels, build_sdist]
+    needs: [test_wheels, build_sdist]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
