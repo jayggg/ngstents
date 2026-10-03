@@ -45,6 +45,7 @@ skip = """
   *musllinux*
   *win32
 """
+test-command = "python -c \"import ngstents; import ngstents.conslaw\""
 
 [tool.cibuildwheel.linux]
 repair-wheel-command = "mv {wheel} {dest_dir} && rename linux_x86_64 manylinux_2_28_x86_64.manylinux2014_x86_64 {dest_dir}/*-linux_x86_64*.whl"
@@ -53,3 +54,6 @@ repair-wheel-command = "mv {wheel} {dest_dir} && rename linux_x86_64 manylinux_2
 environment = {MACOSX_DEPLOYMENT_TARGET="10.15"}
 repair-wheel-command = ""
 archs = ["universal2"]
+
+[tool.cibuildwheel.windows]
+repair-wheel-command = ""
