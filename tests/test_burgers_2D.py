@@ -28,7 +28,7 @@ def test_burgers2D():
 
     V = L2(mesh, order=order)
     u = GridFunction(V, "u")
-    burg = Burgers(u, ts)
+    burg = Burgers(u, ts, outflow=mesh.Boundaries(".*"))
     burg.SetTentSolver("SARK", substeps=order*order)
     burg.SetInitial(cf)
 

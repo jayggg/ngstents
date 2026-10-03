@@ -4,9 +4,18 @@ project(ngstents)
 
 include(ngsolve_addon.cmake)
 
+add_ngsolve_addon_library(ngstents_core
+  PACKAGE ngstents
+  EXPORT_NAME core
+  SOURCES tents.cpp
+  PUBLIC_HEADERS
+    tents.hpp
+    paralleldepend.hpp
+    concurrentqueue.h)
+target_compile_definitions(ngstents_core PRIVATE NGSTENT_EXPORTS)
+
 add_ngsolve_addon(_pytents
   python_tents.cpp
-  tents.cpp
   )
 
 add_ngsolve_addon(_pyconslaw
@@ -20,8 +29,10 @@ add_ngsolve_addon(_pyconslaw
   vis3d.cpp
   )
 
-target_link_libraries(_pyconslaw PRIVATE _pytents)
-target_compile_definitions(_pytents PRIVATE NGSTENT_EXPORTS)
+target_link_libraries(_pytents PRIVATE ngstents_core)
+target_link_libraries(_pyconslaw PRIVATE ngstents_core)
+ngsolve_addon_set_relative_rpath(_pytents ".")
+ngsolve_addon_set_relative_rpath(_pyconslaw "..")
 
 message("With 'make install' the python package will be installed to: ${CMAKE_INSTALL_PREFIX}")
 set(install_dir ${ADDON_INSTALL_DIR_PYTHON}/ngstents)
@@ -30,6 +41,10 @@ install(TARGETS _pyconslaw DESTINATION ${install_dir}/conslaw)
 
 install(FILES
   ../py/__init__.py
+  DESTINATION ${install_dir})
+
+install(FILES
+  ../py/config.py
   DESTINATION ${install_dir})
 
 install(FILES

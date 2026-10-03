@@ -1,7 +1,26 @@
 #include <limits>
 
 #include "tents.hpp"
+#ifdef _WIN32
+#include <h1hofe.hpp>
+#endif
 
+
+namespace
+{
+#ifdef _WIN32
+  // TODO: Use ScalarFE<ET,1> once NGSolve exports GetNodalPoints from its DLL.
+  template <ELEMENT_TYPE ET>
+  class LinearScalarFE final : public H1HighOrderFE<ET>
+  {
+  public:
+    LinearScalarFE () : H1HighOrderFE<ET>(1) { }
+  };
+#else
+  template <ELEMENT_TYPE ET>
+  using LinearScalarFE = ScalarFE<ET, 1>;
+#endif
+}
 
 
 ///////////////////// GradPhiCoefficientFunction ///////////////////////////
@@ -327,7 +346,7 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
 
        constexpr auto el_type = EL_TYPE(DIM);
        constexpr int n_vertices = DIM+1; // number of vertices of the current element (simplex)
-       ScalarFE<el_type,1> fe; //finite element created for calculating the barycentric coordinates
+       LinearScalarFE<el_type> fe; //finite element created for calculating the barycentric coordinates
        IntegrationRule ir(el_type, 0);
        FlatMatrixFixWidth<DIM> dshape_nodal(n_vertices, slh);
        FlatVector<> gradphi_top(DIM, slh), coef_top(n_vertices, slh);
@@ -356,9 +375,9 @@ bool TentPitchedSlab::PitchTents(const double dt, const bool calc_local_ct, cons
   return has_been_pitched;
 }
 
-template bool TentPitchedSlab::PitchTents<1>(const double, const bool, const double);
-template bool TentPitchedSlab::PitchTents<2>(const double, const bool, const double);
-template bool TentPitchedSlab::PitchTents<3>(const double, const bool, const double);
+template NGSTENT_API bool TentPitchedSlab::PitchTents<1>(const double, const bool, const double);
+template NGSTENT_API bool TentPitchedSlab::PitchTents<2>(const double, const bool, const double);
+template NGSTENT_API bool TentPitchedSlab::PitchTents<3>(const double, const bool, const double);
 
 
 double TentPitchedSlab::MaxSlope() const
@@ -628,7 +647,7 @@ template <int DIM> double VolumeGradientPitcher<DIM>::GetPoleHeight(const int vi
   //number of vertices of the current element (always the simplex associated to DIM)
   constexpr int n_vertices = DIM+1;
   //finite element created for calculating the barycentric coordinates
-  ScalarFE<el_type,1> my_fel;
+  LinearScalarFE<el_type> my_fel;
   // array of all elements containing vertex vi
   ArrayMem<int,30>  els;
   els.SetSize(0);
@@ -825,7 +844,7 @@ Table<double> EdgeGradientPitcher<DIM>::CalcLocalCTau(LocalHeap &lh, const Table
   create_local_ctau++;// it is in insert mode
   
   //used to calculate distance to opposite facet
-  ScalarFE<el_type,1> my_fel;
+  LinearScalarFE<el_type> my_fel;
   ArrayMem<int, 30> edge_els(0);
   ArrayMem<int, 30> edge_faces(0);
   //the mesh contains only simplices so only one integration rule is needed
@@ -1161,9 +1180,9 @@ TentDataFE::TentDataFE(const Tent & tent, const FESpace & fes, LocalHeap & lh)
 
       switch(dim)
         {
-        case 1: fe_nodal[i] = new (lh) ScalarFE<ET_SEGM,1>(); break;
-        case 2: fe_nodal[i] = new (lh) ScalarFE<ET_TRIG,1>(); break;
-        default: fe_nodal[i] = new (lh) ScalarFE<ET_TET,1>();
+        case 1: fe_nodal[i] = new (lh) LinearScalarFE<ET_SEGM>(); break;
+        case 2: fe_nodal[i] = new (lh) LinearScalarFE<ET_TRIG>(); break;
+        default: fe_nodal[i] = new (lh) LinearScalarFE<ET_TET>();
         }
 
       auto ndof = fe_nodal[i]->GetNDof();
